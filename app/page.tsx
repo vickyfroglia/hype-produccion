@@ -811,9 +811,12 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
         </div>
         <input placeholder="Buscar por OT, cliente o diseño..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...inp, maxWidth: 280 }} />
       </div>
+      <style>{`
+        .vg-grid th, .vg-grid td { border: 1px solid #ddd !important; text-align: center !important; }
+      `}</style>
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="vg-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
                 {['N', '¿Produce?', 'OT', 'Fecha', 'Cliente', 'Diseño', 'Tela', 'Mts Ped', 'Mts Imp', 'Aprob', 'Post', 'Anticipo', '¿Entregar?', 'Tipo RTO', 'Op. Impresión', 'Op. Fijación', 'Fecha fin', 'Prep', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].map((h) => (
