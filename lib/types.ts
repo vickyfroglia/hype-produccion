@@ -10,6 +10,7 @@ export const ESTADO_ENTREGA_OPCIONES = ['En almacén', 'Entregado a cliente', 'E
 // por área, se usa esta lista fija — fácil de editar acá).
 export const OPERARIOS_IMPRESION = ['Tomás', 'Néstor', 'Cache', 'Ricky'];
 export const OPERARIOS_FIJACION = ['Mati', 'Leo', 'Ciro', 'Lautaro'];
+export const OPERARIOS_ENTREGA = ['Mati', 'Leo', 'Ciro', 'Lautaro', 'Tomás', 'Néstor', 'Cache', 'Ricky'];
 
 export interface OrdenDirecta {
   id: number;

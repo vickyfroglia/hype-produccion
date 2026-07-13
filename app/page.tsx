@@ -14,6 +14,7 @@ import {
   ESTADO_ENTREGA_OPCIONES,
   OPERARIOS_IMPRESION,
   OPERARIOS_FIJACION,
+  OPERARIOS_ENTREGA,
   faltaParaProducir,
   estaAtrasada,
   calcularPrioridad,
@@ -770,7 +771,11 @@ function PanelPreparacion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCa
                       {ESTADO_ENTREGA_OPCIONES.map((e) => <option key={e} value={e}>{e}</option>)}
                     </select>
                   </td>
-                  <td style={td}><input defaultValue={o.entrego || ''} onBlur={(e) => actualizar(o.id, 'entrego', e.target.value || null)} style={{ ...selSm, width: 90 }} /></td>
+                  <td style={td}>
+                    <select value={o.entrego || ''} onChange={(e) => actualizar(o.id, 'entrego', e.target.value || null)} style={selSm}>
+                      <option value="">—</option>{OPERARIOS_ENTREGA.map((op) => <option key={op} value={op}>{op}</option>)}
+                    </select>
+                  </td>
                   <td style={td}><input defaultValue={o.recibio || ''} onBlur={(e) => actualizar(o.id, 'recibio', e.target.value || null)} style={{ ...selSm, width: 90 }} /></td>
                 </tr>
               ))}
@@ -962,7 +967,11 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                       {ESTADO_ENTREGA_OPCIONES.map((e) => <option key={e} value={e}>{e}</option>)}
                     </select>
                   </td>
-                  <td style={td}><input defaultValue={o.entrego || ''} onBlur={(e) => actualizar(o.id, 'entrego', e.target.value || null)} style={{ ...selSm, width: 80 }} /></td>
+                  <td style={td}>
+                    <select value={o.entrego || ''} onChange={(e) => actualizar(o.id, 'entrego', e.target.value || null)} style={selSm}>
+                      <option value="">—</option>{OPERARIOS_ENTREGA.map((op) => <option key={op} value={op}>{op}</option>)}
+                    </select>
+                  </td>
                   <td style={td}><input defaultValue={o.recibio || ''} onBlur={(e) => actualizar(o.id, 'recibio', e.target.value || null)} style={{ ...selSm, width: 80 }} /></td>
                 </tr>
                 );
