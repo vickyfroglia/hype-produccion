@@ -547,12 +547,49 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
     else onCambio();
   }
 
+  const pendientesAnticipo = ordenes.filter((o) => o.anticipo === 'PENDIENTE');
+
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 18, fontWeight: 500 }}>Administración</div>
         <div style={{ fontSize: 13, color: '#888' }}>Anticipo, autorización de entrega y tipo de remito</div>
       </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 8, color: '#c00' }}>
+          Pendientes de anticipo ({pendientesAnticipo.length})
+        </div>
+        <div style={{ ...card, padding: 0, overflow: 'hidden', border: '1px solid #f3c9c9' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>{['OT', 'Cliente', 'Diseño', 'Mts Ped', 'Anticipo'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {pendientesAnticipo.map((o) => (
+                  <tr key={o.id} style={{ background: '#fef3f3' }}>
+                    <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
+                    <td style={td}>{o.cliente}</td>
+                    <td style={td}>{o.diseno}</td>
+                    <td style={td}>{o.mts_pedidos}</td>
+                    <td style={td}>
+                      <select value={o.anticipo} onChange={(e) => actualizar(o.id, 'anticipo', e.target.value)} style={selSm}>
+                        {ANTICIPO_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+                {pendientesAnticipo.length === 0 && (
+                  <tr><td colSpan={5} style={{ ...td, textAlign: 'center', color: '#888' }}>No hay pedidos pendientes de anticipo 🎉</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 8 }}>Todos los pedidos</div>
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -852,13 +889,13 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
           <table className="vg-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['N', 'Prod', 'Fecha Pedido', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', 'Anticipo', 'Prep', '¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].map((h) => (
+                {['N', 'Prod', 'Fecha Pedido', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', 'Prep', '¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].map((h) => (
                   <th key={h} style={{ ...th, textTransform: 'uppercase', background: '#e85d2f', color: '#fff', fontWeight: 700, ...(h === 'Prod' ? { width: 40 } : {}) }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtradas.length === 0 && <tr><td colSpan={25} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
+              {filtradas.length === 0 && <tr><td colSpan={24} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
               {filtradas.map((o) => {
                 const filaColor = o.fecha_fin ? '#8fce8a' : o.imp_operario === 'NO' ? '#fde8e8' : o.imp_operario ? '#e6f4e1' : undefined;
                 return (
@@ -911,11 +948,6 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                     )}
                   </td>
                   <td style={td}>{formatFecha(o.fecha_fin)}</td>
-                  <td style={{ ...td, width: 95 }}>
-                    <select value={o.anticipo} onChange={(e) => actualizar(o.id, 'anticipo', e.target.value)} style={{ ...selSm, width: 90, fontSize: 10, padding: '3px 2px' }}>
-                      {ANTICIPO_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
-                    </select>
-                  </td>
                   <td style={td}>
                     <input type="checkbox" checked={o.prep} onChange={(e) => actualizar(o.id, 'prep', e.target.checked)} />
                   </td>
