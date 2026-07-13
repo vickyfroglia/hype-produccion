@@ -97,45 +97,48 @@ export default function Home() {
   ].filter((n) => n.roles.includes(rol.trim()) || rol.trim() === 'admin');
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'Arial, sans-serif' }}>
-      <div style={{ width: 210, background: '#1a1a2e', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, left: 0, height: '100vh', overflowY: 'auto' }}>
-        <div style={{ padding: '18px 16px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-          <div style={{ color: '#fff', fontSize: 22, fontWeight: 700, letterSpacing: 3 }}>HYPE</div>
-          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: 3, marginTop: 6 }}>PRODUCCIÓN · DIRECTA</div>
+    <div style={{ minHeight: '100vh', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 20, background: '#1a1a2e', display: 'flex', alignItems: 'center', padding: '0 20px', height: 60, overflowX: 'auto' }}>
+        <div style={{ marginRight: 24, whiteSpace: 'nowrap' }}>
+          <div style={{ color: '#fff', fontSize: 18, fontWeight: 700, letterSpacing: 3, lineHeight: 1 }}>HYPE</div>
+          <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', letterSpacing: 2 }}>PRODUCCIÓN · DIRECTA</div>
         </div>
-        <div style={{ padding: '8px 16px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>{nombreUsuario}</div>
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1 }}>{rol}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
+          {navItems.map((n) => (
+            <div
+              key={n.id}
+              onClick={() => setPagina(n.id)}
+              style={{
+                padding: '10px 14px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                color: pagina === n.id ? '#fff' : 'rgba(255,255,255,0.55)',
+                background: pagina === n.id ? 'rgba(255,255,255,0.1)' : 'transparent',
+                borderBottom: pagina === n.id ? '2px solid #e85d2f' : '2px solid transparent',
+                fontSize: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                textTransform: 'uppercase',
+              }}
+            >
+              <span>{n.icon}</span>
+              {n.label}
+            </div>
+          ))}
         </div>
-        {navItems.map((n) => (
-          <div
-            key={n.id}
-            onClick={() => setPagina(n.id)}
-            style={{
-              padding: '10px 16px',
-              cursor: 'pointer',
-              color: pagina === n.id ? '#fff' : 'rgba(255,255,255,0.55)',
-              background: pagina === n.id ? 'rgba(255,255,255,0.1)' : 'transparent',
-              borderLeft: pagina === n.id ? '2px solid #e85d2f' : '2px solid transparent',
-              fontSize: 13,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              textTransform: 'uppercase',
-            }}
-          >
-            <span>{n.icon}</span>
-            {n.label}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, whiteSpace: 'nowrap', marginLeft: 16 }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>{nombreUsuario}</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1 }}>{rol}</div>
           </div>
-        ))}
-        <div style={{ marginTop: 'auto', padding: 16 }}>
-          <button onClick={cerrarSesion} style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: 'rgba(255,255,255,0.55)', fontSize: 12, cursor: 'pointer', textTransform: 'uppercase' }}>
+          <button onClick={cerrarSesion} style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: 'rgba(255,255,255,0.55)', fontSize: 11, cursor: 'pointer', textTransform: 'uppercase' }}>
             Cerrar sesión
           </button>
         </div>
       </div>
 
-      <div style={{ marginLeft: 210, padding: 24, flex: 1, background: '#f5f5f7', minHeight: '100vh' }}>
+      <div style={{ marginTop: 60, padding: 24, background: '#f5f5f7', minHeight: 'calc(100vh - 60px)' }}>
         {loading && <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando...</div>}
         {!loading && (
           <>
