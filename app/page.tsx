@@ -901,10 +901,14 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                     </select>
                   </td>
                   <td style={td}><input type="checkbox" checked={o.post} onChange={(e) => actualizar(o.id, 'post', e.target.checked)} /></td>
-                  <td style={td}>
-                    <select value={o.fija_operario || ''} onChange={(e) => actualizar(o.id, 'fija_operario', e.target.value || null)} style={selSm}>
-                      <option value="">—</option>{OPERARIOS_FIJACION.map((op) => <option key={op} value={op}>{op}</option>)}
-                    </select>
+                  <td style={td} title={o.imp_operario === 'NO' ? 'No se puede fijar: no se imprimió' : undefined}>
+                    {o.imp_operario === 'NO' ? (
+                      <span style={{ fontSize: 11, color: '#c00' }}>—</span>
+                    ) : (
+                      <select value={o.fija_operario || ''} onChange={(e) => actualizar(o.id, 'fija_operario', e.target.value || null)} disabled={!o.imp_operario} style={selSm}>
+                        <option value="">—</option>{OPERARIOS_FIJACION.map((op) => <option key={op} value={op}>{op}</option>)}
+                      </select>
+                    )}
                   </td>
                   <td style={td}>{formatFecha(o.fecha_fin)}</td>
                   <td style={{ ...td, width: 95 }}>
