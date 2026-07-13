@@ -767,6 +767,19 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
     else onCambio();
   }
 
+  // Busca en Stock el id_hype que corresponde a esta combinación de
+  // cliente + tela, y lo completa solo en la columna ID.
+  async function buscarCodTela(o: OrdenDirecta, telaTexto?: string) {
+    const tela = (telaTexto ?? o.tela) || '';
+    if (!o.cliente || !tela) return;
+    const disponibles = await stockPorCliente(o.cliente);
+    const coincidencias = disponibles.filter((s) => s.tela.trim().toLowerCase() === tela.trim().toLowerCase());
+    if (coincidencias.length === 0) return; // no hay match, no molesta con un alert
+    // si hay varias, toma la de mayor stock disponible
+    const mejor = coincidencias.sort((a, b) => b.disponible - a.disponible)[0];
+    await actualizar(o.id, 'cod_tela', mejor.id_hype);
+  }
+
   // Al elegir un operario en "Op Imp" se pinta la fila de verde. Al elegir
   // "NO" se pinta de rojo y pide el motivo por el que no se pudo imprimir.
   async function actualizarImpOperario(o: OrdenDirecta, valor: string) {
@@ -835,13 +848,13 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
           <table className="vg-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['N', 'Prod', 'Fecha Pedido', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'Aprob', 'Op Imp', 'Post', 'Anticipo', '¿Entregar?', 'Tipo RTO', 'Op. Fijación', 'Fecha fin', 'Prep', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].map((h) => (
+                {['N', 'Prod', 'Fecha Pedido', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'ID', 'Aprob', 'Op Imp', 'Post', 'Anticipo', '¿Entregar?', 'Tipo RTO', 'Op. Fijación', 'Fecha fin', 'Prep', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].map((h) => (
                   <th key={h} style={{ ...th, textTransform: 'uppercase', background: '#e85d2f', color: '#fff', fontWeight: 700, ...(h === 'Prod' ? { width: 40 } : {}) }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtradas.length === 0 && <tr><td colSpan={24} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
+              {filtradas.length === 0 && <tr><td colSpan={25} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
               {filtradas.map((o) => {
                 const filaColor = o.imp_operario === 'NO' ? '#fde8e8' : o.imp_operario ? '#e6f4e1' : undefined;
                 return (
@@ -863,7 +876,14 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                     <input type="number" defaultValue={o.mts_impresos} onBlur={(e) => actualizarMtsImpresos(o, e.target.value)} style={{ ...selSm, width: 60 }} />
                   </td>
                   <td style={{ ...td, minWidth: 180 }}><input defaultValue={o.observaciones || ''} onBlur={(e) => actualizar(o.id, 'observaciones', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 170 }} /></td>
-                  <td style={{ ...td, minWidth: 190 }}><input defaultValue={o.tela || ''} onBlur={(e) => actualizar(o.id, 'tela', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 180 }} /></td>
+                  <td style={{ ...td, minWidth: 190 }}>
+                    <input
+                      defaultValue={o.tela || ''}
+                      onBlur={(e) => { actualizar(o.id, 'tela', e.target.value || null); buscarCodTela(o, e.target.value); }}
+                      style={{ ...selSm, width: '100%', minWidth: 180 }}
+                    />
+                  </td>
+                  <td style={{ ...td, width: 70, fontFamily: 'monospace', color: '#888', fontSize: 10 }}>{o.cod_tela || '—'}</td>
                   <td style={{ ...td, width: 95 }}>
                     <select value={o.aprob} onChange={(e) => actualizar(o.id, 'aprob', e.target.value)} style={{ ...selSm, width: 90, fontSize: 10, padding: '3px 2px' }}>
                       {APROB_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
