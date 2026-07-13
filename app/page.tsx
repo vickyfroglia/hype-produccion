@@ -857,8 +857,8 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                     </select>
                   </td>
                   <td style={td}><input type="checkbox" checked={o.post} onChange={(e) => actualizar(o.id, 'post', e.target.checked)} /></td>
-                  <td style={td}>
-                    <select value={o.anticipo} onChange={(e) => actualizar(o.id, 'anticipo', e.target.value)} style={selSm}>
+                  <td style={{ ...td, width: 95 }}>
+                    <select value={o.anticipo} onChange={(e) => actualizar(o.id, 'anticipo', e.target.value)} style={{ ...selSm, width: 90, fontSize: 10, padding: '3px 2px' }}>
                       {ANTICIPO_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
                     </select>
                   </td>
