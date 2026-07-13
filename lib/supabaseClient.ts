@@ -34,15 +34,19 @@ export interface StockDisponible {
   tela: string;
   color: string | null;
   disponible: number;
+  remitos: string[];
+  observaciones: string[];
 }
 
 // Busca en las tablas de Stock (ingresos/egresos) qué telas hay
 // cargadas para un cliente puntual, y cuántos mts quedan disponibles
-// de cada una (ingresos - egresos, agrupado por id_hype).
+// de cada una (ingresos - egresos, agrupado por id_hype). Junta también
+// los nº de remito y observaciones de cada ingreso, para dar más contexto
+// al elegir la tela (puede haber más de un ingreso para el mismo id_hype).
 // Requiere que esta app esté conectada al mismo proyecto Supabase que Stock.
 export async function stockPorCliente(cliente: string): Promise<StockDisponible[]> {
   const [{ data: ingresos, error: e1 }, { data: egresos, error: e2 }] = await Promise.all([
-    supabase.from('ingresos').select('id_hype, tela, color, mts').ilike('cliente', cliente),
+    supabase.from('ingresos').select('id_hype, tela, color, mts, remito, observaciones').ilike('cliente', cliente),
     supabase.from('egresos').select('id_hype, mts').ilike('cliente', cliente),
   ]);
   if (e1 || e2) {
@@ -51,8 +55,10 @@ export async function stockPorCliente(cliente: string): Promise<StockDisponible[
   }
   const mapa = new Map<string, StockDisponible>();
   (ingresos || []).forEach((i: any) => {
-    const actual = mapa.get(i.id_hype) || { id_hype: i.id_hype, tela: i.tela, color: i.color, disponible: 0 };
+    const actual = mapa.get(i.id_hype) || { id_hype: i.id_hype, tela: i.tela, color: i.color, disponible: 0, remitos: [], observaciones: [] };
     actual.disponible += Number(i.mts || 0);
+    if (i.remito && !actual.remitos.includes(String(i.remito))) actual.remitos.push(String(i.remito));
+    if (i.observaciones && !actual.observaciones.includes(i.observaciones)) actual.observaciones.push(i.observaciones);
     mapa.set(i.id_hype, actual);
   });
   (egresos || []).forEach((e: any) => {
