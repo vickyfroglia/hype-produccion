@@ -86,7 +86,7 @@ export default function Home() {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '▦', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
-    { id: 'diseno', label: 'Diseño', icon: '✎', roles: ['admin', 'diseno'] },
+    { id: 'diseno', label: 'Nuevo Pedido', icon: '✎', roles: ['admin', 'diseno'] },
     { id: 'administracion', label: 'Administración', icon: '$', roles: ['admin', 'administrativo'] },
     { id: 'impresion', label: 'Impresión', icon: '◫', roles: ['admin', 'operario'] },
     { id: 'preparacion', label: 'Preparación/Terminación', icon: '◫', roles: ['admin', 'encargado'] },
@@ -222,11 +222,11 @@ function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirec
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 500 }}>Diseño</div>
+          <div style={{ fontSize: 18, fontWeight: 500 }}>Nuevo Pedido</div>
           <div style={{ fontSize: 13, color: '#888' }}>Alta de pedidos, ficha y aprobación</div>
         </div>
         <button onClick={() => setMostrarForm((v) => !v)} style={{ ...btn, background: '#1a1a2e', color: '#fff', border: 'none' }}>
-          {mostrarForm ? 'Cerrar' : '+ Nuevo diseño / pedido'}
+          {mostrarForm ? 'Cerrar' : '+ Nuevo pedido'}
         </button>
       </div>
 
