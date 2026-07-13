@@ -767,6 +767,35 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
     else onCambio();
   }
 
+  // Igual que en el panel de Impresión: al cambiar los mts impresos,
+  // además de guardar en la OT, descuenta ese consumo como egreso real
+  // en Stock (si esta OT tiene una tela de stock asociada).
+  async function actualizarMtsImpresos(o: OrdenDirecta, valor: string) {
+    const mtsNuevos = parseFloat(valor);
+    if (isNaN(mtsNuevos)) return;
+    const { error } = await supabase.from('ordenes_directa').update({ mts_impresos: mtsNuevos }).eq('id', o.id);
+    if (error) {
+      alert('Error: ' + error.message);
+      return;
+    }
+    const delta = mtsNuevos - Number(o.mts_impresos || 0);
+    if (o.cod_tela && delta > 0) {
+      const { error: errorEgreso } = await supabase.from('egresos').insert([
+        {
+          fecha: new Date().toISOString().split('T')[0],
+          cliente: o.cliente,
+          tela: o.tela,
+          id_hype: o.cod_tela,
+          mts: delta,
+          estado: 'A producción',
+          observaciones: `OT ${o.nro_ot} · Directa · cargado desde Vista General`,
+        },
+      ]);
+      if (errorEgreso) console.error('No se pudo descontar stock automáticamente:', errorEgreso);
+    }
+    onCambio();
+  }
+
   const filtradas = ordenes.filter((o) => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -803,12 +832,16 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                     </span>
                   </td>
                   <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
-                  <td style={td}>{formatFecha(o.fecha)}</td>
-                  <td style={td}>{o.cliente}</td>
-                  <td style={td}>{o.diseno}</td>
-                  <td style={td}>{o.tela || '—'}</td>
-                  <td style={td}>{o.mts_pedidos}</td>
-                  <td style={td}>{o.mts_impresos}</td>
+                  <td style={td}><input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} style={{ ...selSm, width: 100 }} /></td>
+                  <td style={td}><input defaultValue={o.cliente} onBlur={(e) => actualizar(o.id, 'cliente', e.target.value)} style={{ ...selSm, width: 100 }} /></td>
+                  <td style={td}><input defaultValue={o.diseno} onBlur={(e) => actualizar(o.id, 'diseno', e.target.value)} style={{ ...selSm, width: 100 }} /></td>
+                  <td style={td}><input defaultValue={o.tela || ''} onBlur={(e) => actualizar(o.id, 'tela', e.target.value || null)} style={{ ...selSm, width: 90 }} /></td>
+                  <td style={td}>
+                    <input type="number" defaultValue={o.mts_pedidos} onBlur={(e) => actualizar(o.id, 'mts_pedidos', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 60 }} />
+                  </td>
+                  <td style={td}>
+                    <input type="number" defaultValue={o.mts_impresos} onBlur={(e) => actualizarMtsImpresos(o, e.target.value)} style={{ ...selSm, width: 60 }} />
+                  </td>
                   <td style={td}>
                     <select value={o.aprob} onChange={(e) => actualizar(o.id, 'aprob', e.target.value)} style={selSm}>
                       {APROB_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
