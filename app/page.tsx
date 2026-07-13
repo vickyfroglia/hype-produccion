@@ -852,7 +852,7 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
           <table className="vg-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['N', 'Prod', 'Fecha Pedido', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', 'Anticipo', '¿Entregar?', 'Tipo RTO', 'Prep', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].map((h) => (
+                {['N', 'Prod', 'Fecha Pedido', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', 'Anticipo', 'Prep', '¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].map((h) => (
                   <th key={h} style={{ ...th, textTransform: 'uppercase', background: '#e85d2f', color: '#fff', fontWeight: 700, ...(h === 'Prod' ? { width: 40 } : {}) }}>{h}</th>
                 ))}
               </tr>
@@ -917,6 +917,9 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                     </select>
                   </td>
                   <td style={td}>
+                    <input type="checkbox" checked={o.prep} onChange={(e) => actualizar(o.id, 'prep', e.target.checked)} />
+                  </td>
+                  <td style={td}>
                     <select value={o.entregar === null ? '' : o.entregar ? 'si' : 'no'} onChange={(e) => actualizar(o.id, 'entregar', e.target.value === '' ? null : e.target.value === 'si')} style={selSm}>
                       <option value="">—</option><option value="si">Sí</option><option value="no">No</option>
                     </select>
@@ -925,9 +928,6 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                     <select value={o.tipo_rto || ''} onChange={(e) => actualizar(o.id, 'tipo_rto', e.target.value || null)} style={selSm}>
                       <option value="">—</option>{TIPO_RTO_OPCIONES.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
-                  </td>
-                  <td style={td}>
-                    <input type="checkbox" checked={o.prep} onChange={(e) => actualizar(o.id, 'prep', e.target.checked)} />
                   </td>
                   <td style={td}><input defaultValue={o.nro_rto || ''} onBlur={(e) => actualizar(o.id, 'nro_rto', e.target.value || null)} style={{ ...selSm, width: 80 }} /></td>
                   <td style={td}>
