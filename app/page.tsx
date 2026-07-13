@@ -88,7 +88,7 @@ export default function Home() {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '▦', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
-    { id: 'general', label: 'Vista General', icon: '☷', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
+    { id: 'general', label: 'Producción', icon: '☷', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
     { id: 'diseno', label: 'Nuevo Pedido', icon: '✎', roles: ['admin', 'diseno'] },
     { id: 'administracion', label: 'Administración', icon: '$', roles: ['admin', 'administrativo'] },
     { id: 'impresion', label: 'Impresión', icon: '◫', roles: ['admin', 'operario'] },
@@ -753,7 +753,7 @@ function PanelPreparacion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCa
 }
 
 // ---------------------------------------------------------------------------
-// Vista General: todas las OT, todos los campos, en una sola tabla —
+// Producción (antes "Vista General"): todas las OT, todos los campos, en una sola tabla —
 // para quien quiera ver/tocar todo en un solo lugar en vez de entrar
 // panel por panel. Cualquier rol puede editar cualquier celda acá.
 // ---------------------------------------------------------------------------
@@ -806,7 +806,7 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 500 }}>Vista General</div>
+          <div style={{ fontSize: 18, fontWeight: 500 }}>Producción</div>
           <div style={{ fontSize: 13, color: '#888' }}>Todos los pedidos y todos los campos, editable por cualquiera</div>
         </div>
         <input placeholder="Buscar por OT, cliente o diseño..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...inp, maxWidth: 280 }} />
