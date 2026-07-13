@@ -23,9 +23,19 @@ El circuito por rol, tal como me lo describiste:
 - **Historial automático.** Cada aprobación, pago de anticipo, tela lista, impresión, fijación y entrega queda registrado solo (tabla `ordenes_directa_eventos`), sin que nadie tenga que anotarlo.
 - **Dashboard de excepciones**: qué está bloqueado y por qué falta exactamente (en vez de tener que mirar colores en miles de filas).
 
-### Pendiente de integrar (a propósito, todavía no está resuelto)
+### Integración con Stock (ya activa)
 
-- Autocompletar `cod_tela` con el ID real de Stock al elegir cliente + tela, y descontar stock automáticamente cuando se cargan los mts impresos. Por ahora ese campo es de texto libre — lo conectamos cuando definamos si va a compartir Supabase con la app de Stock o no.
+Esta app y la de Stock comparten el mismo proyecto Supabase, así que:
+
+- Al escribir el **Cliente** en el alta de Diseño, aparecen sugerencias tomadas de la tabla `clientes` de Stock.
+- Al elegir un cliente, se buscan automáticamente las telas que tiene disponibles en Stock (`ingresos` − `egresos`, agrupado por `id_hype`) y se muestran como tarjetas para elegir — seleccionando una se completan sola `tela` y `cod_tela`.
+- Si los metros pedidos superan el stock disponible de esa tela, se marca en rojo y pide confirmación antes de guardar.
+- Cuando Impresión carga los **mts impresos**, se genera automáticamente un **egreso real en Stock** (tabla `egresos`, estado "A producción") por esa cantidad — el stock se descuenta solo, no hay que ir a cargarlo de nuevo en la app de Stock.
+
+Si en algún momento separan los proyectos de Supabase, esto deja de funcionar (el cliente y la tela vuelven a ser campos de texto libre) sin romper nada más.
+
+### Pendiente
+
 - Los operarios de Impresión (Tomás, Néstor, Cache, Ricky) y Fijación (Mati, Leo, Ciro, Lautaro) están como listas fijas en `lib/types.ts`. Si preferís que salgan de la tabla `empleados` de Stock (para no tocar código cada vez que cambia el equipo), lo cambiamos fácil.
 
 ## 1. Supabase
