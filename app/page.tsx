@@ -104,7 +104,7 @@ export default function Home() {
           <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: 3, marginTop: 6 }}>PRODUCCIÓN · DIRECTA</div>
         </div>
         <div style={{ padding: '8px 16px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{nombreUsuario}</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>{nombreUsuario}</div>
           <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1 }}>{rol}</div>
         </div>
         {navItems.map((n) => (
@@ -121,6 +121,7 @@ export default function Home() {
               display: 'flex',
               alignItems: 'center',
               gap: 10,
+              textTransform: 'uppercase',
             }}
           >
             <span>{n.icon}</span>
@@ -128,7 +129,7 @@ export default function Home() {
           </div>
         ))}
         <div style={{ marginTop: 'auto', padding: 16 }}>
-          <button onClick={cerrarSesion} style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: 'rgba(255,255,255,0.55)', fontSize: 12, cursor: 'pointer' }}>
+          <button onClick={cerrarSesion} style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: 'rgba(255,255,255,0.55)', fontSize: 12, cursor: 'pointer', textTransform: 'uppercase' }}>
             Cerrar sesión
           </button>
         </div>
