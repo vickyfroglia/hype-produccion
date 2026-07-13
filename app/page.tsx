@@ -86,6 +86,7 @@ export default function Home() {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '▦', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
+    { id: 'general', label: 'Vista General', icon: '☷', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
     { id: 'diseno', label: 'Nuevo Pedido', icon: '✎', roles: ['admin', 'diseno'] },
     { id: 'administracion', label: 'Administración', icon: '$', roles: ['admin', 'administrativo'] },
     { id: 'impresion', label: 'Impresión', icon: '◫', roles: ['admin', 'operario'] },
@@ -136,6 +137,7 @@ export default function Home() {
         {!loading && (
           <>
             {pagina === 'dashboard' && <Dashboard ordenes={ordenes} />}
+            {pagina === 'general' && <VistaGeneral ordenes={ordenes} onCambio={cargarTodo} />}
             {pagina === 'diseno' && <PanelDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
             {pagina === 'administracion' && <PanelAdministracion ordenes={ordenes} onCambio={cargarTodo} />}
             {pagina === 'impresion' && <PanelImpresion ordenes={ordenes} onCambio={cargarTodo} />}
@@ -736,6 +738,119 @@ function PanelPreparacion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCa
                 </tr>
               ))}
               {pendientesTerminacion.length === 0 && <tr><td colSpan={9} style={{ ...td, textAlign: 'center', color: '#888' }}>Nada impreso pendiente de terminar</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Vista General: todas las OT, todos los campos, en una sola tabla —
+// para quien quiera ver/tocar todo en un solo lugar en vez de entrar
+// panel por panel. Cualquier rol puede editar cualquier celda acá.
+// ---------------------------------------------------------------------------
+function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio: () => void }) {
+  const [search, setSearch] = useState('');
+
+  async function actualizar(id: number, campo: string, valor: any) {
+    const { error } = await supabase.from('ordenes_directa').update({ [campo]: valor }).eq('id', id);
+    if (error) alert('Error: ' + error.message);
+    else onCambio();
+  }
+
+  const filtradas = ordenes.filter((o) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return o.nro_ot.toLowerCase().includes(q) || o.cliente.toLowerCase().includes(q) || o.diseno.toLowerCase().includes(q);
+  });
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 500 }}>Vista General</div>
+          <div style={{ fontSize: 13, color: '#888' }}>Todos los pedidos y todos los campos, editable por cualquiera</div>
+        </div>
+        <input placeholder="Buscar por OT, cliente o diseño..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...inp, maxWidth: 280 }} />
+      </div>
+      <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['¿Produce?', 'OT', 'Fecha', 'Cliente', 'Diseño', 'Tela', 'Mts Ped', 'Mts Imp', 'Aprob', 'Post', 'Anticipo', '¿Entregar?', 'Tipo RTO', 'Op. Impresión', 'Op. Fijación', 'Fecha fin', 'Prep', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].map((h) => (
+                  <th key={h} style={th}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtradas.length === 0 && <tr><td colSpan={22} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
+              {filtradas.map((o) => (
+                <tr key={o.id}>
+                  <td style={td}>
+                    <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700, color: '#fff', background: o.puede_producir ? '#3B6D11' : '#c00' }}>
+                      {o.puede_producir ? 'SÍ' : 'NO'}
+                    </span>
+                  </td>
+                  <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
+                  <td style={td}>{o.fecha}</td>
+                  <td style={td}>{o.cliente}</td>
+                  <td style={td}>{o.diseno}</td>
+                  <td style={td}>{o.tela || '—'}</td>
+                  <td style={td}>{o.mts_pedidos}</td>
+                  <td style={td}>{o.mts_impresos}</td>
+                  <td style={td}>
+                    <select value={o.aprob} onChange={(e) => actualizar(o.id, 'aprob', e.target.value)} style={selSm}>
+                      {APROB_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
+                    </select>
+                  </td>
+                  <td style={td}><input type="checkbox" checked={o.post} onChange={(e) => actualizar(o.id, 'post', e.target.checked)} /></td>
+                  <td style={td}>
+                    <select value={o.anticipo} onChange={(e) => actualizar(o.id, 'anticipo', e.target.value)} style={selSm}>
+                      {ANTICIPO_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
+                    </select>
+                  </td>
+                  <td style={td}>
+                    <select value={o.entregar === null ? '' : o.entregar ? 'si' : 'no'} onChange={(e) => actualizar(o.id, 'entregar', e.target.value === '' ? null : e.target.value === 'si')} style={selSm}>
+                      <option value="">—</option><option value="si">Sí</option><option value="no">No</option>
+                    </select>
+                  </td>
+                  <td style={td}>
+                    <select value={o.tipo_rto || ''} onChange={(e) => actualizar(o.id, 'tipo_rto', e.target.value || null)} style={selSm}>
+                      <option value="">—</option>{TIPO_RTO_OPCIONES.map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </td>
+                  <td style={td}>
+                    <select value={o.imp_operario || ''} onChange={(e) => actualizar(o.id, 'imp_operario', e.target.value || null)} style={selSm}>
+                      <option value="">—</option>{OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
+                    </select>
+                  </td>
+                  <td style={td}>
+                    <select value={o.fija_operario || ''} onChange={(e) => actualizar(o.id, 'fija_operario', e.target.value || null)} style={selSm}>
+                      <option value="">—</option>{OPERARIOS_FIJACION.map((op) => <option key={op} value={op}>{op}</option>)}
+                    </select>
+                  </td>
+                  <td style={td}>{o.fecha_fin || '—'}</td>
+                  <td style={td}>
+                    <input type="checkbox" checked={o.prep} onChange={(e) => actualizar(o.id, 'prep', e.target.checked)} />
+                  </td>
+                  <td style={td}><input defaultValue={o.nro_rto || ''} onBlur={(e) => actualizar(o.id, 'nro_rto', e.target.value || null)} style={{ ...selSm, width: 80 }} /></td>
+                  <td style={td}>
+                    <input type="number" placeholder="1" defaultValue={o.bulto_actual || ''} onBlur={(e) => actualizar(o.id, 'bulto_actual', parseInt(e.target.value) || null)} style={{ ...selSm, width: 36 }} />
+                    /
+                    <input type="number" placeholder="1" defaultValue={o.bulto_total || ''} onBlur={(e) => actualizar(o.id, 'bulto_total', parseInt(e.target.value) || null)} style={{ ...selSm, width: 36 }} />
+                  </td>
+                  <td style={td}>
+                    <select value={o.estado_entrega} onChange={(e) => actualizar(o.id, 'estado_entrega', e.target.value)} style={selSm}>
+                      {ESTADO_ENTREGA_OPCIONES.map((e) => <option key={e} value={e}>{e}</option>)}
+                    </select>
+                  </td>
+                  <td style={td}><input defaultValue={o.entrego || ''} onBlur={(e) => actualizar(o.id, 'entrego', e.target.value || null)} style={{ ...selSm, width: 80 }} /></td>
+                  <td style={td}><input defaultValue={o.recibio || ''} onBlur={(e) => actualizar(o.id, 'recibio', e.target.value || null)} style={{ ...selSm, width: 80 }} /></td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
