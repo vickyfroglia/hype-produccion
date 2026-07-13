@@ -819,8 +819,8 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
           <table className="vg-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['N', '¿Produce?', 'OT', 'Fecha', 'Cliente', 'Diseño', 'Tela', 'Mts Ped', 'Mts Imp', 'Aprob', 'Post', 'Anticipo', '¿Entregar?', 'Tipo RTO', 'Op. Impresión', 'Op. Fijación', 'Fecha fin', 'Prep', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].map((h) => (
-                  <th key={h} style={{ ...th, textTransform: 'uppercase', background: '#e85d2f', color: '#fff', fontWeight: 700 }}>{h}</th>
+                {['N', 'Prod', 'Fecha Pedido', 'Nro OT', 'Cliente', 'Diseño', 'Tela', 'Mts Ped', 'Mts Imp', 'Aprob', 'Post', 'Anticipo', '¿Entregar?', 'Tipo RTO', 'Op. Impresión', 'Op. Fijación', 'Fecha fin', 'Prep', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].map((h) => (
+                  <th key={h} style={{ ...th, textTransform: 'uppercase', background: '#e85d2f', color: '#fff', fontWeight: 700, ...(h === 'Prod' ? { width: 40 } : {}) }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -829,13 +829,13 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
               {filtradas.map((o) => (
                 <tr key={o.id}>
                   <td style={{ ...td, color: '#888' }}>{prioridad.get(o.id)}</td>
-                  <td style={td}>
-                    <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700, color: '#fff', background: o.puede_producir ? '#3B6D11' : '#c00' }}>
+                  <td style={{ ...td, width: 40 }}>
+                    <span style={{ padding: '2px 6px', borderRadius: 12, fontSize: 10, fontWeight: 700, color: '#fff', background: o.puede_producir ? '#3B6D11' : '#c00' }}>
                       {o.puede_producir ? 'SÍ' : 'NO'}
                     </span>
                   </td>
-                  <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
                   <td style={td}><input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} style={{ ...selSm, width: 100 }} /></td>
+                  <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
                   <td style={td}><input defaultValue={o.cliente} onBlur={(e) => actualizar(o.id, 'cliente', e.target.value)} style={{ ...selSm, width: 100 }} /></td>
                   <td style={td}><input defaultValue={o.diseno} onBlur={(e) => actualizar(o.id, 'diseno', e.target.value)} style={{ ...selSm, width: 100 }} /></td>
                   <td style={td}><input defaultValue={o.tela || ''} onBlur={(e) => actualizar(o.id, 'tela', e.target.value || null)} style={{ ...selSm, width: 90 }} /></td>
