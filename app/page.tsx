@@ -865,7 +865,7 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                       {o.puede_producir ? 'SÍ' : 'NO'}
                     </span>
                   </td>
-                  <td style={td}><input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} style={{ ...selSm, width: 100 }} /></td>
+                  <td style={{ ...td, minWidth: 140 }}><input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 130 }} /></td>
                   <td style={{ ...td, width: 55, fontFamily: 'monospace', color: '#e85d2f' }} title={o.nro_ot}>{o.nro_ot.slice(-6)}</td>
                   <td style={{ ...td, minWidth: 170 }}><input defaultValue={o.cliente} onBlur={(e) => actualizar(o.id, 'cliente', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 160 }} /></td>
                   <td style={td}><input defaultValue={o.diseno} onBlur={(e) => actualizar(o.id, 'diseno', e.target.value)} style={{ ...selSm, width: 100 }} /></td>
