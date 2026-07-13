@@ -81,3 +81,26 @@ export function pctAvance(o: OrdenDirecta): number {
   if (!o.mts_pedidos) return 0;
   return Math.min(100, Math.round((o.mts_impresos / o.mts_pedidos) * 100));
 }
+
+// Prioridad = orden de ingreso por fecha creciente (empezando en 1),
+// igual que la columna "N" de la planilla. Se calcula sobre TODOS los
+// pedidos (no solo los filtrados/buscados) para que el número de cada
+// OT no cambie según qué se esté mostrando en pantalla.
+export function calcularPrioridad(ordenes: OrdenDirecta[]): Map<number, number> {
+  const ordenados = [...ordenes].sort((a, b) => {
+    if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha);
+    return a.created_at.localeCompare(b.created_at);
+  });
+  const mapa = new Map<number, number>();
+  ordenados.forEach((o, i) => mapa.set(o.id, i + 1));
+  return mapa;
+}
+
+// Formatea una fecha 'YYYY-MM-DD' (o timestamp ISO) como 'DD/MM/AA'.
+export function formatFecha(fecha: string | null): string {
+  if (!fecha) return '—';
+  const soloFecha = fecha.split('T')[0];
+  const [y, m, d] = soloFecha.split('-');
+  if (!y || !m || !d) return fecha;
+  return `${d}/${m}/${y.slice(2)}`;
+}

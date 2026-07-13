@@ -16,6 +16,8 @@ import {
   OPERARIOS_FIJACION,
   faltaParaProducir,
   estaAtrasada,
+  calcularPrioridad,
+  formatFecha,
 } from '../lib/types';
 
 const inp: React.CSSProperties = { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13 };
@@ -213,6 +215,7 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
 // ---------------------------------------------------------------------------
 function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirecta[]; nombreUsuario: string; onCambio: () => void }) {
   const [mostrarForm, setMostrarForm] = useState(false);
+  const prioridad = calcularPrioridad(ordenes);
 
   async function actualizar(id: number, campo: string, valor: any) {
     const { error } = await supabase.from('ordenes_directa').update({ [campo]: valor }).eq('id', id);
@@ -247,13 +250,14 @@ function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirec
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr>{['OT', 'Fecha', 'Cliente', 'Diseño', 'Tela', 'Mts', 'Aprob', 'Post'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+              <tr>{['N', 'OT', 'Fecha', 'Cliente', 'Diseño', 'Tela', 'Mts', 'Aprob', 'Post'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
             </thead>
             <tbody>
               {ordenes.map((o) => (
                 <tr key={o.id}>
+                  <td style={{ ...td, color: '#888' }}>{prioridad.get(o.id)}</td>
                   <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
-                  <td style={td}>{o.fecha}</td>
+                  <td style={td}>{formatFecha(o.fecha)}</td>
                   <td style={td}>{o.cliente}</td>
                   <td style={td}>{o.diseno}</td>
                   <td style={td}>{o.tela || '—'}</td>
@@ -268,7 +272,7 @@ function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirec
                   </td>
                 </tr>
               ))}
-              {ordenes.length === 0 && <tr><td colSpan={8} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
+              {ordenes.length === 0 && <tr><td colSpan={9} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
             </tbody>
           </table>
         </div>
@@ -723,7 +727,7 @@ function PanelPreparacion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCa
                       <option value="">—</option>{OPERARIOS_FIJACION.map((op) => <option key={op} value={op}>{op}</option>)}
                     </select>
                   </td>
-                  <td style={td}>{o.fecha_fin || '—'}</td>
+                  <td style={td}>{formatFecha(o.fecha_fin)}</td>
                   <td style={td}><input defaultValue={o.nro_rto || ''} onBlur={(e) => actualizar(o.id, 'nro_rto', e.target.value || null)} style={{ ...selSm, width: 90 }} /></td>
                   <td style={td}>
                     <input type="number" placeholder="1" defaultValue={o.bulto_actual || ''} onBlur={(e) => actualizar(o.id, 'bulto_actual', parseInt(e.target.value) || null)} style={{ ...selSm, width: 40 }} />
@@ -755,6 +759,7 @@ function PanelPreparacion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCa
 // ---------------------------------------------------------------------------
 function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio: () => void }) {
   const [search, setSearch] = useState('');
+  const prioridad = calcularPrioridad(ordenes);
 
   async function actualizar(id: number, campo: string, valor: any) {
     const { error } = await supabase.from('ordenes_directa').update({ [campo]: valor }).eq('id', id);
@@ -782,22 +787,23 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['¿Produce?', 'OT', 'Fecha', 'Cliente', 'Diseño', 'Tela', 'Mts Ped', 'Mts Imp', 'Aprob', 'Post', 'Anticipo', '¿Entregar?', 'Tipo RTO', 'Op. Impresión', 'Op. Fijación', 'Fecha fin', 'Prep', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].map((h) => (
+                {['N', '¿Produce?', 'OT', 'Fecha', 'Cliente', 'Diseño', 'Tela', 'Mts Ped', 'Mts Imp', 'Aprob', 'Post', 'Anticipo', '¿Entregar?', 'Tipo RTO', 'Op. Impresión', 'Op. Fijación', 'Fecha fin', 'Prep', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].map((h) => (
                   <th key={h} style={th}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtradas.length === 0 && <tr><td colSpan={22} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
+              {filtradas.length === 0 && <tr><td colSpan={23} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
               {filtradas.map((o) => (
                 <tr key={o.id}>
+                  <td style={{ ...td, color: '#888' }}>{prioridad.get(o.id)}</td>
                   <td style={td}>
                     <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700, color: '#fff', background: o.puede_producir ? '#3B6D11' : '#c00' }}>
                       {o.puede_producir ? 'SÍ' : 'NO'}
                     </span>
                   </td>
                   <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
-                  <td style={td}>{o.fecha}</td>
+                  <td style={td}>{formatFecha(o.fecha)}</td>
                   <td style={td}>{o.cliente}</td>
                   <td style={td}>{o.diseno}</td>
                   <td style={td}>{o.tela || '—'}</td>
@@ -834,7 +840,7 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                       <option value="">—</option>{OPERARIOS_FIJACION.map((op) => <option key={op} value={op}>{op}</option>)}
                     </select>
                   </td>
-                  <td style={td}>{o.fecha_fin || '—'}</td>
+                  <td style={td}>{formatFecha(o.fecha_fin)}</td>
                   <td style={td}>
                     <input type="checkbox" checked={o.prep} onChange={(e) => actualizar(o.id, 'prep', e.target.checked)} />
                   </td>
