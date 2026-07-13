@@ -845,9 +845,9 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                     <input type="number" defaultValue={o.mts_impresos} onBlur={(e) => actualizarMtsImpresos(o, e.target.value)} style={{ ...selSm, width: 60 }} />
                   </td>
                   <td style={{ ...td, minWidth: 180 }}><input defaultValue={o.observaciones || ''} onBlur={(e) => actualizar(o.id, 'observaciones', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 170 }} /></td>
-                  <td style={{ ...td, minWidth: 260 }}><input defaultValue={o.tela || ''} onBlur={(e) => actualizar(o.id, 'tela', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 250 }} /></td>
-                  <td style={td}>
-                    <select value={o.aprob} onChange={(e) => actualizar(o.id, 'aprob', e.target.value)} style={selSm}>
+                  <td style={{ ...td, minWidth: 190 }}><input defaultValue={o.tela || ''} onBlur={(e) => actualizar(o.id, 'tela', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 180 }} /></td>
+                  <td style={{ ...td, width: 95 }}>
+                    <select value={o.aprob} onChange={(e) => actualizar(o.id, 'aprob', e.target.value)} style={{ ...selSm, width: 90, fontSize: 10, padding: '3px 2px' }}>
                       {APROB_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
                     </select>
                   </td>
