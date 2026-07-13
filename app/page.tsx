@@ -767,6 +767,22 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
     else onCambio();
   }
 
+  // Al elegir un operario en "Op Imp" se pinta la fila de verde. Al elegir
+  // "NO" se pinta de rojo y pide el motivo por el que no se pudo imprimir.
+  async function actualizarImpOperario(o: OrdenDirecta, valor: string) {
+    if (valor === 'NO') {
+      const motivo = window.prompt('¿Por qué no se pudo imprimir este pedido?', o.motivo_no_impreso || '');
+      if (motivo === null) return; // canceló, no guarda nada
+      const { error } = await supabase.from('ordenes_directa').update({ imp_operario: 'NO', motivo_no_impreso: motivo }).eq('id', o.id);
+      if (error) alert('Error: ' + error.message);
+      else onCambio();
+      return;
+    }
+    const { error } = await supabase.from('ordenes_directa').update({ imp_operario: valor || null, motivo_no_impreso: null }).eq('id', o.id);
+    if (error) alert('Error: ' + error.message);
+    else onCambio();
+  }
+
   // Igual que en el panel de Impresión: al cambiar los mts impresos,
   // además de guardar en la OT, descuenta ese consumo como egreso real
   // en Stock (si esta OT tiene una tela de stock asociada).
@@ -826,8 +842,10 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
             </thead>
             <tbody>
               {filtradas.length === 0 && <tr><td colSpan={24} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
-              {filtradas.map((o) => (
-                <tr key={o.id}>
+              {filtradas.map((o) => {
+                const filaColor = o.imp_operario === 'NO' ? '#fde8e8' : o.imp_operario ? '#e6f4e1' : undefined;
+                return (
+                <tr key={o.id} style={filaColor ? { background: filaColor } : undefined}>
                   <td style={{ ...td, color: '#888' }}>{prioridad.get(o.id)}</td>
                   <td style={{ ...td, width: 40 }}>
                     <span style={{ padding: '2px 6px', borderRadius: 12, fontSize: 10, fontWeight: 700, color: '#fff', background: o.puede_producir ? '#3B6D11' : '#c00' }}>
@@ -851,9 +869,11 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                       {APROB_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
                     </select>
                   </td>
-                  <td style={td}>
-                    <select value={o.imp_operario || ''} onChange={(e) => actualizar(o.id, 'imp_operario', e.target.value || null)} style={selSm}>
-                      <option value="">—</option>{OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
+                  <td style={{ ...td, width: 90 }} title={o.motivo_no_impreso || undefined}>
+                    <select value={o.imp_operario || ''} onChange={(e) => actualizarImpOperario(o, e.target.value)} style={{ ...selSm, width: 85 }}>
+                      <option value="">—</option>
+                      <option value="NO">NO</option>
+                      {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
                     </select>
                   </td>
                   <td style={td}><input type="checkbox" checked={o.post} onChange={(e) => actualizar(o.id, 'post', e.target.checked)} /></td>
@@ -895,7 +915,8 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                   <td style={td}><input defaultValue={o.entrego || ''} onBlur={(e) => actualizar(o.id, 'entrego', e.target.value || null)} style={{ ...selSm, width: 80 }} /></td>
                   <td style={td}><input defaultValue={o.recibio || ''} onBlur={(e) => actualizar(o.id, 'recibio', e.target.value || null)} style={{ ...selSm, width: 80 }} /></td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

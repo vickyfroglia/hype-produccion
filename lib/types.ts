@@ -31,6 +31,7 @@ export interface OrdenDirecta {
   tipo_rto: string | null;
 
   imp_operario: string | null;
+  motivo_no_impreso: string | null;
   mts_impresos: number;
   fecha_impresion: string | null;
 
