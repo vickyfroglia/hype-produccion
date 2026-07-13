@@ -838,7 +838,7 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                   <td style={{ ...td, width: 55, fontFamily: 'monospace', color: '#e85d2f' }} title={o.nro_ot}>{o.nro_ot.slice(-6)}</td>
                   <td style={{ ...td, minWidth: 170 }}><input defaultValue={o.cliente} onBlur={(e) => actualizar(o.id, 'cliente', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 160 }} /></td>
                   <td style={td}><input defaultValue={o.diseno} onBlur={(e) => actualizar(o.id, 'diseno', e.target.value)} style={{ ...selSm, width: 100 }} /></td>
-                  <td style={{ ...td, minWidth: 150 }}><input defaultValue={o.tela || ''} onBlur={(e) => actualizar(o.id, 'tela', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 140 }} /></td>
+                  <td style={{ ...td, minWidth: 260 }}><input defaultValue={o.tela || ''} onBlur={(e) => actualizar(o.id, 'tela', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 250 }} /></td>
                   <td style={td}>
                     <input type="number" defaultValue={o.mts_pedidos} onBlur={(e) => actualizar(o.id, 'mts_pedidos', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 60 }} />
                   </td>
