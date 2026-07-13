@@ -553,7 +553,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
     <div>
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 18, fontWeight: 500 }}>Administración</div>
-        <div style={{ fontSize: 13, color: '#888' }}>Anticipo, autorización de entrega y tipo de remito</div>
+        <div style={{ fontSize: 13, color: '#888' }}>Anticipo de pedidos</div>
       </div>
 
       <div style={{ marginBottom: 24 }}>
@@ -594,7 +594,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr>{['OT', 'Cliente', 'Diseño', 'Anticipo', '¿Entregar?', 'Tipo RTO'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+              <tr>{['OT', 'Cliente', 'Diseño', 'Anticipo'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
             </thead>
             <tbody>
               {ordenes.map((o) => (
@@ -607,19 +607,9 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                       {ANTICIPO_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
                     </select>
                   </td>
-                  <td style={td}>
-                    <select value={o.entregar === null ? '' : o.entregar ? 'si' : 'no'} onChange={(e) => actualizar(o.id, 'entregar', e.target.value === '' ? null : e.target.value === 'si')} style={selSm}>
-                      <option value="">—</option><option value="si">Sí</option><option value="no">No</option>
-                    </select>
-                  </td>
-                  <td style={td}>
-                    <select value={o.tipo_rto || ''} onChange={(e) => actualizar(o.id, 'tipo_rto', e.target.value || null)} style={selSm}>
-                      <option value="">—</option>{TIPO_RTO_OPCIONES.map((t) => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </td>
                 </tr>
               ))}
-              {ordenes.length === 0 && <tr><td colSpan={6} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
+              {ordenes.length === 0 && <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
             </tbody>
           </table>
         </div>
