@@ -67,3 +67,31 @@ export async function stockPorCliente(cliente: string): Promise<StockDisponible[
   });
   return Array.from(mapa.values()).sort((a, b) => a.tela.localeCompare(b.tela));
 }
+
+// Catálogo de telas "Stock TH": son códigos (id_hype que arrancan con "TH")
+// de telas propias de HYPE, no asignadas a ningún cliente en particular.
+// Cualquier pedido puede usarlas aunque el nombre del cliente no coincida,
+// así que se buscan por id_hype en vez de por cliente.
+export async function stockTH(): Promise<StockDisponible[]> {
+  const [{ data: ingresos, error: e1 }, { data: egresos, error: e2 }] = await Promise.all([
+    supabase.from('ingresos').select('id_hype, tela, color, mts, remito, observaciones').ilike('id_hype', 'TH%'),
+    supabase.from('egresos').select('id_hype, mts').ilike('id_hype', 'TH%'),
+  ]);
+  if (e1 || e2) {
+    console.error('No se pudo consultar el stock TH', e1 || e2);
+    return [];
+  }
+  const mapa = new Map<string, StockDisponible>();
+  (ingresos || []).forEach((i: any) => {
+    const actual = mapa.get(i.id_hype) || { id_hype: i.id_hype, tela: i.tela, color: i.color, disponible: 0, remitos: [], observaciones: [] };
+    actual.disponible += Number(i.mts || 0);
+    if (i.remito && !actual.remitos.includes(String(i.remito))) actual.remitos.push(String(i.remito));
+    if (i.observaciones && !actual.observaciones.includes(i.observaciones)) actual.observaciones.push(i.observaciones);
+    mapa.set(i.id_hype, actual);
+  });
+  (egresos || []).forEach((e: any) => {
+    const actual = mapa.get(e.id_hype);
+    if (actual) actual.disponible -= Number(e.mts || 0);
+  });
+  return Array.from(mapa.values()).sort((a, b) => a.tela.localeCompare(b.tela));
+}

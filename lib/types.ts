@@ -12,6 +12,27 @@ export const OPERARIOS_IMPRESION = ['Tomás', 'Néstor', 'Cache', 'Ricky'];
 export const OPERARIOS_FIJACION = ['Mati', 'Leo', 'Ciro', 'Lautaro'];
 export const OPERARIOS_ENTREGA = ['Mati', 'Leo', 'Ciro', 'Lautaro', 'Tomás', 'Néstor', 'Cache', 'Ricky'];
 
+// Catálogo fijo de telas "Stock TH" (telas propias de HYPE, no de un
+// cliente en particular). Al escribir "HYPE" en el campo Tela de Nuevo
+// Pedido aparece un desplegable con estas opciones para cargar rápido.
+export const TELAS_HYPE_TH = [
+  { id_hype: 'THD00066017OFW', descripcion: 'HYPE TUSSOR' },
+  { id_hype: 'THS00066231BLA', descripcion: 'HYPE GABARDINA IMPERMEABLE' },
+  { id_hype: 'THD00066164BLA', descripcion: 'HYPE BULL' },
+  { id_hype: 'THD00066184BLA', descripcion: 'HYPE FRISA' },
+  { id_hype: 'THD00066045BLA', descripcion: 'HYPE COTTON SLAB' },
+  { id_hype: 'THD00066028OFW', descripcion: 'HYPE GASA' },
+  { id_hype: 'THD00066029OFW', descripcion: 'HYPE LINO' },
+  { id_hype: 'THD00066030BLA', descripcion: 'HYPE FIBRANA' },
+  { id_hype: 'THD00066052BLA', descripcion: 'HYPE RUSTICO C/LYCRA' },
+  { id_hype: 'THD00066011BLA', descripcion: 'HYPE RIBB' },
+  { id_hype: 'THD00066012BLA', descripcion: 'HYPE GABARDINA 6 OZ' },
+  { id_hype: 'THD00066044BLA', descripcion: 'HYPE VOILE' },
+  { id_hype: 'THD00066182BLA', descripcion: 'HYPE ALGODON C/LYCRA' },
+  { id_hype: 'THD00066001BLA', descripcion: 'HYPE JERSEY DE ALGODÓN 24/1' },
+  { id_hype: 'THD00066019BLA', descripcion: 'HYPE POPLIN' },
+];
+
 export interface OrdenDirecta {
   id: number;
   nro_ot: string;
