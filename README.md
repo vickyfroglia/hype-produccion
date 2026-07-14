@@ -11,16 +11,16 @@ El circuito por rol, tal como me lo describiste:
 | Rol | Completa |
 |---|---|
 | **Diseño** | alta del pedido (fecha, equipo, perfil, tipo OT, nro OT, cliente, diseño, mts pedidos, tela) + aprobación (`aprob`) + si requiere postratado (`post`) |
-| **Administración** | anticipo, ¿entregar?, tipo de remito |
-| **Impresión** (operario) | quién imprimió + mts impresos, en el momento de imprimir |
-| **Preparación/Terminación** | tela lista (`prep`), quién fijó + fecha fin, nº de remito, bultos, estado de entrega, quién entregó, quién recibió, fecha de entrega |
+| **Administración** | anticipo (pantalla propia, con lista de pendientes) |
+| **Impresión / Preparación / Terminación** | todo lo demás (imp, mts impresos, prep, fijación, fecha fin, remito, bultos, entrega) se completa directamente en la tabla de **Producción**, que pueden ver y editar todos los roles |
+
+Los paneles separados de Impresión y de Preparación/Terminación se eliminaron: como Producción ya permite que cualquier rol edite cualquier celda, esas dos pantallas quedaron redundantes.
 
 ### Qué cambié respecto a la planilla
 
 - **"PROD" ya no se completa a mano.** Es una columna calculada (`puede_producir`) a partir de anticipo + aprobación + tela lista. La "celda auxiliar" que armabas para juntar esas 3 variables ya no hace falta.
 - **Nro. OT automático y correlativo.** En vez de inferir "cliente distinto a la fila anterior", hay un botón explícito: "Nuevo pedido" (genera el próximo número) o "Agregar diseño a un pedido existente" (elegís de una lista).
-- **Pantallas separadas por rol.** Diseño, Administración, Impresión y Preparación/Terminación ven y editan solo lo que les corresponde, en vez de una planilla compartida donde cualquiera puede tocar cualquier columna.
-- **Historial automático.** Cada aprobación, pago de anticipo, tela lista, impresión, fijación y entrega queda registrado solo (tabla `ordenes_directa_eventos`), sin que nadie tenga que anotarlo.
+- **Historial automático.** Cada aprobación, pago de anticipo, tela lista, impresión, fijación y entrega queda registrado solo (tabla `ordenes_directa_eventos`), sin que nadie tenga que anotarlo. Se puede filtrar por cliente o diseño.
 - **Dashboard de excepciones**: qué está bloqueado y por qué falta exactamente (en vez de tener que mirar colores en miles de filas).
 
 ### Integración con Stock (ya activa)
