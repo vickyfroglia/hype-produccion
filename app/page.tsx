@@ -733,6 +733,36 @@ function PanelPreparacion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCa
     onCambio();
   }
 
+  // Igual que con el Nº de RTO: quién entregó y quién recibió se replican
+  // en el/los egreso(s) de Stock vinculados a esta OT.
+  async function actualizarEntrego(o: OrdenDirecta, valor: string) {
+    const nuevoValor = valor || null;
+    const { error } = await supabase.from('ordenes_directa').update({ entrego: nuevoValor }).eq('id', o.id);
+    if (error) {
+      alert('Error: ' + error.message);
+      return;
+    }
+    if (nuevoValor) {
+      const { error: errorStock } = await supabase.from('egresos').update({ entrego: nuevoValor }).eq('orden_id', o.id);
+      if (errorStock) console.error('No se pudo actualizar quién entregó en Stock:', errorStock);
+    }
+    onCambio();
+  }
+
+  async function actualizarRecibio(o: OrdenDirecta, valor: string) {
+    const nuevoValor = valor || null;
+    const { error } = await supabase.from('ordenes_directa').update({ recibio: nuevoValor }).eq('id', o.id);
+    if (error) {
+      alert('Error: ' + error.message);
+      return;
+    }
+    if (nuevoValor) {
+      const { error: errorStock } = await supabase.from('egresos').update({ recibio: nuevoValor }).eq('orden_id', o.id);
+      if (errorStock) console.error('No se pudo actualizar quién recibió en Stock:', errorStock);
+    }
+    onCambio();
+  }
+
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
@@ -789,11 +819,11 @@ function PanelPreparacion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCa
                     </select>
                   </td>
                   <td style={td}>
-                    <select value={o.entrego || ''} onChange={(e) => actualizar(o.id, 'entrego', e.target.value || null)} style={selSm}>
+                    <select value={o.entrego || ''} onChange={(e) => actualizarEntrego(o, e.target.value)} style={selSm}>
                       <option value="">—</option>{OPERARIOS_ENTREGA.map((op) => <option key={op} value={op}>{op}</option>)}
                     </select>
                   </td>
-                  <td style={td}><input defaultValue={o.recibio || ''} onBlur={(e) => actualizar(o.id, 'recibio', e.target.value || null)} style={{ ...selSm, width: 90 }} /></td>
+                  <td style={td}><input defaultValue={o.recibio || ''} onBlur={(e) => actualizarRecibio(o, e.target.value)} style={{ ...selSm, width: 90 }} /></td>
                 </tr>
               ))}
               {pendientesTerminacion.length === 0 && <tr><td colSpan={9} style={{ ...td, textAlign: 'center', color: '#888' }}>Nada impreso pendiente de terminar</td></tr>}
@@ -892,6 +922,36 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
     if (nuevoValor) {
       const { error: errorStock } = await supabase.from('egresos').update({ remito: nuevoValor }).eq('orden_id', o.id);
       if (errorStock) console.error('No se pudo actualizar el remito en Stock:', errorStock);
+    }
+    onCambio();
+  }
+
+  // Igual que con el Nº de RTO: quién entregó y quién recibió se replican
+  // en el/los egreso(s) de Stock vinculados a esta OT.
+  async function actualizarEntrego(o: OrdenDirecta, valor: string) {
+    const nuevoValor = valor || null;
+    const { error } = await supabase.from('ordenes_directa').update({ entrego: nuevoValor }).eq('id', o.id);
+    if (error) {
+      alert('Error: ' + error.message);
+      return;
+    }
+    if (nuevoValor) {
+      const { error: errorStock } = await supabase.from('egresos').update({ entrego: nuevoValor }).eq('orden_id', o.id);
+      if (errorStock) console.error('No se pudo actualizar quién entregó en Stock:', errorStock);
+    }
+    onCambio();
+  }
+
+  async function actualizarRecibio(o: OrdenDirecta, valor: string) {
+    const nuevoValor = valor || null;
+    const { error } = await supabase.from('ordenes_directa').update({ recibio: nuevoValor }).eq('id', o.id);
+    if (error) {
+      alert('Error: ' + error.message);
+      return;
+    }
+    if (nuevoValor) {
+      const { error: errorStock } = await supabase.from('egresos').update({ recibio: nuevoValor }).eq('orden_id', o.id);
+      if (errorStock) console.error('No se pudo actualizar quién recibió en Stock:', errorStock);
     }
     onCambio();
   }
@@ -1003,11 +1063,11 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                     </select>
                   </td>
                   <td style={td}>
-                    <select value={o.entrego || ''} onChange={(e) => actualizar(o.id, 'entrego', e.target.value || null)} style={selSm}>
+                    <select value={o.entrego || ''} onChange={(e) => actualizarEntrego(o, e.target.value)} style={selSm}>
                       <option value="">—</option>{OPERARIOS_ENTREGA.map((op) => <option key={op} value={op}>{op}</option>)}
                     </select>
                   </td>
-                  <td style={td}><input defaultValue={o.recibio || ''} onBlur={(e) => actualizar(o.id, 'recibio', e.target.value || null)} style={{ ...selSm, width: 80 }} /></td>
+                  <td style={td}><input defaultValue={o.recibio || ''} onBlur={(e) => actualizarRecibio(o, e.target.value)} style={{ ...selSm, width: 80 }} /></td>
                 </tr>
                 );
               })}
