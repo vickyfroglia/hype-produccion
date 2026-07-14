@@ -282,6 +282,20 @@ function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirec
   );
 }
 
+interface LineaDiseno {
+  diseno: string;
+  mtsPedidos: string;
+  tela: string;
+  codTela: string;
+  disponibleTela: number | null;
+  telaManual: boolean;
+  post: boolean;
+}
+
+function lineaVacia(telaManualPorDefecto = false): LineaDiseno {
+  return { diseno: '', mtsPedidos: '', tela: '', codTela: '', disponibleTela: null, telaManual: telaManualPorDefecto, post: false };
+}
+
 function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: OrdenDirecta[]; nombreUsuario: string; onGuardado: () => void }) {
   const [modo, setModo] = useState<'nuevo' | 'existente'>('nuevo');
   const [nroOtExistente, setNroOtExistente] = useState('');
@@ -291,20 +305,18 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
   const [perfil, setPerfil] = useState('');
   const [tipoOt, setTipoOt] = useState('');
   const [cliente, setCliente] = useState('');
-  const [diseno, setDiseno] = useState('');
-  const [mtsPedidos, setMtsPedidos] = useState('');
-  const [tela, setTela] = useState('');
-  const [codTela, setCodTela] = useState('');
-  const [post, setPost] = useState(false);
   const [guardando, setGuardando] = useState(false);
+
+  // Un pedido puede traer varios diseños, cada uno con su propia tela y
+  // metraje — cada línea de esta lista se guarda como un renglón propio
+  // en ordenes_directa, todos con el mismo nro_ot.
+  const [lineas, setLineas] = useState<LineaDiseno[]>([lineaVacia()]);
 
   // Autocompletar cliente + telas disponibles desde la base de Stock
   const [clientesStock, setClientesStock] = useState<string[]>([]);
   const [showClientes, setShowClientes] = useState(false);
   const [stockCliente, setStockCliente] = useState<StockDisponible[]>([]);
   const [buscandoStock, setBuscandoStock] = useState(false);
-  const [telaManual, setTelaManual] = useState(false);
-  const [disponibleTela, setDisponibleTela] = useState<number | null>(null);
 
   const nrosAbiertos = Array.from(new Set(ordenes.map((o) => o.nro_ot))).sort().reverse();
 
@@ -345,54 +357,78 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
     const disponible = await stockPorCliente(nombreCliente);
     setStockCliente(disponible);
     setBuscandoStock(false);
-    setTelaManual(disponible.length === 0);
+    setLineas((prev) => prev.map((l) => ({ ...l, telaManual: disponible.length === 0 })));
   }
 
   function seleccionarCliente(nombreCliente: string) {
     setCliente(nombreCliente);
     setShowClientes(false);
-    setTela('');
-    setCodTela('');
-    setDisponibleTela(null);
+    setLineas((prev) => prev.map((l) => ({ ...l, tela: '', codTela: '', disponibleTela: null })));
     buscarStockDeCliente(nombreCliente);
   }
 
-  function seleccionarTela(idHype: string) {
-    const item = stockCliente.find((s) => s.id_hype === idHype);
-    if (!item) return;
-    setTela(item.tela);
-    setCodTela(item.id_hype);
-    setDisponibleTela(item.disponible);
+  function actualizarLinea(idx: number, cambios: Partial<LineaDiseno>) {
+    setLineas((prev) => prev.map((l, i) => (i === idx ? { ...l, ...cambios } : l)));
   }
 
-  const excedeStock = disponibleTela !== null && parseFloat(mtsPedidos || '0') > disponibleTela;
+  function agregarLinea() {
+    setLineas((prev) => [...prev, lineaVacia(stockCliente.length === 0)]);
+  }
+
+  function quitarLinea(idx: number) {
+    setLineas((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
+  }
+
+  // Para pedidos con muchos diseños (hay algunos con 40+), duplicar una línea
+  // ya cargada (misma tela/postratado) es más rápido que armar cada una desde cero.
+  function duplicarLinea(idx: number) {
+    setLineas((prev) => {
+      const copia = { ...prev[idx], diseno: '', mtsPedidos: '' };
+      const nuevas = [...prev];
+      nuevas.splice(idx + 1, 0, copia);
+      return nuevas;
+    });
+  }
+
+  function seleccionarTelaLinea(idx: number, idHype: string) {
+    const item = stockCliente.find((s) => s.id_hype === idHype);
+    if (!item) return;
+    actualizarLinea(idx, { tela: item.tela, codTela: item.id_hype, disponibleTela: item.disponible });
+  }
 
   async function guardar() {
     const nroOt = modo === 'nuevo' ? nroOtGenerado : nroOtExistente;
-    if (!nroOt || !cliente || !diseno || !parseFloat(mtsPedidos)) {
-      alert('Completá OT, cliente, diseño y metros pedidos.');
+    if (!nroOt || !cliente) {
+      alert('Completá OT y cliente.');
       return;
     }
-    if (excedeStock && !confirm(`El pedido (${mtsPedidos} mts) supera el stock disponible de esta tela (${disponibleTela} mts). ¿Guardar igual?`)) {
+    const lineasValidas = lineas.filter((l) => l.diseno && parseFloat(l.mtsPedidos));
+    if (lineasValidas.length === 0) {
+      alert('Cargá al menos un diseño con sus metros pedidos.');
       return;
+    }
+    const conExceso = lineasValidas.filter((l) => l.disponibleTela !== null && parseFloat(l.mtsPedidos) > l.disponibleTela);
+    if (conExceso.length > 0) {
+      const detalle = conExceso.map((l) => `${l.diseno} (${l.mtsPedidos} mts pedidos vs ${l.disponibleTela} disponibles)`).join(', ');
+      if (!confirm(`Estos diseños superan el stock disponible de su tela: ${detalle}. ¿Guardar igual?`)) return;
     }
     setGuardando(true);
-    const { error } = await supabase.from('ordenes_directa').insert([
-      {
+    const { error } = await supabase.from('ordenes_directa').insert(
+      lineasValidas.map((l) => ({
         nro_ot: nroOt,
         fecha,
         equipo: equipo || null,
         perfil: perfil || null,
         tipo_ot: tipoOt || null,
         cliente,
-        diseno,
-        mts_pedidos: parseFloat(mtsPedidos),
-        tela: tela || null,
-        cod_tela: codTela || null,
-        post,
+        diseno: l.diseno,
+        mts_pedidos: parseFloat(l.mtsPedidos),
+        tela: l.tela || null,
+        cod_tela: l.codTela || null,
+        post: l.post,
         creado_por: nombreUsuario,
-      },
-    ]);
+      }))
+    );
     setGuardando(false);
     if (error) {
       alert('Error al guardar: ' + error.message);
@@ -428,7 +464,7 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12, marginBottom: 20 }}>
         <div><label style={lbl}>Fecha</label><input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={inp} disabled={modo === 'existente'} /></div>
         <div><label style={lbl}>Equipo</label>
           <select value={equipo} onChange={(e) => setEquipo(e.target.value)} style={inp} disabled={modo === 'existente'}>
@@ -467,67 +503,117 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
             </div>
           )}
         </div>
-        <div><label style={lbl}>Diseño</label><input value={diseno} onChange={(e) => setDiseno(e.target.value)} style={inp} /></div>
-        <div>
-          <label style={lbl}>Mts pedidos</label>
-          <input type="number" value={mtsPedidos} onChange={(e) => setMtsPedidos(e.target.value)} style={{ ...inp, borderColor: excedeStock ? '#c00' : '#ddd', color: excedeStock ? '#c00' : undefined }} />
-        </div>
-
-        <div style={{ gridColumn: telaManual ? 'auto' : '1/-1' }}>
-          <label style={lbl}>
-            Tela {buscandoStock && '(buscando en stock...)'}
-            {!buscandoStock && stockCliente.length > 0 && (
-              <button onClick={() => setTelaManual((v) => !v)} style={{ marginLeft: 8, fontSize: 11, color: '#e85d2f', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                {telaManual ? '(usar tela de stock)' : '(escribir tela manualmente)'}
-              </button>
-            )}
-          </label>
-          {telaManual ? (
-            <input value={tela} onChange={(e) => { setTela(e.target.value); setCodTela(''); setDisponibleTela(null); }} placeholder="Nombre de la tela" style={inp} />
-          ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {stockCliente.length === 0 && !buscandoStock && (
-                <div style={{ fontSize: 12, color: '#888' }}>Ingresá el cliente para ver sus telas en stock.</div>
-              )}
-              {stockCliente.map((s) => (
-                <div
-                  key={s.id_hype}
-                  onClick={() => seleccionarTela(s.id_hype)}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    border: codTela === s.id_hype ? '2px solid #e85d2f' : '1px solid #ddd',
-                    cursor: 'pointer',
-                    fontSize: 12,
-                    background: codTela === s.id_hype ? '#fff5f0' : '#fff',
-                  }}
-                >
-                  <div style={{ fontWeight: 600 }}>{s.tela} {s.color ? `· ${s.color}` : ''}</div>
-                  <div style={{ fontFamily: 'monospace', color: '#888', fontSize: 10 }}>{s.id_hype}</div>
-                  <div style={{ fontWeight: 700, color: s.disponible > 0 ? '#3B6D11' : '#c00' }}>{s.disponible.toLocaleString()} mts</div>
-                  {s.remitos.length > 0 && <div style={{ fontSize: 10, color: '#666' }}>Remito: {s.remitos.join(', ')}</div>}
-                  {s.observaciones.length > 0 && <div style={{ fontSize: 10, color: '#666', maxWidth: 160, whiteSpace: 'normal' }}>{s.observaciones.join(' · ')}</div>}
-                </div>
-              ))}
-            </div>
-          )}
-          {disponibleTela !== null && (
-            <div style={{ marginTop: 6, fontSize: 12, color: excedeStock ? '#c00' : '#3B6D11', fontWeight: 600 }}>
-              {excedeStock
-                ? `⚠ El pedido supera el stock disponible (${disponibleTela.toLocaleString()} mts)`
-                : `Stock disponible: ${disponibleTela.toLocaleString()} mts`}
-            </div>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 18 }}>
-          <input type="checkbox" checked={post} onChange={(e) => setPost(e.target.checked)} id="post" />
-          <label htmlFor="post" style={{ fontSize: 13 }}>Requiere postratado</label>
-        </div>
       </div>
+
+      <div style={{ fontSize: 13, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+        Diseños del pedido ({lineas.length})
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {lineas.map((l, idx) => {
+          const excedeStock = l.disponibleTela !== null && parseFloat(l.mtsPedidos || '0') > l.disponibleTela;
+          return (
+            <div key={idx} style={{ border: '1px solid #eee', borderRadius: 10, padding: 14, position: 'relative' }}>
+              <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => duplicarLinea(idx)}
+                  title="Duplicar este diseño (misma tela y postratado)"
+                  style={{ border: 'none', background: 'none', color: '#e85d2f', cursor: 'pointer', fontSize: 13 }}
+                >
+                  ⧉ Duplicar
+                </button>
+                {lineas.length > 1 && (
+                  <button
+                    onClick={() => quitarLinea(idx)}
+                    title="Quitar este diseño"
+                    style={{ border: 'none', background: 'none', color: '#c00', cursor: 'pointer', fontSize: 13 }}
+                  >
+                    ✕ Quitar
+                  </button>
+                )}
+              </div>
+              <div style={{ fontSize: 11, color: '#aaa', marginBottom: 6 }}>Diseño {idx + 1}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12 }}>
+                <div><label style={lbl}>Diseño</label><input value={l.diseno} onChange={(e) => actualizarLinea(idx, { diseno: e.target.value })} style={inp} /></div>
+                <div>
+                  <label style={lbl}>Mts pedidos</label>
+                  <input
+                    type="number"
+                    value={l.mtsPedidos}
+                    onChange={(e) => actualizarLinea(idx, { mtsPedidos: e.target.value })}
+                    style={{ ...inp, borderColor: excedeStock ? '#c00' : '#ddd', color: excedeStock ? '#c00' : undefined }}
+                  />
+                </div>
+
+                <div style={{ gridColumn: l.telaManual ? 'auto' : '1/-1' }}>
+                  <label style={lbl}>
+                    Tela {buscandoStock && '(buscando en stock...)'}
+                    {!buscandoStock && stockCliente.length > 0 && (
+                      <button onClick={() => actualizarLinea(idx, { telaManual: !l.telaManual })} style={{ marginLeft: 8, fontSize: 11, color: '#e85d2f', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        {l.telaManual ? '(usar tela de stock)' : '(escribir tela manualmente)'}
+                      </button>
+                    )}
+                  </label>
+                  {l.telaManual ? (
+                    <input
+                      value={l.tela}
+                      onChange={(e) => actualizarLinea(idx, { tela: e.target.value, codTela: '', disponibleTela: null })}
+                      placeholder="Nombre de la tela"
+                      style={inp}
+                    />
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {stockCliente.length === 0 && !buscandoStock && (
+                        <div style={{ fontSize: 12, color: '#888' }}>Ingresá el cliente para ver sus telas en stock.</div>
+                      )}
+                      {stockCliente.map((s) => (
+                        <div
+                          key={s.id_hype}
+                          onClick={() => seleccionarTelaLinea(idx, s.id_hype)}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: 8,
+                            border: l.codTela === s.id_hype ? '2px solid #e85d2f' : '1px solid #ddd',
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            background: l.codTela === s.id_hype ? '#fff5f0' : '#fff',
+                          }}
+                        >
+                          <div style={{ fontWeight: 600 }}>{s.tela} {s.color ? `· ${s.color}` : ''}</div>
+                          <div style={{ fontFamily: 'monospace', color: '#888', fontSize: 10 }}>{s.id_hype}</div>
+                          <div style={{ fontWeight: 700, color: s.disponible > 0 ? '#3B6D11' : '#c00' }}>{s.disponible.toLocaleString()} mts</div>
+                          {s.remitos.length > 0 && <div style={{ fontSize: 10, color: '#666' }}>Remito: {s.remitos.join(', ')}</div>}
+                          {s.observaciones.length > 0 && <div style={{ fontSize: 10, color: '#666', maxWidth: 160, whiteSpace: 'normal' }}>{s.observaciones.join(' · ')}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {l.disponibleTela !== null && (
+                    <div style={{ marginTop: 6, fontSize: 12, color: excedeStock ? '#c00' : '#3B6D11', fontWeight: 600 }}>
+                      {excedeStock
+                        ? `⚠ El pedido supera el stock disponible (${l.disponibleTela.toLocaleString()} mts)`
+                        : `Stock disponible: ${l.disponibleTela.toLocaleString()} mts`}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 18 }}>
+                  <input type="checkbox" checked={l.post} onChange={(e) => actualizarLinea(idx, { post: e.target.checked })} id={`post-${idx}`} />
+                  <label htmlFor={`post-${idx}`} style={{ fontSize: 13 }}>Requiere postratado</label>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <button onClick={agregarLinea} style={{ ...btn, background: '#fff', color: '#e85d2f', border: '1px dashed #e85d2f' }}>+ Agregar otro diseño a este pedido</button>
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
         <button onClick={guardar} disabled={guardando} style={{ ...btn, background: '#e85d2f', color: '#fff', border: '1px solid #e85d2f' }}>
-          {guardando ? 'Guardando...' : 'Guardar diseño'}
+          {guardando ? 'Guardando...' : `Guardar ${lineas.length > 1 ? `${lineas.length} diseños` : 'diseño'}`}
         </button>
       </div>
     </div>
