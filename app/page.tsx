@@ -658,6 +658,7 @@ function PanelImpresion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCamb
           mts: delta,
           estado: 'A producción',
           observaciones: `OT ${o.nro_ot} · Directa · impreso por ${v.operario}`,
+          orden_id: o.id,
         },
       ]);
       if (errorEgreso) {
@@ -716,6 +717,22 @@ function PanelPreparacion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCa
     else onCambio();
   }
 
+  // Al cargar el Nº de remito de entrega, lo replica en el/los egreso(s)
+  // de Stock generados para esta OT (vinculados por orden_id).
+  async function actualizarNroRto(o: OrdenDirecta, valor: string) {
+    const nuevoValor = valor || null;
+    const { error } = await supabase.from('ordenes_directa').update({ nro_rto: nuevoValor }).eq('id', o.id);
+    if (error) {
+      alert('Error: ' + error.message);
+      return;
+    }
+    if (nuevoValor) {
+      const { error: errorStock } = await supabase.from('egresos').update({ remito: nuevoValor }).eq('orden_id', o.id);
+      if (errorStock) console.error('No se pudo actualizar el remito en Stock:', errorStock);
+    }
+    onCambio();
+  }
+
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
@@ -760,7 +777,7 @@ function PanelPreparacion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCa
                     </select>
                   </td>
                   <td style={td}>{formatFecha(o.fecha_fin)}</td>
-                  <td style={td}><input defaultValue={o.nro_rto || ''} onBlur={(e) => actualizar(o.id, 'nro_rto', e.target.value || null)} style={{ ...selSm, width: 90 }} /></td>
+                  <td style={td}><input defaultValue={o.nro_rto || ''} onBlur={(e) => actualizarNroRto(o, e.target.value)} style={{ ...selSm, width: 90 }} /></td>
                   <td style={td}>
                     <input type="number" placeholder="1" defaultValue={o.bulto_actual || ''} onBlur={(e) => actualizar(o.id, 'bulto_actual', parseInt(e.target.value) || null)} style={{ ...selSm, width: 40 }} />
                     /
@@ -854,9 +871,27 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
           mts: delta,
           estado: 'A producción',
           observaciones: `OT ${o.nro_ot} · Directa · cargado desde Vista General`,
+          orden_id: o.id,
         },
       ]);
       if (errorEgreso) console.error('No se pudo descontar stock automáticamente:', errorEgreso);
+    }
+    onCambio();
+  }
+
+  // Al cargar el Nº de remito de entrega, lo replica en el/los egreso(s)
+  // de Stock generados para esta OT (vinculados por orden_id), para no
+  // tener que cargarlo dos veces.
+  async function actualizarNroRto(o: OrdenDirecta, valor: string) {
+    const nuevoValor = valor || null;
+    const { error } = await supabase.from('ordenes_directa').update({ nro_rto: nuevoValor }).eq('id', o.id);
+    if (error) {
+      alert('Error: ' + error.message);
+      return;
+    }
+    if (nuevoValor) {
+      const { error: errorStock } = await supabase.from('egresos').update({ remito: nuevoValor }).eq('orden_id', o.id);
+      if (errorStock) console.error('No se pudo actualizar el remito en Stock:', errorStock);
     }
     onCambio();
   }
@@ -956,7 +991,7 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                       <option value="">—</option>{TIPO_RTO_OPCIONES.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </td>
-                  <td style={td}><input defaultValue={o.nro_rto || ''} onBlur={(e) => actualizar(o.id, 'nro_rto', e.target.value || null)} style={{ ...selSm, width: 80 }} /></td>
+                  <td style={td}><input defaultValue={o.nro_rto || ''} onBlur={(e) => actualizarNroRto(o, e.target.value)} style={{ ...selSm, width: 80 }} /></td>
                   <td style={td}>
                     <input type="number" placeholder="1" defaultValue={o.bulto_actual || ''} onBlur={(e) => actualizar(o.id, 'bulto_actual', parseInt(e.target.value) || null)} style={{ ...selSm, width: 36 }} />
                     /

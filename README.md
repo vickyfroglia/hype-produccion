@@ -30,9 +30,20 @@ Esta app y la de Stock comparten el mismo proyecto Supabase, así que:
 - Al escribir el **Cliente** en el alta de Diseño, aparecen sugerencias tomadas de la tabla `clientes` de Stock.
 - Al elegir un cliente, se buscan automáticamente las telas que tiene disponibles en Stock (`ingresos` − `egresos`, agrupado por `id_hype`) y se muestran como tarjetas para elegir — seleccionando una se completan sola `tela` y `cod_tela`.
 - Si los metros pedidos superan el stock disponible de esa tela, se marca en rojo y pide confirmación antes de guardar.
-- Cuando Impresión carga los **mts impresos**, se genera automáticamente un **egreso real en Stock** (tabla `egresos`, estado "A producción") por esa cantidad — el stock se descuenta solo, no hay que ir a cargarlo de nuevo en la app de Stock.
+- Cuando Impresión carga los **mts impresos**, se genera automáticamente un **egreso real en Stock** (tabla `egresos`, estado "A producción") por esa cantidad — el stock se descuenta solo, no hay que ir a cargarlo de nuevo en la app de Stock. Ese egreso queda vinculado a la OT (`orden_id`).
+- Cuando Preparación/Terminación (o Producción) carga el **Nº de RTO** (remito de entrega), ese mismo número se escribe automáticamente en el/los egreso(s) de Stock generados para esa OT — no hace falta cargarlo dos veces.
 
 Si en algún momento separan los proyectos de Supabase, esto deja de funcionar (el cliente y la tela vuelven a ser campos de texto libre) sin romper nada más.
+
+**Requiere una columna nueva en `egresos` (tabla de Stock):** correr una sola vez en el SQL Editor de Supabase:
+
+```sql
+alter table egresos add column if not exists orden_id bigint;
+alter table egresos add column if not exists remito text;
+create index if not exists idx_egresos_orden_id on egresos(orden_id);
+```
+
+Nota: los egresos que ya existían antes de este cambio no van a tener `orden_id`, así que el Nº de RTO no se les va a poder completar solo (solo aplica para egresos generados de acá en adelante).
 
 ### Pendiente
 
