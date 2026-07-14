@@ -1087,31 +1087,47 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
 // ---------------------------------------------------------------------------
 function Historial({ eventos, ordenes }: { eventos: EventoDirecta[]; ordenes: OrdenDirecta[] }) {
   const mapOrden = new Map(ordenes.map((o) => [o.id, o]));
+  const [search, setSearch] = useState('');
+
+  const eventosFiltrados = eventos.filter((e) => {
+    if (!search) return true;
+    const o = mapOrden.get(e.orden_id);
+    const q = search.toLowerCase();
+    return (o?.cliente || '').toLowerCase().includes(q) || (o?.diseno || '').toLowerCase().includes(q);
+  });
+
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 18, fontWeight: 500 }}>Historial</div>
-        <div style={{ fontSize: 13, color: '#888' }}>Todos los hitos registrados automáticamente</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 500 }}>Historial</div>
+          <div style={{ fontSize: 13, color: '#888' }}>Todos los hitos registrados automáticamente</div>
+        </div>
+        <input placeholder="Buscar por cliente o diseño..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...inp, maxWidth: 280 }} />
       </div>
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr>{['Fecha', 'OT', 'Cliente', 'Evento', 'Detalle'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+              <tr>{['Fecha', 'OT', 'Cliente', 'Diseño', 'Evento', 'Detalle'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {eventos.slice(0, 300).map((e) => {
+              {eventosFiltrados.slice(0, 300).map((e) => {
                 const o = mapOrden.get(e.orden_id);
                 return (
                   <tr key={e.id}>
                     <td style={td}>{new Date(e.created_at).toLocaleString()}</td>
                     <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o?.nro_ot || `#${e.orden_id}`}</td>
                     <td style={td}>{o?.cliente || '—'}</td>
+                    <td style={td}>{o?.diseno || '—'}</td>
                     <td style={{ ...td, fontWeight: 600 }}>{e.evento}</td>
                     <td style={td}>{e.detalle || '—'}</td>
                   </tr>
                 );
               })}
+              {eventosFiltrados.length === 0 && (
+                <tr><td colSpan={6} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin resultados</td></tr>
+              )}
             </tbody>
           </table>
         </div>
