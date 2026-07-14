@@ -873,7 +873,7 @@ function Historial({ eventos, ordenes }: { eventos: EventoDirecta[]; ordenes: Or
     if (!search) return true;
     const o = mapOrden.get(e.orden_id);
     const q = search.toLowerCase();
-    return (o?.cliente || '').toLowerCase().includes(q) || (o?.diseno || '').toLowerCase().includes(q);
+    return (o?.cliente || '').toLowerCase().includes(q) || (o?.diseno || '').toLowerCase().includes(q) || (o?.nro_ot || '').toLowerCase().includes(q);
   });
 
   return (
@@ -883,7 +883,7 @@ function Historial({ eventos, ordenes }: { eventos: EventoDirecta[]; ordenes: Or
           <div style={{ fontSize: 18, fontWeight: 500 }}>Historial</div>
           <div style={{ fontSize: 13, color: '#888' }}>Todos los hitos registrados automáticamente</div>
         </div>
-        <input placeholder="Buscar por cliente o diseño..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...inp, maxWidth: 280 }} />
+        <input placeholder="Buscar por OT, cliente o diseño..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...inp, maxWidth: 280 }} />
       </div>
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
