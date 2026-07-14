@@ -431,27 +431,57 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
       if (!confirm(`Estos diseños superan el stock disponible de su tela: ${detalle}. ¿Guardar igual?`)) return;
     }
     setGuardando(true);
-    const { error } = await supabase.from('ordenes_directa').insert(
-      lineasValidas.map((l) => ({
-        nro_ot: nroOt,
-        fecha,
-        equipo: equipo || null,
-        perfil: perfil || null,
-        tipo_ot: tipoOt || null,
-        cliente,
-        diseno: l.diseno,
-        mts_pedidos: parseFloat(l.mtsPedidos),
-        tela: l.tela || null,
-        cod_tela: l.codTela || null,
-        post: l.post,
-        creado_por: nombreUsuario,
-      }))
-    );
-    setGuardando(false);
+    const { data: filasInsertadas, error } = await supabase
+      .from('ordenes_directa')
+      .insert(
+        lineasValidas.map((l) => ({
+          nro_ot: nroOt,
+          fecha,
+          equipo: equipo || null,
+          perfil: perfil || null,
+          tipo_ot: tipoOt || null,
+          cliente,
+          diseno: l.diseno,
+          mts_pedidos: parseFloat(l.mtsPedidos),
+          tela: l.tela || null,
+          cod_tela: l.codTela || null,
+          post: l.post,
+          creado_por: nombreUsuario,
+        }))
+      )
+      .select();
     if (error) {
+      setGuardando(false);
       alert('Error al guardar: ' + error.message);
       return;
     }
+
+    // Para telas HYPE (Stock TH, código que arranca con "TH") el stock se
+    // reserva ya con los Mts Pedidos, apenas entra el pedido — así se ve el
+    // stock comprometido y lo que falta conseguir desde el primer momento
+    // (a diferencia de la tela de cliente, que se descuenta recién al
+    // imprimir con los Mts Impresos reales).
+    const egresosTH = (filasInsertadas || [])
+      .filter((fila: any) => (fila.cod_tela || '').toUpperCase().startsWith('TH') && Number(fila.mts_pedidos) > 0)
+      .map((fila: any) => ({
+        fecha: new Date().toISOString().split('T')[0],
+        cliente: fila.cliente,
+        tela: fila.tela,
+        id_hype: fila.cod_tela,
+        mts: Number(fila.mts_pedidos),
+        estado: 'A producción',
+        observaciones: `OT ${fila.nro_ot} · Directa · reservado al ingresar el pedido (Stock TH)`,
+        orden_id: fila.id,
+      }));
+    if (egresosTH.length > 0) {
+      const { error: errorEgresoTH } = await supabase.from('egresos').insert(egresosTH);
+      if (errorEgresoTH) {
+        console.error('No se pudo reservar el stock TH automáticamente:', errorEgresoTH);
+        alert('El pedido se guardó, pero no se pudo reservar el stock TH automáticamente (revisar conexión con Stock).');
+      }
+    }
+
+    setGuardando(false);
     onGuardado();
   }
 
@@ -789,7 +819,12 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
       return;
     }
     const delta = mtsNuevos - Number(o.mts_impresos || 0);
-    if (o.cod_tela && delta > 0) {
+    // Las telas HYPE (Stock TH) ya se reservaron con los Mts Pedidos al
+    // ingresar el pedido (ver FormAltaDiseno) — no se descuenta de nuevo acá.
+    // Las telas de cliente se siguen descontando recién ahora, con lo
+    // realmente impreso.
+    const esTelaTH = (o.cod_tela || '').toUpperCase().startsWith('TH');
+    if (o.cod_tela && delta > 0 && !esTelaTH) {
       const { error: errorEgreso } = await supabase.from('egresos').insert([
         {
           fecha: new Date().toISOString().split('T')[0],
