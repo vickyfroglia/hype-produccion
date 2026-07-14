@@ -889,11 +889,14 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
     onCambio();
   }
 
-  const filtradas = ordenes.filter((o) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return o.nro_ot.toLowerCase().includes(q) || o.cliente.toLowerCase().includes(q) || o.diseno.toLowerCase().includes(q);
-  });
+  const filtradas = ordenes
+    .filter((o) => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return o.nro_ot.toLowerCase().includes(q) || o.cliente.toLowerCase().includes(q) || o.diseno.toLowerCase().includes(q);
+    })
+    // Pedido más viejo (N 1) arriba, más nuevo abajo — mismo orden que la columna N.
+    .sort((a, b) => (prioridad.get(a.id) || 0) - (prioridad.get(b.id) || 0));
 
   return (
     <div>
