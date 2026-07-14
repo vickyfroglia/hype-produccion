@@ -563,66 +563,63 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
                   />
                 </div>
 
-                <div style={{ gridColumn: l.telaManual ? 'auto' : '1/-1' }}>
-                  <label style={lbl}>
-                    Tela {buscandoStock && '(buscando en stock...)'}
-                    {!buscandoStock && stockCliente.length > 0 && (
-                      <button onClick={() => actualizarLinea(idx, { telaManual: !l.telaManual })} style={{ marginLeft: 8, fontSize: 11, color: '#e85d2f', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                        {l.telaManual ? '(usar tela de stock)' : '(escribir tela manualmente)'}
-                      </button>
-                    )}
-                  </label>
-                  {l.telaManual ? (
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        value={l.tela}
-                        onChange={(e) => { actualizarLinea(idx, { tela: e.target.value, codTela: '', disponibleTela: null }); setLineaConSugerenciasTH(idx); }}
-                        onFocus={() => setLineaConSugerenciasTH(idx)}
-                        onBlur={() => setTimeout(() => setLineaConSugerenciasTH((v) => (v === idx ? null : v)), 150)}
-                        placeholder="Nombre de la tela (escribí HYPE para ver el stock TH)"
-                        style={inp}
-                      />
-                      {lineaConSugerenciasTH === idx && l.tela.trim().toLowerCase().includes('hype') && (
-                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #ddd', borderRadius: 8, maxHeight: 220, overflowY: 'auto', zIndex: 10, boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
-                          {TELAS_HYPE_TH.filter((t) => t.descripcion.toLowerCase().includes(l.tela.trim().toLowerCase())).map((t) => (
-                            <div key={t.id_hype} onClick={() => seleccionarTelaTHLinea(idx, t)} style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f5f5f5' }}>
-                              <div style={{ fontWeight: 600 }}>{t.descripcion}</div>
-                              <div style={{ fontFamily: 'monospace', color: '#888', fontSize: 10 }}>{t.id_hype}</div>
-                            </div>
-                          ))}
-                          {TELAS_HYPE_TH.filter((t) => t.descripcion.toLowerCase().includes(l.tela.trim().toLowerCase())).length === 0 && (
-                            <div style={{ padding: '8px 12px', fontSize: 12, color: '#888' }}>Sin coincidencias en Stock TH</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {stockCliente.length === 0 && !buscandoStock && (
-                        <div style={{ fontSize: 12, color: '#888' }}>Ingresá el cliente para ver sus telas en stock.</div>
-                      )}
-                      {stockCliente.map((s) => (
-                        <div
-                          key={s.id_hype}
-                          onClick={() => seleccionarTelaLinea(idx, s.id_hype)}
-                          style={{
-                            padding: '8px 12px',
-                            borderRadius: 8,
-                            border: l.codTela === s.id_hype ? '2px solid #e85d2f' : '1px solid #ddd',
-                            cursor: 'pointer',
-                            fontSize: 12,
-                            background: l.codTela === s.id_hype ? '#fff5f0' : '#fff',
-                          }}
-                        >
-                          <div style={{ fontWeight: 600 }}>{s.tela} {s.color ? `· ${s.color}` : ''}</div>
-                          <div style={{ fontFamily: 'monospace', color: '#888', fontSize: 10 }}>{s.id_hype}</div>
-                          <div style={{ fontWeight: 700, color: s.disponible > 0 ? '#3B6D11' : '#c00' }}>{s.disponible.toLocaleString()} mts</div>
-                          {s.remitos.length > 0 && <div style={{ fontSize: 10, color: '#666' }}>Remito: {s.remitos.join(', ')}</div>}
-                          {s.observaciones.length > 0 && <div style={{ fontSize: 10, color: '#666', maxWidth: 160, whiteSpace: 'normal' }}>{s.observaciones.join(' · ')}</div>}
-                        </div>
-                      ))}
+                <div style={{ gridColumn: '1/-1' }}>
+                  <label style={lbl}>Tela {buscandoStock && '(buscando en stock del cliente...)'}</label>
+
+                  {stockCliente.length > 0 && (
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>Stock de este cliente:</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {stockCliente.map((s) => (
+                          <div
+                            key={s.id_hype}
+                            onClick={() => seleccionarTelaLinea(idx, s.id_hype)}
+                            style={{
+                              padding: '8px 12px',
+                              borderRadius: 8,
+                              border: l.codTela === s.id_hype ? '2px solid #e85d2f' : '1px solid #ddd',
+                              cursor: 'pointer',
+                              fontSize: 12,
+                              background: l.codTela === s.id_hype ? '#fff5f0' : '#fff',
+                            }}
+                          >
+                            <div style={{ fontWeight: 600 }}>{s.tela} {s.color ? `· ${s.color}` : ''}</div>
+                            <div style={{ fontFamily: 'monospace', color: '#888', fontSize: 10 }}>{s.id_hype}</div>
+                            <div style={{ fontWeight: 700, color: s.disponible > 0 ? '#3B6D11' : '#c00' }}>{s.disponible.toLocaleString()} mts</div>
+                            {s.remitos.length > 0 && <div style={{ fontSize: 10, color: '#666' }}>Remito: {s.remitos.join(', ')}</div>}
+                            {s.observaciones.length > 0 && <div style={{ fontSize: 10, color: '#666', maxWidth: 160, whiteSpace: 'normal' }}>{s.observaciones.join(' · ')}</div>}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
+
+                  <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>
+                    {stockCliente.length > 0 ? 'O escribí otra tela (ej: HYPE para ver el stock TH):' : 'Escribí la tela (ej: HYPE para ver el stock TH):'}
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      value={l.tela}
+                      onChange={(e) => { actualizarLinea(idx, { tela: e.target.value, codTela: '', disponibleTela: null }); setLineaConSugerenciasTH(idx); }}
+                      onFocus={() => setLineaConSugerenciasTH(idx)}
+                      onBlur={() => setTimeout(() => setLineaConSugerenciasTH((v) => (v === idx ? null : v)), 150)}
+                      placeholder="Nombre de la tela"
+                      style={inp}
+                    />
+                    {lineaConSugerenciasTH === idx && l.tela.trim().toLowerCase().includes('hype') && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #ddd', borderRadius: 8, maxHeight: 220, overflowY: 'auto', zIndex: 10, boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+                        {TELAS_HYPE_TH.filter((t) => t.descripcion.toLowerCase().includes(l.tela.trim().toLowerCase())).map((t) => (
+                          <div key={t.id_hype} onClick={() => seleccionarTelaTHLinea(idx, t)} style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f5f5f5' }}>
+                            <div style={{ fontWeight: 600 }}>{t.descripcion}</div>
+                            <div style={{ fontFamily: 'monospace', color: '#888', fontSize: 10 }}>{t.id_hype}</div>
+                          </div>
+                        ))}
+                        {TELAS_HYPE_TH.filter((t) => t.descripcion.toLowerCase().includes(l.tela.trim().toLowerCase())).length === 0 && (
+                          <div style={{ padding: '8px 12px', fontSize: 12, color: '#888' }}>Sin coincidencias en Stock TH</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   {l.disponibleTela !== null && (
                     <div style={{ marginTop: 6, fontSize: 12, color: excedeStock ? '#c00' : '#3B6D11', fontWeight: 600 }}>
                       {excedeStock
