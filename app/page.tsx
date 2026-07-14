@@ -100,8 +100,8 @@ export default function Home() {
     <div style={{ minHeight: '100vh', fontFamily: 'Arial, sans-serif' }}>
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 20, background: '#1a1a2e', display: 'flex', alignItems: 'center', padding: '0 20px', height: 60, overflowX: 'auto' }}>
         <div style={{ marginRight: 24, whiteSpace: 'nowrap' }}>
-          <div style={{ color: '#fff', fontSize: 18, fontWeight: 700, letterSpacing: 3, lineHeight: 1 }}>HYPE</div>
-          <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', letterSpacing: 2 }}>PRODUCCIÓN · DIRECTA</div>
+          <img src="/logo.png" alt="HYPE printlab" style={{ height: 28, display: 'block' }} />
+          <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', letterSpacing: 2, marginTop: 2 }}>PRODUCCIÓN · DIRECTA</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
           {navItems.map((n) => (
