@@ -710,9 +710,18 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
       .sort((a, b) => a[0].nro_ot.localeCompare(b[0].nro_ot));
   })();
 
+  // La OT queda "terminada" cuando el último de sus diseños completa
+  // Fecha fin — por eso se muestra la más reciente del grupo (pueden no
+  // ser todas iguales si los diseños se fijaron en días distintos).
+  function fechaFinOt(filas: OrdenDirecta[]): string | null {
+    const fechas = filas.map((f) => f.fecha_fin).filter((f): f is string => !!f);
+    if (fechas.length === 0) return null;
+    return fechas.reduce((max, f) => (f > max ? f : max));
+  }
+
   function textoReporte(filas: OrdenDirecta[]): string {
     const lineas = filas.map((f) => `• ${f.diseno} — ${f.mts_impresos} mts — ${f.tela || 'sin tela'}`).join('\n');
-    return `Pedido OT ${filas[0].nro_ot} — ${filas[0].cliente}\n${lineas}`;
+    return `Fecha fin: ${formatFecha(fechaFinOt(filas))} — Pedido OT ${filas[0].nro_ot} — ${filas[0].cliente}\n${lineas}`;
   }
 
   async function copiarReporte(filas: OrdenDirecta[]) {
@@ -799,7 +808,8 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
           <div key={filas[0].nro_ot} style={{ ...card, marginBottom: 14, border: '1px solid #cfe8c8' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
               <div>
-                <span style={{ fontFamily: 'monospace', color: '#e85d2f', fontWeight: 700 }}>{filas[0].nro_ot}</span>
+                <span style={{ color: '#3B6D11', fontWeight: 600 }}>{formatFecha(fechaFinOt(filas))}</span>
+                <span style={{ marginLeft: 10, fontFamily: 'monospace', color: '#e85d2f', fontWeight: 700 }}>{filas[0].nro_ot}</span>
                 <span style={{ marginLeft: 10, fontWeight: 500 }}>{filas[0].cliente}</span>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
