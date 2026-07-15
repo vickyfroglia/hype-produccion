@@ -698,10 +698,10 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
     <div>
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 18, fontWeight: 500 }}>Administración</div>
-        <div style={{ fontSize: 13, color: '#888' }}>Anticipo de pedidos</div>
+        <div style={{ fontSize: 13, color: '#888' }}>Pedidos pendientes de anticipo. Al cargar un pedido nuevo, arranca en PENDIENTE por default hasta que se marque PAGADO o N/A.</div>
       </div>
 
-      <div style={{ marginBottom: 24 }}>
+      <div>
         <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 8, color: '#c00' }}>
           Pendientes de anticipo ({pendientesAnticipo.length})
         </div>
@@ -731,32 +731,6 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
-
-      <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 8 }}>Todos los pedidos</div>
-      <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>{['OT', 'Cliente', 'Diseño', 'Anticipo'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
-            </thead>
-            <tbody>
-              {ordenes.map((o) => (
-                <tr key={o.id}>
-                  <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
-                  <td style={td}>{o.cliente}</td>
-                  <td style={td}>{o.diseno}</td>
-                  <td style={td}>
-                    <select value={o.anticipo} onChange={(e) => actualizar(o.id, 'anticipo', e.target.value)} style={selSm}>
-                      {ANTICIPO_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
-                    </select>
-                  </td>
-                </tr>
-              ))}
-              {ordenes.length === 0 && <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>
