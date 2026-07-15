@@ -775,7 +775,7 @@ const CAMPOS_ROL: Record<string, string[]> = {
   diseno: ['fecha', 'cliente', 'diseno', 'mts_pedidos', 'tela', 'aprob', 'post', 'observaciones'],
   administrativo: ['entregar', 'tipo_rto', 'observaciones'],
   operario: ['imp_operario', 'mts_impresos'],
-  encargado: ['prep', 'fija_operario', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
+  encargado: ['imp_operario', 'mts_impresos', 'prep', 'fija_operario', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
   logistica: ['fija_operario', 'prep', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
   comercial: [],
 };

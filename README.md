@@ -27,7 +27,7 @@ Los paneles separados de Impresión y de Preparación/Terminación se eliminaron
   - `diseno`: Fecha Pedido, Cliente, Diseño, Mts Ped, Tela, Aprob, Post, Observaciones.
   - `administrativo`: ¿Entregar?, Tipo RTO, Observaciones.
   - `operario`: Op Imp, Mts Imp.
-  - `encargado`: Prep, Op Fij, Nº RTO, Bultos, Estado entrega, Entregó, Recibió, Observaciones.
+  - `encargado`: Op Imp, Mts Imp, Prep, Op Fij, Nº RTO, Bultos, Estado entrega, Entregó, Recibió, Observaciones.
   - `logistica`: Op Fij, Prep, Nº RTO, Bultos, Estado entrega, Entregó, Recibió, Observaciones.
   - `comercial`: ningún campo editable, solo lectura.
 - **Dashboard de excepciones**: qué está bloqueado y por qué falta exactamente (en vez de tener que mirar colores en miles de filas).
