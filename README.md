@@ -22,6 +22,14 @@ Los paneles separados de Impresión y de Preparación/Terminación se eliminaron
 - **Nro. OT automático y correlativo.** En vez de inferir "cliente distinto a la fila anterior", hay un botón explícito: "Nuevo pedido" (genera el próximo número) o "Agregar diseño a un pedido existente" (elegís de una lista).
 - **Historial automático.** Cada aprobación, pago de anticipo, tela lista, impresión, fijación y entrega queda registrado solo (tabla `ordenes_directa_eventos`), sin que nadie tenga que anotarlo. Se puede filtrar por cliente o diseño.
 - **Anular pedido.** En Producción, solo el rol `admin` ve el botón "✕ Anular" al final de cada fila. Borra el pedido y, si tenía tela HYPE (Stock TH) reservada al ingresarlo, también borra esa reserva en Stock — para que no quede un descuento fantasma de un pedido que ya no existe. No se puede deshacer.
+- **Permisos por campo en Producción.** Aunque todos los roles ven la tabla completa, cada uno solo puede editar los campos de su parte del circuito (el resto queda deshabilitado, en gris):
+  - `admin`: todo, incluido Anular.
+  - `diseno`: Fecha Pedido, Cliente, Diseño, Mts Ped, Tela, Aprob, Post, Observaciones.
+  - `administrativo`: ¿Entregar?, Tipo RTO, Observaciones.
+  - `operario`: Op Imp, Mts Imp.
+  - `encargado`: Prep, Op Fij, Nº RTO, Bultos, Estado entrega, Entregó, Recibió, Observaciones.
+  - `logistica`: Op Fij, Prep, Nº RTO, Bultos, Estado entrega, Entregó, Recibió, Observaciones.
+  - `comercial`: ningún campo editable, solo lectura.
 - **Dashboard de excepciones**: qué está bloqueado y por qué falta exactamente (en vez de tener que mirar colores en miles de filas).
 
 ### Integración con Stock (ya activa)

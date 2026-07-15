@@ -768,10 +768,23 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
 // para quien quiera ver/tocar todo en un solo lugar en vez de entrar
 // panel por panel. Cualquier rol puede editar cualquier celda acá.
 // ---------------------------------------------------------------------------
+// Qué campo puede editar cada rol dentro de la tabla de Producción
+// (vuelve al circuito original por rol, ahora aplicado campo por campo
+// en vez de pantalla por pantalla). admin siempre puede editar todo.
+const CAMPOS_ROL: Record<string, string[]> = {
+  diseno: ['fecha', 'cliente', 'diseno', 'mts_pedidos', 'tela', 'aprob', 'post', 'observaciones'],
+  administrativo: ['entregar', 'tipo_rto', 'observaciones'],
+  operario: ['imp_operario', 'mts_impresos'],
+  encargado: ['prep', 'fija_operario', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
+  logistica: ['fija_operario', 'prep', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
+  comercial: [],
+};
+
 function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onCambio: () => void; rol: string }) {
   const [search, setSearch] = useState('');
   const prioridad = calcularPrioridad(ordenes);
   const esAdmin = rol.trim() === 'admin';
+  const puede = (campo: string) => esAdmin || (CAMPOS_ROL[rol.trim()] || []).includes(campo);
 
   async function actualizar(id: number, campo: string, valor: any) {
     const { error } = await supabase.from('ordenes_directa').update({ [campo]: valor }).eq('id', id);
@@ -949,78 +962,79 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                       {o.puede_producir ? 'SÍ' : 'NO'}
                     </span>
                   </td>
-                  <td style={{ ...td, minWidth: 140 }}><input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 130 }} /></td>
+                  <td style={{ ...td, minWidth: 140 }}><input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} disabled={!puede('fecha')} style={{ ...selSm, width: '100%', minWidth: 130 }} /></td>
                   <td style={{ ...td, width: 55, fontFamily: 'monospace', color: '#e85d2f' }} title={o.nro_ot}>{o.nro_ot.slice(-6)}</td>
-                  <td style={{ ...td, minWidth: 170 }}><input defaultValue={o.cliente} onBlur={(e) => actualizar(o.id, 'cliente', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 160 }} /></td>
-                  <td style={{ ...td, minWidth: 170 }}><input defaultValue={o.diseno} onBlur={(e) => actualizar(o.id, 'diseno', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 160 }} /></td>
+                  <td style={{ ...td, minWidth: 170 }}><input defaultValue={o.cliente} onBlur={(e) => actualizar(o.id, 'cliente', e.target.value)} disabled={!puede('cliente')} style={{ ...selSm, width: '100%', minWidth: 160 }} /></td>
+                  <td style={{ ...td, minWidth: 170 }}><input defaultValue={o.diseno} onBlur={(e) => actualizar(o.id, 'diseno', e.target.value)} disabled={!puede('diseno')} style={{ ...selSm, width: '100%', minWidth: 160 }} /></td>
                   <td style={td}>
-                    <input type="number" defaultValue={o.mts_pedidos} onBlur={(e) => actualizar(o.id, 'mts_pedidos', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 60 }} />
+                    <input type="number" defaultValue={o.mts_pedidos} onBlur={(e) => actualizar(o.id, 'mts_pedidos', parseFloat(e.target.value) || 0)} disabled={!puede('mts_pedidos')} style={{ ...selSm, width: 60 }} />
                   </td>
                   <td style={td}>
-                    <input type="number" defaultValue={o.mts_impresos} onBlur={(e) => actualizarMtsImpresos(o, e.target.value)} style={{ ...selSm, width: 60 }} />
+                    <input type="number" defaultValue={o.mts_impresos} onBlur={(e) => actualizarMtsImpresos(o, e.target.value)} disabled={!puede('mts_impresos')} style={{ ...selSm, width: 60 }} />
                   </td>
-                  <td style={{ ...td, minWidth: 180 }}><input defaultValue={o.observaciones || ''} onBlur={(e) => actualizar(o.id, 'observaciones', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 170 }} /></td>
+                  <td style={{ ...td, minWidth: 180 }}><input defaultValue={o.observaciones || ''} onBlur={(e) => actualizar(o.id, 'observaciones', e.target.value || null)} disabled={!puede('observaciones')} style={{ ...selSm, width: '100%', minWidth: 170 }} /></td>
                   <td style={{ ...td, minWidth: 190 }}>
                     <input
                       defaultValue={o.tela || ''}
                       onBlur={(e) => { actualizar(o.id, 'tela', e.target.value || null); buscarCodTela(o, e.target.value); }}
+                      disabled={!puede('tela')}
                       style={{ ...selSm, width: '100%', minWidth: 180 }}
                     />
                   </td>
                   <td style={{ ...td, width: 70, fontFamily: 'monospace', color: '#888', fontSize: 10 }}>{o.cod_tela || '—'}</td>
                   <td style={{ ...td, width: 95 }}>
-                    <select value={o.aprob} onChange={(e) => actualizar(o.id, 'aprob', e.target.value)} style={{ ...selSm, width: 90, fontSize: 10, padding: '3px 2px' }}>
+                    <select value={o.aprob} onChange={(e) => actualizar(o.id, 'aprob', e.target.value)} disabled={!puede('aprob')} style={{ ...selSm, width: 90, fontSize: 10, padding: '3px 2px' }}>
                       {APROB_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
                     </select>
                   </td>
                   <td style={{ ...td, width: 90 }} title={o.motivo_no_impreso || undefined}>
-                    <select value={o.imp_operario || ''} onChange={(e) => actualizarImpOperario(o, e.target.value)} style={{ ...selSm, width: 85 }}>
+                    <select value={o.imp_operario || ''} onChange={(e) => actualizarImpOperario(o, e.target.value)} disabled={!puede('imp_operario')} style={{ ...selSm, width: 85 }}>
                       <option value="">—</option>
                       <option value="NO">NO</option>
                       {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
                     </select>
                   </td>
-                  <td style={td}><input type="checkbox" checked={o.post} onChange={(e) => actualizar(o.id, 'post', e.target.checked)} /></td>
+                  <td style={td}><input type="checkbox" checked={o.post} onChange={(e) => actualizar(o.id, 'post', e.target.checked)} disabled={!puede('post')} /></td>
                   <td style={td} title={o.imp_operario === 'NO' ? 'No se puede fijar: no se imprimió' : undefined}>
                     {o.imp_operario === 'NO' ? (
                       <span style={{ fontSize: 11, color: '#c00' }}>—</span>
                     ) : (
-                      <select value={o.fija_operario || ''} onChange={(e) => actualizar(o.id, 'fija_operario', e.target.value || null)} disabled={!o.imp_operario} style={selSm}>
+                      <select value={o.fija_operario || ''} onChange={(e) => actualizar(o.id, 'fija_operario', e.target.value || null)} disabled={!o.imp_operario || !puede('fija_operario')} style={selSm}>
                         <option value="">—</option>{OPERARIOS_FIJACION.map((op) => <option key={op} value={op}>{op}</option>)}
                       </select>
                     )}
                   </td>
                   <td style={td}>{formatFecha(o.fecha_fin)}</td>
                   <td style={td}>
-                    <input type="checkbox" checked={o.prep} onChange={(e) => actualizar(o.id, 'prep', e.target.checked)} />
+                    <input type="checkbox" checked={o.prep} onChange={(e) => actualizar(o.id, 'prep', e.target.checked)} disabled={!puede('prep')} />
                   </td>
                   <td style={td}>
-                    <select value={o.entregar === null ? '' : o.entregar ? 'si' : 'no'} onChange={(e) => actualizar(o.id, 'entregar', e.target.value === '' ? null : e.target.value === 'si')} style={selSm}>
+                    <select value={o.entregar === null ? '' : o.entregar ? 'si' : 'no'} onChange={(e) => actualizar(o.id, 'entregar', e.target.value === '' ? null : e.target.value === 'si')} disabled={!puede('entregar')} style={selSm}>
                       <option value="">—</option><option value="si">Sí</option><option value="no">No</option>
                     </select>
                   </td>
                   <td style={td}>
-                    <select value={o.tipo_rto || ''} onChange={(e) => actualizar(o.id, 'tipo_rto', e.target.value || null)} style={selSm}>
+                    <select value={o.tipo_rto || ''} onChange={(e) => actualizar(o.id, 'tipo_rto', e.target.value || null)} disabled={!puede('tipo_rto')} style={selSm}>
                       <option value="">—</option>{TIPO_RTO_OPCIONES.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </td>
-                  <td style={td}><input defaultValue={o.nro_rto || ''} onBlur={(e) => actualizarNroRto(o, e.target.value)} style={{ ...selSm, width: 80 }} /></td>
+                  <td style={td}><input defaultValue={o.nro_rto || ''} onBlur={(e) => actualizarNroRto(o, e.target.value)} disabled={!puede('nro_rto')} style={{ ...selSm, width: 80 }} /></td>
                   <td style={td}>
-                    <input type="number" placeholder="1" defaultValue={o.bulto_actual || ''} onBlur={(e) => actualizar(o.id, 'bulto_actual', parseInt(e.target.value) || null)} style={{ ...selSm, width: 36 }} />
+                    <input type="number" placeholder="1" defaultValue={o.bulto_actual || ''} onBlur={(e) => actualizar(o.id, 'bulto_actual', parseInt(e.target.value) || null)} disabled={!puede('bulto_actual')} style={{ ...selSm, width: 36 }} />
                     /
-                    <input type="number" placeholder="1" defaultValue={o.bulto_total || ''} onBlur={(e) => actualizar(o.id, 'bulto_total', parseInt(e.target.value) || null)} style={{ ...selSm, width: 36 }} />
+                    <input type="number" placeholder="1" defaultValue={o.bulto_total || ''} onBlur={(e) => actualizar(o.id, 'bulto_total', parseInt(e.target.value) || null)} disabled={!puede('bulto_total')} style={{ ...selSm, width: 36 }} />
                   </td>
                   <td style={td}>
-                    <select value={o.estado_entrega} onChange={(e) => actualizar(o.id, 'estado_entrega', e.target.value)} style={selSm}>
+                    <select value={o.estado_entrega} onChange={(e) => actualizar(o.id, 'estado_entrega', e.target.value)} disabled={!puede('estado_entrega')} style={selSm}>
                       {ESTADO_ENTREGA_OPCIONES.map((e) => <option key={e} value={e}>{e}</option>)}
                     </select>
                   </td>
                   <td style={td}>
-                    <select value={o.entrego || ''} onChange={(e) => actualizarEntrego(o, e.target.value)} style={selSm}>
+                    <select value={o.entrego || ''} onChange={(e) => actualizarEntrego(o, e.target.value)} disabled={!puede('entrego')} style={selSm}>
                       <option value="">—</option>{OPERARIOS_ENTREGA.map((op) => <option key={op} value={op}>{op}</option>)}
                     </select>
                   </td>
-                  <td style={td}><input defaultValue={o.recibio || ''} onBlur={(e) => actualizarRecibio(o, e.target.value)} style={{ ...selSm, width: 80 }} /></td>
+                  <td style={td}><input defaultValue={o.recibio || ''} onBlur={(e) => actualizarRecibio(o, e.target.value)} disabled={!puede('recibio')} style={{ ...selSm, width: 80 }} /></td>
                   <td style={td}>
                     {esAdmin ? (
                       <button onClick={() => anularPedido(o)} style={{ ...btn, padding: '4px 8px', fontSize: 11, color: '#c00', borderColor: '#c00' }}>
