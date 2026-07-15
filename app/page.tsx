@@ -143,7 +143,7 @@ export default function Home() {
         {!loading && (
           <>
             {pagina === 'dashboard' && <Dashboard ordenes={ordenes} />}
-            {pagina === 'general' && <VistaGeneral ordenes={ordenes} onCambio={cargarTodo} />}
+            {pagina === 'general' && <VistaGeneral ordenes={ordenes} onCambio={cargarTodo} rol={rol} />}
             {pagina === 'diseno' && <PanelDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
             {pagina === 'administracion' && <PanelAdministracion ordenes={ordenes} onCambio={cargarTodo} />}
             {pagina === 'historial' && <Historial eventos={eventos} ordenes={ordenes} />}
@@ -768,14 +768,28 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
 // para quien quiera ver/tocar todo en un solo lugar en vez de entrar
 // panel por panel. Cualquier rol puede editar cualquier celda acá.
 // ---------------------------------------------------------------------------
-function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio: () => void }) {
+function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onCambio: () => void; rol: string }) {
   const [search, setSearch] = useState('');
   const prioridad = calcularPrioridad(ordenes);
+  const esAdmin = rol.trim() === 'admin';
 
   async function actualizar(id: number, campo: string, valor: any) {
     const { error } = await supabase.from('ordenes_directa').update({ [campo]: valor }).eq('id', id);
     if (error) alert('Error: ' + error.message);
     else onCambio();
+  }
+
+  // Anula (borra) un pedido. También borra el/los egreso(s) de Stock que
+  // se hayan generado para esa OT (por ejemplo, la reserva de tela HYPE
+  // cargada al ingresar el pedido), para que el stock quede liberado y
+  // no arrastre una reserva "fantasma" de un pedido que ya no existe.
+  async function anularPedido(o: OrdenDirecta) {
+    if (!confirm(`¿Anular el pedido ${o.nro_ot} — ${o.cliente} — ${o.diseno}?\n\nEsto también libera el stock reservado para este pedido (si lo hay). No se puede deshacer.`)) return;
+    const { error: errorEgresos } = await supabase.from('egresos').delete().eq('orden_id', o.id);
+    if (errorEgresos) console.error('No se pudo liberar el stock reservado de este pedido:', errorEgresos);
+    const { error } = await supabase.from('ordenes_directa').delete().eq('id', o.id);
+    if (error) { alert('Error al anular: ' + error.message); return; }
+    onCambio();
   }
 
   // Busca en Stock el id_hype que corresponde a esta combinación de
@@ -915,7 +929,7 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
           <table className="vg-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['N', 'Prod', 'Fecha Pedido', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', 'Prep', '¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].map((h) => {
+                {['N', 'Prod', 'Fecha Pedido', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', 'Prep', '¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió', 'Anular'].map((h) => {
                   const esEntregaEnAdelante = ['¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].includes(h);
                   return (
                     <th key={h} style={{ ...th, textTransform: 'uppercase', background: esEntregaEnAdelante ? '#8e6fc9' : '#e85d2f', color: '#fff', fontWeight: 700, ...(h === 'Prod' ? { width: 40 } : {}) }}>{h}</th>
@@ -924,7 +938,7 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
               </tr>
             </thead>
             <tbody>
-              {filtradas.length === 0 && <tr><td colSpan={24} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
+              {filtradas.length === 0 && <tr><td colSpan={25} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
               {filtradas.map((o) => {
                 const filaColor = o.fecha_fin ? '#8fce8a' : o.imp_operario === 'NO' ? '#fde8e8' : o.imp_operario ? '#e6f4e1' : undefined;
                 return (
@@ -1007,6 +1021,13 @@ function VistaGeneral({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                     </select>
                   </td>
                   <td style={td}><input defaultValue={o.recibio || ''} onBlur={(e) => actualizarRecibio(o, e.target.value)} style={{ ...selSm, width: 80 }} /></td>
+                  <td style={td}>
+                    {esAdmin ? (
+                      <button onClick={() => anularPedido(o)} style={{ ...btn, padding: '4px 8px', fontSize: 11, color: '#c00', borderColor: '#c00' }}>
+                        ✕ Anular
+                      </button>
+                    ) : '—'}
+                  </td>
                 </tr>
                 );
               })}

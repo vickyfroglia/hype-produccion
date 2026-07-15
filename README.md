@@ -21,6 +21,7 @@ Los paneles separados de Impresión y de Preparación/Terminación se eliminaron
 - **"PROD" ya no se completa a mano.** Es una columna calculada (`puede_producir`) a partir de anticipo + aprobación + tela lista. La "celda auxiliar" que armabas para juntar esas 3 variables ya no hace falta.
 - **Nro. OT automático y correlativo.** En vez de inferir "cliente distinto a la fila anterior", hay un botón explícito: "Nuevo pedido" (genera el próximo número) o "Agregar diseño a un pedido existente" (elegís de una lista).
 - **Historial automático.** Cada aprobación, pago de anticipo, tela lista, impresión, fijación y entrega queda registrado solo (tabla `ordenes_directa_eventos`), sin que nadie tenga que anotarlo. Se puede filtrar por cliente o diseño.
+- **Anular pedido.** En Producción, solo el rol `admin` ve el botón "✕ Anular" al final de cada fila. Borra el pedido y, si tenía tela HYPE (Stock TH) reservada al ingresarlo, también borra esa reserva en Stock — para que no quede un descuento fantasma de un pedido que ya no existe. No se puede deshacer.
 - **Dashboard de excepciones**: qué está bloqueado y por qué falta exactamente (en vez de tener que mirar colores en miles de filas).
 
 ### Integración con Stock (ya activa)
