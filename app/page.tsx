@@ -694,6 +694,57 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
 
   const pendientesAnticipo = ordenes.filter((o) => o.anticipo === 'PENDIENTE');
 
+  // Agrupa los renglones (diseños) por nro_ot. Una OT se considera
+  // "terminada" recién cuando TODOS sus diseños tienen Fecha fin cargada
+  // (no alcanza con que uno solo la tenga). Se descartan las que ya se
+  // marcaron como "cliente avisado".
+  const otsTerminadas = (() => {
+    const porOt = new Map<string, OrdenDirecta[]>();
+    ordenes.forEach((o) => {
+      const arr = porOt.get(o.nro_ot) || [];
+      arr.push(o);
+      porOt.set(o.nro_ot, arr);
+    });
+    return Array.from(porOt.values())
+      .filter((filas) => filas.length > 0 && filas.every((f) => f.fecha_fin) && !filas[0].cliente_avisado)
+      .sort((a, b) => a[0].nro_ot.localeCompare(b[0].nro_ot));
+  })();
+
+  function textoReporte(filas: OrdenDirecta[]): string {
+    const lineas = filas.map((f) => `• ${f.diseno} — ${f.mts_impresos} mts — ${f.tela || 'sin tela'}`).join('\n');
+    return `Pedido OT ${filas[0].nro_ot} — ${filas[0].cliente}\n${lineas}`;
+  }
+
+  async function copiarReporte(filas: OrdenDirecta[]) {
+    const texto = textoReporte(filas);
+    try {
+      await navigator.clipboard.writeText(texto);
+      alert('Copiado. Ya lo podés pegar en WhatsApp.');
+    } catch {
+      alert('No se pudo copiar automáticamente. Copialo a mano de acá:\n\n' + texto);
+    }
+  }
+
+  function imprimirReporte(filas: OrdenDirecta[]) {
+    const texto = textoReporte(filas);
+    const ventana = window.open('', '_blank', 'width=500,height=600');
+    if (!ventana) {
+      alert('El navegador bloqueó la ventana de impresión. Habilitá las ventanas emergentes para este sitio e intentá de nuevo.');
+      return;
+    }
+    ventana.document.write(`<html><head><title>OT ${filas[0].nro_ot}</title></head><body style="font-family: Arial, sans-serif; padding: 24px; white-space: pre-wrap; font-size: 16px;">${texto.replace(/\n/g, '<br/>')}</body></html>`);
+    ventana.document.close();
+    ventana.focus();
+    ventana.print();
+  }
+
+  async function marcarAvisado(nroOt: string) {
+    if (!confirm(`¿Marcar el pedido ${nroOt} como "cliente avisado"? Va a desaparecer de esta lista.`)) return;
+    const { error } = await supabase.from('ordenes_directa').update({ cliente_avisado: true }).eq('nro_ot', nroOt);
+    if (error) { alert('Error: ' + error.message); return; }
+    onCambio();
+  }
+
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
@@ -732,6 +783,47 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
             </table>
           </div>
         </div>
+      </div>
+
+      <div style={{ marginTop: 32 }}>
+        <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 8, color: '#3B6D11' }}>
+          Trabajos terminados, listos para avisar al cliente ({otsTerminadas.length})
+        </div>
+        <div style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
+          Aparecen acá solo cuando TODOS los diseños de esa OT ya tienen Fecha fin. "Copiar" lo deja listo para pegar en WhatsApp; "Imprimir" abre una hoja simple para imprimir. Una vez avisado al cliente, tildá "Cliente avisado" y desaparece de la lista.
+        </div>
+        {otsTerminadas.length === 0 && (
+          <div style={{ ...card, textAlign: 'center', color: '#888' }}>No hay OTs completas pendientes de avisar</div>
+        )}
+        {otsTerminadas.map((filas) => (
+          <div key={filas[0].nro_ot} style={{ ...card, marginBottom: 14, border: '1px solid #cfe8c8' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+              <div>
+                <span style={{ fontFamily: 'monospace', color: '#e85d2f', fontWeight: 700 }}>{filas[0].nro_ot}</span>
+                <span style={{ marginLeft: 10, fontWeight: 500 }}>{filas[0].cliente}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => copiarReporte(filas)} style={btn}>📋 Copiar</button>
+                <button onClick={() => imprimirReporte(filas)} style={btn}>🖨️ Imprimir</button>
+                <button onClick={() => marcarAvisado(filas[0].nro_ot)} style={{ ...btn, background: '#3B6D11', color: '#fff', borderColor: '#3B6D11' }}>✓ Cliente avisado</button>
+              </div>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>{['Diseño', 'Mts Imp', 'Tela'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {filas.map((f) => (
+                  <tr key={f.id}>
+                    <td style={td}>{f.diseno}</td>
+                    <td style={td}>{f.mts_impresos}</td>
+                    <td style={td}>{f.tela || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
       </div>
     </div>
   );
