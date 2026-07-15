@@ -784,10 +784,20 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
   const [search, setSearch] = useState('');
   const prioridad = calcularPrioridad(ordenes);
   const esAdmin = rol.trim() === 'admin';
+  // Campos que son "producir" propiamente dicho: no se pueden tocar si
+  // Prod dice NO (falta anticipo, aprobación o tela preparada), salvo admin.
+  // Aprob y Prep quedan afuera de esta lista a propósito: son justamente
+  // los que hay que completar para que Prod pase a decir SÍ.
+  const CAMPOS_PRODUCCION = ['imp_operario', 'mts_impresos', 'fija_operario', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'entregar', 'tipo_rto'];
   // Una vez que el pedido tiene Fecha fin (quedó terminado/fijado), se
   // "congela": nadie salvo admin puede seguir editando esa fila, aunque
   // el campo en cuestión sea de su parte del circuito.
-  const puede = (o: OrdenDirecta, campo: string) => esAdmin || (!o.fecha_fin && (CAMPOS_ROL[rol.trim()] || []).includes(campo));
+  const puede = (o: OrdenDirecta, campo: string) => {
+    if (esAdmin) return true;
+    if (o.fecha_fin) return false;
+    if (CAMPOS_PRODUCCION.includes(campo) && !o.puede_producir) return false;
+    return (CAMPOS_ROL[rol.trim()] || []).includes(campo);
+  };
 
   async function actualizar(id: number, campo: string, valor: any) {
     const { error } = await supabase.from('ordenes_directa').update({ [campo]: valor }).eq('id', id);

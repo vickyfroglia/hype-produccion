@@ -31,6 +31,7 @@ Los paneles separados de Impresión y de Preparación/Terminación se eliminaron
   - `logistica`: Op Fij, Prep, Nº RTO, Bultos, Estado entrega, Entregó, Recibió, Observaciones.
   - `comercial`: ningún campo editable, solo lectura.
   - **Pedido terminado (Fecha fin cargada):** la fila se "congela" — nadie salvo `admin` puede editar ningún campo de esa fila, aunque normalmente le correspondiera a su rol.
+  - **Prod = NO (falta anticipo, aprobación o tela preparada):** nadie salvo `admin` puede tocar Op Imp, Mts Imp, Op Fij, Nº RTO, Bultos, Estado entrega, Entregó, Recibió, ¿Entregar? o Tipo RTO hasta que Prod diga SÍ. Aprob y Prep quedan afuera de este bloqueo a propósito, porque son justamente los campos que hay que completar para destrabarlo. `admin` puede saltarse este control (igual que el de fila terminada).
 - **Dashboard de excepciones**: qué está bloqueado y por qué falta exactamente (en vez de tener que mirar colores en miles de filas).
 
 ### Integración con Stock (ya activa)
