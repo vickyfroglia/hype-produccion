@@ -757,12 +757,12 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 18, fontWeight: 500 }}>Administración</div>
+        <div style={{ fontSize: 18, fontWeight: 700, textTransform: 'uppercase' }}>Administración</div>
         <div style={{ fontSize: 13, color: '#888' }}>Pedidos pendientes de anticipo. Al cargar un pedido nuevo, arranca en PENDIENTE por default hasta que se marque PAGADO o N/A.</div>
       </div>
 
       <div>
-        <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 8, color: '#c00' }}>
+        <div style={{ fontSize: 15, fontWeight: 700, textTransform: 'uppercase', marginBottom: 8, color: '#e85d2f' }}>
           Pendientes de anticipo ({pendientesAnticipo.length})
         </div>
         <div style={{ ...card, padding: 0, overflow: 'hidden', border: '1px solid #f3c9c9' }}>
@@ -795,7 +795,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
       </div>
 
       <div style={{ marginTop: 32 }}>
-        <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 8, color: '#3B6D11' }}>
+        <div style={{ fontSize: 15, fontWeight: 700, textTransform: 'uppercase', marginBottom: 8, color: '#8e6fc9' }}>
           Trabajos terminados, listos para avisar al cliente ({otsTerminadas.length})
         </div>
         <div style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
