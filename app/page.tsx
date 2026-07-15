@@ -866,7 +866,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
 // (vuelve al circuito original por rol, ahora aplicado campo por campo
 // en vez de pantalla por pantalla). admin siempre puede editar todo.
 const CAMPOS_ROL: Record<string, string[]> = {
-  diseno: ['fecha', 'cliente', 'diseno', 'mts_pedidos', 'tela', 'aprob', 'post', 'observaciones'],
+  diseno: ['fecha', 'equipo', 'cliente', 'diseno', 'mts_pedidos', 'tela', 'aprob', 'post', 'observaciones'],
   administrativo: ['entregar', 'tipo_rto', 'observaciones'],
   operario: ['imp_operario', 'mts_impresos'],
   encargado: ['imp_operario', 'mts_impresos', 'prep', 'fija_operario', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
@@ -1049,7 +1049,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
           <table className="vg-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['N', 'Prod', 'Fecha Pedido', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', 'Prep', '¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió', 'Anular'].map((h) => {
+                {['N', 'Prod', 'Fecha Pedido', 'Equipo', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', 'Prep', '¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió', 'Anular'].map((h) => {
                   const esEntregaEnAdelante = ['¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].includes(h);
                   return (
                     <th key={h} style={{ ...th, textTransform: 'uppercase', background: esEntregaEnAdelante ? '#8e6fc9' : '#e85d2f', color: '#fff', fontWeight: 700, ...(h === 'Prod' ? { width: 40 } : {}) }}>{h}</th>
@@ -1058,7 +1058,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
               </tr>
             </thead>
             <tbody>
-              {filtradas.length === 0 && <tr><td colSpan={25} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
+              {filtradas.length === 0 && <tr><td colSpan={26} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
               {filtradas.map((o) => {
                 const filaColor = o.fecha_fin ? '#8fce8a' : o.imp_operario === 'NO' ? '#fde8e8' : o.imp_operario ? '#e6f4e1' : undefined;
                 return (
@@ -1070,6 +1070,11 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                     </span>
                   </td>
                   <td style={{ ...td, minWidth: 140 }}><input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} disabled={!puede(o, 'fecha')} style={{ ...selSm, width: '100%', minWidth: 130 }} /></td>
+                  <td style={{ ...td, width: 100 }}>
+                    <select value={o.equipo || ''} onChange={(e) => actualizar(o.id, 'equipo', e.target.value || null)} disabled={!puede(o, 'equipo')} style={selSm}>
+                      <option value="">—</option>{EQUIPOS.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
+                    </select>
+                  </td>
                   <td style={{ ...td, width: 55, fontFamily: 'monospace', color: '#e85d2f' }} title={o.nro_ot}>{o.nro_ot.slice(-6)}</td>
                   <td style={{ ...td, minWidth: 170 }}><input defaultValue={o.cliente} onBlur={(e) => actualizar(o.id, 'cliente', e.target.value)} disabled={!puede(o, 'cliente')} style={{ ...selSm, width: '100%', minWidth: 160 }} /></td>
                   <td style={{ ...td, minWidth: 170 }}><input defaultValue={o.diseno} onBlur={(e) => actualizar(o.id, 'diseno', e.target.value)} disabled={!puede(o, 'diseno')} style={{ ...selSm, width: '100%', minWidth: 160 }} /></td>
