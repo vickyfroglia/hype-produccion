@@ -761,15 +761,23 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
         <div style={{ fontSize: 13, color: '#888' }}>Pedidos pendientes de anticipo. Al cargar un pedido nuevo, arranca en PENDIENTE por default hasta que se marque PAGADO o N/A.</div>
       </div>
 
+      <style>{`
+        .adm-grid th, .adm-grid td { border: 1px solid #ddd !important; text-align: center !important; }
+      `}</style>
+
       <div>
         <div style={{ fontSize: 15, fontWeight: 700, textTransform: 'uppercase', marginBottom: 8, color: '#e85d2f' }}>
           Pendientes de anticipo ({pendientesAnticipo.length})
         </div>
         <div style={{ ...card, padding: 0, overflow: 'hidden', border: '1px solid #f3c9c9' }}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="adm-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>{['OT', 'Cliente', 'Diseño', 'Mts Ped', 'Anticipo'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+                <tr>
+                  {['OT', 'Cliente', 'Diseño', 'Mts Ped', 'Anticipo'].map((h) => (
+                    <th key={h} style={{ ...th, background: '#e85d2f', color: '#fff', textTransform: 'uppercase', fontWeight: 700 }}>{h}</th>
+                  ))}
+                </tr>
               </thead>
               <tbody>
                 {pendientesAnticipo.map((o) => (
@@ -801,39 +809,49 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
         <div style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
           Aparecen acá solo cuando TODOS los diseños de esa OT ya tienen Fecha fin. "Copiar" lo deja listo para pegar en WhatsApp; "Imprimir" abre una hoja simple para imprimir. Una vez avisado al cliente, tildá "Cliente avisado" y desaparece de la lista.
         </div>
-        {otsTerminadas.length === 0 && (
-          <div style={{ ...card, textAlign: 'center', color: '#888' }}>No hay OTs completas pendientes de avisar</div>
-        )}
-        {otsTerminadas.map((filas) => (
-          <div key={filas[0].nro_ot} style={{ ...card, marginBottom: 14, border: '1px solid #cfe8c8' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-              <div>
-                <span style={{ color: '#3B6D11', fontWeight: 600 }}>{formatFecha(fechaFinOt(filas))}</span>
-                <span style={{ marginLeft: 10, fontFamily: 'monospace', color: '#e85d2f', fontWeight: 700 }}>{filas[0].nro_ot}</span>
-                <span style={{ marginLeft: 10, fontWeight: 500 }}>{filas[0].cliente}</span>
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => copiarReporte(filas)} style={btn}>📋 Copiar</button>
-                <button onClick={() => imprimirReporte(filas)} style={btn}>🖨️ Imprimir</button>
-                <button onClick={() => marcarAvisado(filas[0].nro_ot)} style={{ ...btn, background: '#3B6D11', color: '#fff', borderColor: '#3B6D11' }}>✓ Cliente avisado</button>
-              </div>
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div style={{ ...card, padding: 0, overflow: 'hidden', border: '1px solid #ddd6f0' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="adm-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>{['Diseño', 'Mts Imp', 'Tela'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+                <tr>
+                  {['Fecha Fin', 'Nro OT', 'Cliente', 'Diseño', 'Mts Imp', 'Tela', 'Acciones'].map((h) => (
+                    <th key={h} style={{ ...th, background: '#8e6fc9', color: '#fff', textTransform: 'uppercase', fontWeight: 700 }}>{h}</th>
+                  ))}
+                </tr>
               </thead>
               <tbody>
-                {filas.map((f) => (
-                  <tr key={f.id}>
-                    <td style={td}>{f.diseno}</td>
-                    <td style={td}>{f.mts_impresos}</td>
-                    <td style={td}>{f.tela || '—'}</td>
-                  </tr>
-                ))}
+                {otsTerminadas.length === 0 && (
+                  <tr><td colSpan={7} style={{ ...td, textAlign: 'center', color: '#888' }}>No hay OTs completas pendientes de avisar</td></tr>
+                )}
+                {otsTerminadas.flatMap((filas) =>
+                  filas.map((f, i) => (
+                    <tr key={f.id} style={{ background: '#f7f4fc' }}>
+                      {i === 0 && (
+                        <>
+                          <td rowSpan={filas.length} style={{ ...td, fontWeight: 600, color: '#8e6fc9' }}>{formatFecha(fechaFinOt(filas))}</td>
+                          <td rowSpan={filas.length} style={{ ...td, fontFamily: 'monospace', color: '#e85d2f', fontWeight: 700 }}>{filas[0].nro_ot}</td>
+                          <td rowSpan={filas.length} style={td}>{filas[0].cliente}</td>
+                        </>
+                      )}
+                      <td style={td}>{f.diseno}</td>
+                      <td style={td}>{f.mts_impresos}</td>
+                      <td style={td}>{f.tela || '—'}</td>
+                      {i === 0 && (
+                        <td rowSpan={filas.length} style={td}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center' }}>
+                            <button onClick={() => copiarReporte(filas)} style={{ ...btn, padding: '4px 8px', fontSize: 11 }}>📋 Copiar</button>
+                            <button onClick={() => imprimirReporte(filas)} style={{ ...btn, padding: '4px 8px', fontSize: 11 }}>🖨️ Imprimir</button>
+                            <button onClick={() => marcarAvisado(filas[0].nro_ot)} style={{ ...btn, padding: '4px 8px', fontSize: 11, background: '#3B6D11', color: '#fff', borderColor: '#3B6D11' }}>✓ Cliente avisado</button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );
