@@ -30,6 +30,7 @@ Los paneles separados de Impresión y de Preparación/Terminación se eliminaron
   - `encargado`: Op Imp, Mts Imp, Prep, Op Fij, Nº RTO, Bultos, Estado entrega, Entregó, Recibió, Observaciones.
   - `logistica`: Op Fij, Prep, Nº RTO, Bultos, Estado entrega, Entregó, Recibió, Observaciones.
   - `comercial`: ningún campo editable, solo lectura.
+  - **Pedido terminado (Fecha fin cargada):** la fila se "congela" — nadie salvo `admin` puede editar ningún campo de esa fila, aunque normalmente le correspondiera a su rol.
 - **Dashboard de excepciones**: qué está bloqueado y por qué falta exactamente (en vez de tener que mirar colores en miles de filas).
 
 ### Integración con Stock (ya activa)
