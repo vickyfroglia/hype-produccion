@@ -137,7 +137,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div style={{ marginTop: 60, padding: 24, background: pagina === 'dashboard' ? '#000' : '#f5f5f7', minHeight: 'calc(100vh - 60px)' }}>
+      <div style={{ marginTop: 60, padding: 24, background: pagina === 'dashboard' ? '#2b2b40' : '#f5f5f7', minHeight: 'calc(100vh - 60px)' }}>
         {loading && <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando...</div>}
         {!loading && (
           <>
