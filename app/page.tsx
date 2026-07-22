@@ -169,11 +169,40 @@ function motivoIncompleto(o: OrdenDirecta): string {
   return 'En proceso';
 }
 
+// Plazo máximo de entrega: si pasaron más de estos días desde la fecha
+// del pedido y todavía no se entregó, la OT está atrasada.
+const PLAZO_ENTREGA_DIAS = 25;
+
+function diasDesde(fecha: string): number {
+  return Math.floor((Date.now() - new Date(fecha).getTime()) / 86400000);
+}
+
+// Agrupa por nro_ot y devuelve las OT que superaron el plazo de entrega
+// (25 días desde la fecha del pedido más antigua de esa OT) y todavía
+// tienen algún ítem sin entregar.
+function ordenesAtrasadasPorPlazo(ordenes: OrdenDirecta[]): { nro_ot: string; cliente: string; fecha: string; dias: number }[] {
+  const porOt = new Map<string, OrdenDirecta[]>();
+  ordenes.forEach((o) => {
+    const arr = porOt.get(o.nro_ot) || [];
+    arr.push(o);
+    porOt.set(o.nro_ot, arr);
+  });
+  return Array.from(porOt.values())
+    .filter((filas) => filas.some((f) => f.estado_entrega === 'En almacén'))
+    .map((filas) => {
+      const fecha = filas.reduce((min, f) => (f.fecha < min ? f.fecha : min), filas[0].fecha);
+      return { nro_ot: filas[0].nro_ot, cliente: filas[0].cliente, fecha, dias: diasDesde(fecha) };
+    })
+    .filter((ot) => ot.dias > PLAZO_ENTREGA_DIAS)
+    .sort((a, b) => b.dias - a.dias);
+}
+
 function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
   const abiertas = ordenes.filter((o) => o.estado_entrega === 'En almacén');
   const incompletos = ordenes.filter((o) => !o.fecha_fin);
   const otsIncompletas = new Set(incompletos.map((o) => o.nro_ot)).size;
   const atrasadas = ordenes.filter(estaAtrasada);
+  const ordenesAtrasadas = ordenesAtrasadasPorPlazo(ordenes);
   const mtsPed = ordenes.reduce((s, o) => s + Number(o.mts_pedidos || 0), 0);
   const mtsImp = ordenes.reduce((s, o) => s + Number(o.mts_impresos || 0), 0);
 
@@ -183,11 +212,12 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
         <div style={{ fontSize: 18, fontWeight: 500 }}>Dashboard — Directa</div>
         <div style={{ fontSize: 13, color: '#888' }}>Resumen general</div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 20 }}>
         {[
           { label: 'OT abiertas', value: abiertas.length, sub: 'en almacén' },
           { label: 'OT incompletas', value: otsIncompletas, sub: 'con algún ítem sin terminar' },
-          { label: 'Atrasadas', value: atrasadas.length, sub: 'fijadas hace +3 días sin salir' },
+          { label: 'Órdenes atrasadas', value: ordenesAtrasadas.length, sub: `+${PLAZO_ENTREGA_DIAS} días sin entregar` },
+          { label: 'Atrasadas (fijación)', value: atrasadas.length, sub: 'fijadas hace +3 días sin salir' },
           { label: 'Mts', value: `${mtsImp.toLocaleString()} / ${mtsPed.toLocaleString()}`, sub: 'impresos / pedidos' },
         ].map((m, i) => (
           <div key={i} style={card}>
@@ -196,6 +226,30 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
             <div style={{ fontSize: 11, color: '#888' }}>{m.sub}</div>
           </div>
         ))}
+      </div>
+
+      <div style={{ ...card, marginBottom: 20, border: '1px solid #f3c9c9' }}>
+        <div style={{ fontSize: 11, fontWeight: 500, color: '#c00', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+          Órdenes atrasadas ({ordenesAtrasadas.length}) — superaron el plazo de entrega de {PLAZO_ENTREGA_DIAS} días
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>{['OT', 'Cliente', 'Fecha pedido', 'Días transcurridos'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {ordenesAtrasadas.length === 0 && <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#888' }}>Ninguna orden superó el plazo 🎉</td></tr>}
+              {ordenesAtrasadas.map((ot) => (
+                <tr key={ot.nro_ot}>
+                  <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{ot.nro_ot}</td>
+                  <td style={td}>{ot.cliente}</td>
+                  <td style={td}>{formatFecha(ot.fecha)}</td>
+                  <td style={{ ...td, color: '#c00', fontWeight: 700 }}>{ot.dias}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div style={{ ...card, marginBottom: 20 }}>
