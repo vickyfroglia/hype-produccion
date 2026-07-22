@@ -1101,7 +1101,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                       style={{ ...selSm, width: '100%', minWidth: 180 }}
                     />
                   </td>
-                  <td style={{ ...td, width: 70, fontFamily: 'monospace', color: '#888', fontSize: 10 }}>{o.cod_tela || '—'}</td>
+                  <td style={{ ...td, width: 70, fontFamily: 'monospace', color: '#000', fontWeight: 700, fontSize: 12 }}>{o.cod_tela || '—'}</td>
                   <td style={{ ...td, width: 95 }}>
                     <select value={o.aprob} onChange={(e) => actualizar(o.id, 'aprob', e.target.value)} disabled={!puede(o, 'aprob')} style={{ ...selSm, width: 90, fontSize: 10, padding: '3px 2px' }}>
                       {APROB_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
