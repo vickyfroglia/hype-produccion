@@ -205,6 +205,50 @@ function totalesPorEquipo(ordenes: OrdenDirecta[], equipo: string) {
   return { impresos, pendientes };
 }
 
+// Lunes de la semana a la que pertenece una fecha (para agrupar "por semana").
+function inicioSemana(fechaStr: string): string {
+  const d = new Date(fechaStr.split('T')[0] + 'T00:00:00');
+  const dia = d.getDay(); // 0 = domingo
+  const diff = dia === 0 ? -6 : 1 - dia;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().split('T')[0];
+}
+
+function formatSemana(inicio: string): string {
+  const d = new Date(inicio + 'T00:00:00');
+  d.setDate(d.getDate() + 6);
+  return `${formatFecha(inicio)} al ${formatFecha(d.toISOString().split('T')[0])}`;
+}
+
+interface AgregadoSemanal { semana: string; operario: string; mts: number }
+
+// Suma los mts impresos (o fijados) por operario y por semana. Para
+// Impresión se agrupa por fecha_impresion; para Fijación/Terminación por
+// fecha_fin (no hay un "mts fijados" separado: se usa mts_impresos, que
+// es lo que efectivamente se produjo de ese diseño).
+function mtsPorOperarioYSemana(
+  ordenes: OrdenDirecta[],
+  campoOperario: 'imp_operario' | 'fija_operario',
+  campoFecha: 'fecha_impresion' | 'fecha_fin'
+): AgregadoSemanal[] {
+  const mapa = new Map<string, number>();
+  ordenes.forEach((o) => {
+    const operario = o[campoOperario];
+    const fecha = o[campoFecha];
+    const mts = Number(o.mts_impresos || 0);
+    if (!operario || operario === 'NO' || !fecha || mts <= 0) return;
+    const semana = inicioSemana(fecha);
+    const key = `${semana}__${operario}`;
+    mapa.set(key, (mapa.get(key) || 0) + mts);
+  });
+  return Array.from(mapa.entries())
+    .map(([key, mts]) => {
+      const [semana, operario] = key.split('__');
+      return { semana, operario, mts };
+    })
+    .sort((a, b) => (a.semana === b.semana ? a.operario.localeCompare(b.operario) : b.semana.localeCompare(a.semana)));
+}
+
 function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
   const abiertas = ordenes.filter((o) => o.estado_entrega === 'En almacén');
   const incompletos = ordenes.filter((o) => !o.fecha_fin);
@@ -212,6 +256,8 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
   const ordenesAtrasadas = ordenesAtrasadasPorPlazo(ordenes);
   const mtsPed = ordenes.reduce((s, o) => s + Number(o.mts_pedidos || 0), 0);
   const mtsImp = ordenes.reduce((s, o) => s + Number(o.mts_impresos || 0), 0);
+  const mtsImpresionPorOperario = mtsPorOperarioYSemana(ordenes, 'imp_operario', 'fecha_impresion');
+  const mtsFijacionPorOperario = mtsPorOperarioYSemana(ordenes, 'fija_operario', 'fecha_fin');
 
   return (
     <div>
@@ -258,6 +304,54 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
         </div>
         <div style={{ fontSize: 11, color: '#aaa', marginTop: 10 }}>
           "Pendientes por imprimir" es la suma de Mts Ped de los pedidos de ese equipo que todavía no tienen nada impreso.
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 20 }}>
+        <div style={card}>
+          <div style={{ fontSize: 11, fontWeight: 500, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+            Impresión — mts por operario y semana
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>{['Semana', 'Operario', 'Mts impresos'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {mtsImpresionPorOperario.length === 0 && <tr><td colSpan={3} style={{ ...td, textAlign: 'center', color: '#888' }}>Todavía no hay datos</td></tr>}
+                {mtsImpresionPorOperario.map((r) => (
+                  <tr key={`${r.semana}-${r.operario}`}>
+                    <td style={td}>{formatSemana(r.semana)}</td>
+                    <td style={td}>{r.operario}</td>
+                    <td style={{ ...td, fontWeight: 700 }}>{r.mts.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style={card}>
+          <div style={{ fontSize: 11, fontWeight: 500, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+            Terminación (Fijación) — mts por operario y semana
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>{['Semana', 'Operario', 'Mts fijados'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {mtsFijacionPorOperario.length === 0 && <tr><td colSpan={3} style={{ ...td, textAlign: 'center', color: '#888' }}>Todavía no hay datos</td></tr>}
+                {mtsFijacionPorOperario.map((r) => (
+                  <tr key={`${r.semana}-${r.operario}`}>
+                    <td style={td}>{formatSemana(r.semana)}</td>
+                    <td style={td}>{r.operario}</td>
+                    <td style={{ ...td, fontWeight: 700 }}>{r.mts.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
