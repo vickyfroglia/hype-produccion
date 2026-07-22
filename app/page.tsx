@@ -157,9 +157,22 @@ export default function Home() {
 // ---------------------------------------------------------------------------
 // Dashboard
 // ---------------------------------------------------------------------------
+// Explica por qué un ítem (diseño) todavía no está terminado. Se usa en
+// el Dashboard para que se vea, de un vistazo, qué falta en cada OT abierta.
+function motivoIncompleto(o: OrdenDirecta): string {
+  if (o.fecha_fin) return '';
+  const falta = faltaParaProducir(o);
+  if (falta.length > 0) return `Falta: ${falta.join(', ')}`;
+  if (o.imp_operario === 'NO') return `No se pudo imprimir: ${o.motivo_no_impreso || 'sin motivo especificado'}`;
+  if (!o.imp_operario) return 'Esperando impresión';
+  if (!o.fija_operario) return 'Impreso, esperando fijación';
+  return 'En proceso';
+}
+
 function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
   const abiertas = ordenes.filter((o) => o.estado_entrega === 'En almacén');
-  const bloqueadas = abiertas.filter((o) => !o.puede_producir);
+  const incompletos = ordenes.filter((o) => !o.fecha_fin);
+  const otsIncompletas = new Set(incompletos.map((o) => o.nro_ot)).size;
   const atrasadas = ordenes.filter(estaAtrasada);
   const mtsPed = ordenes.reduce((s, o) => s + Number(o.mts_pedidos || 0), 0);
   const mtsImp = ordenes.reduce((s, o) => s + Number(o.mts_impresos || 0), 0);
@@ -173,7 +186,7 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
         {[
           { label: 'OT abiertas', value: abiertas.length, sub: 'en almacén' },
-          { label: 'Bloqueadas', value: bloqueadas.length, sub: 'esperando algún gate' },
+          { label: 'OT incompletas', value: otsIncompletas, sub: 'con algún ítem sin terminar' },
           { label: 'Atrasadas', value: atrasadas.length, sub: 'fijadas hace +3 días sin salir' },
           { label: 'Mts', value: `${mtsImp.toLocaleString()} / ${mtsPed.toLocaleString()}`, sub: 'impresos / pedidos' },
         ].map((m, i) => (
@@ -187,23 +200,26 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
 
       <div style={{ ...card, marginBottom: 20 }}>
         <div style={{ fontSize: 11, fontWeight: 500, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
-          OT bloqueadas ({bloqueadas.length}) — no se pueden producir todavía
+          Órdenes incompletas ({incompletos.length} ítems en {otsIncompletas} OT) — todavía no tienen Fecha fin
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr>{['OT', 'Cliente', 'Diseño', 'Falta'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+              <tr>{['OT', 'Cliente', 'Diseño', 'Motivo'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {bloqueadas.length === 0 && <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#888' }}>Nada bloqueado 🎉</td></tr>}
-              {bloqueadas.slice(0, 20).map((o) => (
-                <tr key={o.id}>
-                  <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
-                  <td style={td}>{o.cliente}</td>
-                  <td style={td}>{o.diseno}</td>
-                  <td style={{ ...td, color: '#c00' }}>{faltaParaProducir(o).join(', ')}</td>
-                </tr>
-              ))}
+              {incompletos.length === 0 && <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#888' }}>No hay órdenes incompletas 🎉</td></tr>}
+              {incompletos
+                .slice()
+                .sort((a, b) => a.nro_ot.localeCompare(b.nro_ot))
+                .map((o) => (
+                  <tr key={o.id}>
+                    <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
+                    <td style={td}>{o.cliente}</td>
+                    <td style={td}>{o.diseno}</td>
+                    <td style={{ ...td, color: '#c00' }}>{motivoIncompleto(o)}</td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
