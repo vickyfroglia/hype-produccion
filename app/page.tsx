@@ -272,7 +272,7 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
           { label: 'Órdenes atrasadas', value: ordenesAtrasadas.length, sub: `+${PLAZO_ENTREGA_DIAS} días sin entregar` },
           { label: 'Mts', value: `${mtsImp.toLocaleString()} / ${mtsPed.toLocaleString()}`, sub: 'impresos / pedidos' },
         ].map((m, i) => (
-          <div key={i} style={{ ...card, color: '#000' }}>
+          <div key={i} style={{ ...card, background: '#fdfbf5', color: '#000' }}>
             <div style={{ fontSize: 11, color: '#000', fontWeight: 700, letterSpacing: 1 }}>{m.label}</div>
             <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4, color: '#000' }}>{m.value}</div>
             <div style={{ fontSize: 11, color: '#000' }}>{m.sub}</div>
@@ -280,7 +280,7 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
         ))}
       </div>
 
-      <div style={{ ...card, marginBottom: 20, color: '#000' }}>
+      <div style={{ ...card, marginBottom: 20, background: '#fdfbf5', color: '#000' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#000', letterSpacing: 1, marginBottom: 12 }}>
           Mts por equipo
         </div>
@@ -308,7 +308,7 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 20 }}>
-        <div style={{ ...card, color: '#000' }}>
+        <div style={{ ...card, background: '#fdfbf5', color: '#000' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#000', letterSpacing: 1, marginBottom: 12 }}>
             Impresión — mts por operario y semana
           </div>
@@ -331,7 +331,7 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
           </div>
         </div>
 
-        <div style={{ ...card, color: '#000' }}>
+        <div style={{ ...card, background: '#fdfbf5', color: '#000' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#000', letterSpacing: 1, marginBottom: 12 }}>
             Terminación (Fijación) — mts por operario y semana
           </div>
@@ -355,7 +355,7 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
         </div>
       </div>
 
-      <div style={{ ...card, marginBottom: 20, border: '1px solid #000', color: '#000' }}>
+      <div style={{ ...card, marginBottom: 20, border: '1px solid #000', background: '#fdfbf5', color: '#000' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b', letterSpacing: 1, marginBottom: 12 }}>
           Órdenes atrasadas ({ordenesAtrasadas.length}) — superaron el plazo de entrega de {PLAZO_ENTREGA_DIAS} días
         </div>
@@ -379,7 +379,7 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
         </div>
       </div>
 
-      <div style={{ ...card, marginBottom: 20, color: '#000' }}>
+      <div style={{ ...card, marginBottom: 20, background: '#fdfbf5', color: '#000' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b', letterSpacing: 1, marginBottom: 12 }}>
           Órdenes incompletas ({incompletos.length} ítems en {otsIncompletas} OT) — todavía no tienen Fecha fin
         </div>
