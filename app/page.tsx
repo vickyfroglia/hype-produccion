@@ -515,8 +515,8 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12, marginBottom: 20 }}>
         <div><label style={lbl}>Fecha</label><input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={inp} disabled={modo === 'existente'} /></div>
         <div><label style={lbl}>Equipo</label>
-          <select value={equipo} onChange={(e) => setEquipo(e.target.value)} style={inp} disabled={modo === 'existente'}>
-            <option value="">Seleccionar</option>{EQUIPOS.map((e) => <option key={e} value={e}>{e}</option>)}
+          <select value={equipo} onChange={(e) => setEquipo(e.target.value)} style={{ ...inp, textTransform: 'uppercase' }} disabled={modo === 'existente'}>
+            <option value="">Seleccionar</option>{EQUIPOS.map((e) => <option key={e} value={e} style={{ textTransform: 'uppercase' }}>{e}</option>)}
           </select>
         </div>
         <div><label style={lbl}>Perfil</label>
@@ -1071,8 +1071,8 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                   </td>
                   <td style={{ ...td, minWidth: 140 }}><input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} disabled={!puede(o, 'fecha')} style={{ ...selSm, width: '100%', minWidth: 130 }} /></td>
                   <td style={{ ...td, width: 100 }}>
-                    <select value={o.equipo || ''} onChange={(e) => actualizar(o.id, 'equipo', e.target.value || null)} disabled={!puede(o, 'equipo')} style={selSm}>
-                      <option value="">—</option>{EQUIPOS.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
+                    <select value={o.equipo || ''} onChange={(e) => actualizar(o.id, 'equipo', e.target.value || null)} disabled={!puede(o, 'equipo')} style={{ ...selSm, textTransform: 'uppercase' }}>
+                      <option value="">—</option>{EQUIPOS.map((eq) => <option key={eq} value={eq} style={{ textTransform: 'uppercase' }}>{eq}</option>)}
                     </select>
                   </td>
                   <td style={{ ...td, width: 55, fontFamily: 'monospace', color: '#e85d2f' }} title={o.nro_ot}>{o.nro_ot.slice(-6)}</td>
