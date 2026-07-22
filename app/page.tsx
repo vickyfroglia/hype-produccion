@@ -356,7 +356,7 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
       </div>
 
       <div style={{ ...card, marginBottom: 20, border: '1px solid #000', color: '#000' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#000', letterSpacing: 1, marginBottom: 12 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b', letterSpacing: 1, marginBottom: 12 }}>
           Órdenes atrasadas ({ordenesAtrasadas.length}) — superaron el plazo de entrega de {PLAZO_ENTREGA_DIAS} días
         </div>
         <div style={{ overflowX: 'auto' }}>
@@ -380,7 +380,7 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
       </div>
 
       <div style={{ ...card, marginBottom: 20, color: '#000' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#000', letterSpacing: 1, marginBottom: 12 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b', letterSpacing: 1, marginBottom: 12 }}>
           Órdenes incompletas ({incompletos.length} ítems en {otsIncompletas} OT) — todavía no tienen Fecha fin
         </div>
         <div style={{ overflowX: 'auto' }}>
