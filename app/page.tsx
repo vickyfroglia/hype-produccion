@@ -17,7 +17,6 @@ import {
   OPERARIOS_ENTREGA,
   TELAS_HYPE_TH,
   faltaParaProducir,
-  estaAtrasada,
   calcularPrioridad,
   formatFecha,
 } from '../lib/types';
@@ -201,7 +200,6 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
   const abiertas = ordenes.filter((o) => o.estado_entrega === 'En almacén');
   const incompletos = ordenes.filter((o) => !o.fecha_fin);
   const otsIncompletas = new Set(incompletos.map((o) => o.nro_ot)).size;
-  const atrasadas = ordenes.filter(estaAtrasada);
   const ordenesAtrasadas = ordenesAtrasadasPorPlazo(ordenes);
   const mtsPed = ordenes.reduce((s, o) => s + Number(o.mts_pedidos || 0), 0);
   const mtsImp = ordenes.reduce((s, o) => s + Number(o.mts_impresos || 0), 0);
@@ -212,12 +210,11 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
         <div style={{ fontSize: 18, fontWeight: 500 }}>Dashboard — Directa</div>
         <div style={{ fontSize: 13, color: '#888' }}>Resumen general</div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
         {[
           { label: 'OT abiertas', value: abiertas.length, sub: 'en almacén' },
           { label: 'OT incompletas', value: otsIncompletas, sub: 'con algún ítem sin terminar' },
           { label: 'Órdenes atrasadas', value: ordenesAtrasadas.length, sub: `+${PLAZO_ENTREGA_DIAS} días sin entregar` },
-          { label: 'Atrasadas (fijación)', value: atrasadas.length, sub: 'fijadas hace +3 días sin salir' },
           { label: 'Mts', value: `${mtsImp.toLocaleString()} / ${mtsPed.toLocaleString()}`, sub: 'impresos / pedidos' },
         ].map((m, i) => (
           <div key={i} style={card}>
