@@ -1084,7 +1084,15 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                   <td style={td}>
                     <input type="number" defaultValue={o.mts_impresos} onBlur={(e) => actualizarMtsImpresos(o, e.target.value)} disabled={!puede(o, 'mts_impresos')} style={{ ...selSm, width: 60 }} />
                   </td>
-                  <td style={{ ...td, minWidth: 180 }}><input defaultValue={o.observaciones || ''} onBlur={(e) => actualizar(o.id, 'observaciones', e.target.value || null)} disabled={!puede(o, 'observaciones')} style={{ ...selSm, width: '100%', minWidth: 170 }} /></td>
+                  <td style={{ ...td, minWidth: 260, whiteSpace: 'normal' }}>
+                    <textarea
+                      defaultValue={o.observaciones || ''}
+                      onBlur={(e) => actualizar(o.id, 'observaciones', e.target.value || null)}
+                      disabled={!puede(o, 'observaciones')}
+                      rows={2}
+                      style={{ ...selSm, width: '100%', minWidth: 250, resize: 'vertical', fontFamily: 'inherit' }}
+                    />
+                  </td>
                   <td style={{ ...td, minWidth: 190 }}>
                     <input
                       defaultValue={o.tela || ''}
