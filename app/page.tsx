@@ -137,7 +137,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div style={{ marginTop: 60, padding: 24, background: '#f5f5f7', minHeight: 'calc(100vh - 60px)' }}>
+      <div style={{ marginTop: 60, padding: 24, background: pagina === 'dashboard' ? '#000' : '#f5f5f7', minHeight: 'calc(100vh - 60px)' }}>
         {loading && <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando...</div>}
         {!loading && (
           <>
@@ -260,10 +260,10 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
   const mtsFijacionPorOperario = mtsPorOperarioYSemana(ordenes, 'fija_operario', 'fecha_fin');
 
   return (
-    <div>
+    <div style={{ textTransform: 'uppercase' }}>
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 18, fontWeight: 500 }}>Dashboard — Directa</div>
-        <div style={{ fontSize: 13, color: '#888' }}>Resumen general</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>Dashboard — Directa</div>
+        <div style={{ fontSize: 13, color: '#fff' }}>Resumen general</div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
         {[
@@ -272,58 +272,58 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
           { label: 'Órdenes atrasadas', value: ordenesAtrasadas.length, sub: `+${PLAZO_ENTREGA_DIAS} días sin entregar` },
           { label: 'Mts', value: `${mtsImp.toLocaleString()} / ${mtsPed.toLocaleString()}`, sub: 'impresos / pedidos' },
         ].map((m, i) => (
-          <div key={i} style={card}>
-            <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 1 }}>{m.label}</div>
-            <div style={{ fontSize: 22, fontWeight: 500, marginTop: 4 }}>{m.value}</div>
-            <div style={{ fontSize: 11, color: '#888' }}>{m.sub}</div>
+          <div key={i} style={{ ...card, color: '#000' }}>
+            <div style={{ fontSize: 11, color: '#000', fontWeight: 700, letterSpacing: 1 }}>{m.label}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4, color: '#000' }}>{m.value}</div>
+            <div style={{ fontSize: 11, color: '#000' }}>{m.sub}</div>
           </div>
         ))}
       </div>
 
-      <div style={{ ...card, marginBottom: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 500, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+      <div style={{ ...card, marginBottom: 20, color: '#000' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#000', letterSpacing: 1, marginBottom: 12 }}>
           Mts por equipo
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 16 }}>
           {EQUIPOS.map((eq) => {
             const { impresos, pendientes } = totalesPorEquipo(ordenes, eq);
             return (
-              <div key={eq} style={{ padding: 14, borderRadius: 10, border: '1px solid #eee' }}>
-                <div style={{ fontWeight: 700, textTransform: 'uppercase', marginBottom: 10 }}>{eq}</div>
+              <div key={eq} style={{ padding: 14, borderRadius: 10, border: '1px solid #000' }}>
+                <div style={{ fontWeight: 700, marginBottom: 10, color: '#000' }}>{eq}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
-                  <span style={{ color: '#888' }}>Mts impresos</span>
-                  <span style={{ fontWeight: 700 }}>{impresos.toLocaleString()}</span>
+                  <span style={{ color: '#000' }}>Mts impresos</span>
+                  <span style={{ fontWeight: 700, color: '#000' }}>{impresos.toLocaleString()}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ color: '#888' }}>Mts pendientes por imprimir</span>
-                  <span style={{ fontWeight: 700, color: '#c00' }}>{pendientes.toLocaleString()}</span>
+                  <span style={{ color: '#000' }}>Mts pendientes por imprimir</span>
+                  <span style={{ fontWeight: 700, color: '#000' }}>{pendientes.toLocaleString()}</span>
                 </div>
               </div>
             );
           })}
         </div>
-        <div style={{ fontSize: 11, color: '#aaa', marginTop: 10 }}>
+        <div style={{ fontSize: 11, color: '#000', marginTop: 10 }}>
           "Pendientes por imprimir" es la suma de Mts Ped de los pedidos de ese equipo que todavía no tienen nada impreso.
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 20 }}>
-        <div style={card}>
-          <div style={{ fontSize: 11, fontWeight: 500, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+        <div style={{ ...card, color: '#000' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#000', letterSpacing: 1, marginBottom: 12 }}>
             Impresión — mts por operario y semana
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>{['Semana', 'Operario', 'Mts impresos'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+                <tr>{['Semana', 'Operario', 'Mts impresos'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
               </thead>
               <tbody>
-                {mtsImpresionPorOperario.length === 0 && <tr><td colSpan={3} style={{ ...td, textAlign: 'center', color: '#888' }}>Todavía no hay datos</td></tr>}
+                {mtsImpresionPorOperario.length === 0 && <tr><td colSpan={3} style={{ ...td, textAlign: 'center', color: '#000' }}>Todavía no hay datos</td></tr>}
                 {mtsImpresionPorOperario.map((r) => (
                   <tr key={`${r.semana}-${r.operario}`}>
-                    <td style={td}>{formatSemana(r.semana)}</td>
-                    <td style={td}>{r.operario}</td>
-                    <td style={{ ...td, fontWeight: 700 }}>{r.mts.toLocaleString()}</td>
+                    <td style={{ ...td, color: '#000' }}>{formatSemana(r.semana)}</td>
+                    <td style={{ ...td, color: '#000' }}>{r.operario}</td>
+                    <td style={{ ...td, fontWeight: 700, color: '#000' }}>{r.mts.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -331,22 +331,22 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
           </div>
         </div>
 
-        <div style={card}>
-          <div style={{ fontSize: 11, fontWeight: 500, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+        <div style={{ ...card, color: '#000' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#000', letterSpacing: 1, marginBottom: 12 }}>
             Terminación (Fijación) — mts por operario y semana
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>{['Semana', 'Operario', 'Mts fijados'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+                <tr>{['Semana', 'Operario', 'Mts fijados'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
               </thead>
               <tbody>
-                {mtsFijacionPorOperario.length === 0 && <tr><td colSpan={3} style={{ ...td, textAlign: 'center', color: '#888' }}>Todavía no hay datos</td></tr>}
+                {mtsFijacionPorOperario.length === 0 && <tr><td colSpan={3} style={{ ...td, textAlign: 'center', color: '#000' }}>Todavía no hay datos</td></tr>}
                 {mtsFijacionPorOperario.map((r) => (
                   <tr key={`${r.semana}-${r.operario}`}>
-                    <td style={td}>{formatSemana(r.semana)}</td>
-                    <td style={td}>{r.operario}</td>
-                    <td style={{ ...td, fontWeight: 700 }}>{r.mts.toLocaleString()}</td>
+                    <td style={{ ...td, color: '#000' }}>{formatSemana(r.semana)}</td>
+                    <td style={{ ...td, color: '#000' }}>{r.operario}</td>
+                    <td style={{ ...td, fontWeight: 700, color: '#000' }}>{r.mts.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -355,23 +355,23 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
         </div>
       </div>
 
-      <div style={{ ...card, marginBottom: 20, border: '1px solid #f3c9c9' }}>
-        <div style={{ fontSize: 11, fontWeight: 500, color: '#c00', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+      <div style={{ ...card, marginBottom: 20, border: '1px solid #000', color: '#000' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#000', letterSpacing: 1, marginBottom: 12 }}>
           Órdenes atrasadas ({ordenesAtrasadas.length}) — superaron el plazo de entrega de {PLAZO_ENTREGA_DIAS} días
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr>{['OT', 'Cliente', 'Fecha pedido', 'Días transcurridos'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+              <tr>{['OT', 'Cliente', 'Fecha pedido', 'Días transcurridos'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {ordenesAtrasadas.length === 0 && <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#888' }}>Ninguna orden superó el plazo 🎉</td></tr>}
+              {ordenesAtrasadas.length === 0 && <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#000' }}>Ninguna orden superó el plazo 🎉</td></tr>}
               {ordenesAtrasadas.map((ot) => (
                 <tr key={ot.nro_ot}>
-                  <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{ot.nro_ot}</td>
-                  <td style={td}>{ot.cliente}</td>
-                  <td style={td}>{formatFecha(ot.fecha)}</td>
-                  <td style={{ ...td, color: '#c00', fontWeight: 700 }}>{ot.dias}</td>
+                  <td style={{ ...td, fontFamily: 'monospace', color: '#000' }}>{ot.nro_ot}</td>
+                  <td style={{ ...td, color: '#000' }}>{ot.cliente}</td>
+                  <td style={{ ...td, color: '#000' }}>{formatFecha(ot.fecha)}</td>
+                  <td style={{ ...td, color: '#000', fontWeight: 700 }}>{ot.dias}</td>
                 </tr>
               ))}
             </tbody>
@@ -379,26 +379,26 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
         </div>
       </div>
 
-      <div style={{ ...card, marginBottom: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 500, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+      <div style={{ ...card, marginBottom: 20, color: '#000' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#000', letterSpacing: 1, marginBottom: 12 }}>
           Órdenes incompletas ({incompletos.length} ítems en {otsIncompletas} OT) — todavía no tienen Fecha fin
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr>{['OT', 'Cliente', 'Diseño', 'Motivo'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+              <tr>{['OT', 'Cliente', 'Diseño', 'Motivo'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {incompletos.length === 0 && <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#888' }}>No hay órdenes incompletas 🎉</td></tr>}
+              {incompletos.length === 0 && <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#000' }}>No hay órdenes incompletas 🎉</td></tr>}
               {incompletos
                 .slice()
                 .sort((a, b) => a.nro_ot.localeCompare(b.nro_ot))
                 .map((o) => (
                   <tr key={o.id}>
-                    <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
-                    <td style={td}>{o.cliente}</td>
-                    <td style={td}>{o.diseno}</td>
-                    <td style={{ ...td, color: '#c00' }}>{motivoIncompleto(o)}</td>
+                    <td style={{ ...td, fontFamily: 'monospace', color: '#000' }}>{o.nro_ot}</td>
+                    <td style={{ ...td, color: '#000' }}>{o.cliente}</td>
+                    <td style={{ ...td, color: '#000' }}>{o.diseno}</td>
+                    <td style={{ ...td, color: '#000' }}>{motivoIncompleto(o)}</td>
                   </tr>
                 ))}
             </tbody>
