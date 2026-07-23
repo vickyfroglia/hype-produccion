@@ -106,15 +106,14 @@ export function pctAvance(o: OrdenDirecta): number {
   return Math.min(100, Math.round((o.mts_impresos / o.mts_pedidos) * 100));
 }
 
-// Prioridad = orden de ingreso por fecha creciente (empezando en 1),
-// igual que la columna "N" de la planilla. Se calcula sobre TODOS los
-// pedidos (no solo los filtrados/buscados) para que el número de cada
-// OT no cambie según qué se esté mostrando en pantalla.
+// Prioridad = orden de ingreso (empezando en 1), igual que la columna "N"
+// de la planilla. Se ordena por created_at (el momento en que se cargó
+// el renglón), que nunca cambia una vez guardado — así, editar cualquier
+// campo (incluida la Fecha Pedido) no hace que la fila salte de lugar.
+// Se calcula sobre TODOS los pedidos (no solo los filtrados/buscados)
+// para que el número de cada OT no cambie según qué se esté mostrando.
 export function calcularPrioridad(ordenes: OrdenDirecta[]): Map<number, number> {
-  const ordenados = [...ordenes].sort((a, b) => {
-    if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha);
-    return a.created_at.localeCompare(b.created_at);
-  });
+  const ordenados = [...ordenes].sort((a, b) => a.created_at.localeCompare(b.created_at));
   const mapa = new Map<number, number>();
   ordenados.forEach((o, i) => mapa.set(o.id, i + 1));
   return mapa;
