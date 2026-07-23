@@ -48,21 +48,26 @@ export default function Home() {
           setNombreUsuario(userData.nombre);
         }
         setLogueado(true);
-        cargarTodo();
+        cargarTodo(true);
       }
       setCheckingAuth(false);
     });
   }, []);
 
-  async function cargarTodo() {
-    setLoading(true);
+  // mostrarLoading solo se usa en la carga inicial (pantalla en blanco,
+  // no hay nada que mostrar todavía). En los refrescos posteriores —
+  // después de editar una celda, guardar un pedido, etc. — no se muestra
+  // la pantalla de "Cargando...", porque eso desmontaba toda la tabla y
+  // hacía que el scroll volviera arriba de todo cada vez que se tocaba algo.
+  async function cargarTodo(mostrarLoading = false) {
+    if (mostrarLoading) setLoading(true);
     const [ords, evts] = await Promise.all([
       fetchAll('ordenes_directa', 'created_at'),
       fetchAll('ordenes_directa_eventos', 'created_at'),
     ]);
     setOrdenes(ords);
     setEventos(evts);
-    setLoading(false);
+    if (mostrarLoading) setLoading(false);
   }
 
   async function cerrarSesion() {
@@ -76,7 +81,7 @@ export default function Home() {
     setRol(rolUsuario);
     setNombreUsuario(nombre);
     setLogueado(true);
-    cargarTodo();
+    cargarTodo(true);
   }
 
   if (checkingAuth)
