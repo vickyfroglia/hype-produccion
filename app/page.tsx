@@ -926,16 +926,6 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
     return `Fecha fin: ${formatFecha(fechaFinOt(filas))} — Pedido OT ${filas[0].nro_ot} — ${filas[0].cliente}\n${lineas}`;
   }
 
-  async function copiarReporte(filas: OrdenDirecta[]) {
-    const texto = textoReporte(filas);
-    try {
-      await navigator.clipboard.writeText(texto);
-      alert('Copiado. Ya lo podés pegar en WhatsApp.');
-    } catch {
-      alert('No se pudo copiar automáticamente. Copialo a mano de acá:\n\n' + texto);
-    }
-  }
-
   function imprimirReporte(filas: OrdenDirecta[]) {
     const texto = textoReporte(filas);
     const ventana = window.open('', '_blank', 'width=500,height=600');
@@ -950,9 +940,9 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
   }
 
   // Dibuja la tabla del pedido (Fecha Fin/Nro OT/Cliente/Diseño/Mts Imp/Tela)
-  // en un canvas y lo descarga como JPG — pensado para poder enviarlo por
-  // WhatsApp como imagen, en vez de texto plano.
-  function exportarImagen(filas: OrdenDirecta[]) {
+  // en un canvas, para copiarla al portapapeles como imagen (o, si el
+  // navegador no lo permite, descargarla como JPG).
+  function generarCanvasReporte(filas: OrdenDirecta[]): HTMLCanvasElement | null {
     const columnas = ['Fecha Fin', 'Nro OT', 'Cliente', 'Diseño', 'Mts Imp', 'Tela'];
     const anchoCol = [110, 130, 170, 220, 90, 170];
     const anchoTotal = anchoCol.reduce((a, b) => a + b, 0);
@@ -965,7 +955,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
     canvas.width = anchoTotal + padding * 2;
     canvas.height = alto;
     const ctx = canvas.getContext('2d');
-    if (!ctx) { alert('No se pudo generar la imagen en este navegador.'); return; }
+    if (!ctx) return null;
 
     function truncar(texto: string, maxAncho: number): string {
       if (ctx!.measureText(texto).width <= maxAncho) return texto;
@@ -1007,11 +997,36 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
       });
     });
 
+    return canvas;
+  }
+
+  function descargarImagen(canvas: HTMLCanvasElement, nroOt: string) {
     const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
     const link = document.createElement('a');
     link.href = dataUrl;
-    link.download = `OT_${filas[0].nro_ot}.jpg`;
+    link.download = `OT_${nroOt}.jpg`;
     link.click();
+  }
+
+  // Copia la tabla directamente como imagen al portapapeles (así se pega
+  // tal cual en WhatsApp con Cmd+V/Ctrl+V). Si el navegador no permite
+  // copiar imágenes al portapapeles, se descarga el archivo JPG en su lugar.
+  async function copiarReporte(filas: OrdenDirecta[]) {
+    const canvas = generarCanvasReporte(filas);
+    if (!canvas) { alert('No se pudo generar la imagen en este navegador.'); return; }
+    try {
+      const blob: Blob = await new Promise((resolve, reject) => {
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('sin blob'))), 'image/png');
+      });
+      const ClipboardItemCtor = (window as any).ClipboardItem;
+      if (!ClipboardItemCtor) throw new Error('ClipboardItem no soportado');
+      await navigator.clipboard.write([new ClipboardItemCtor({ 'image/png': blob })]);
+      alert('Imagen copiada. Ahora pegala directo en WhatsApp (Cmd+V o Ctrl+V).');
+    } catch (err) {
+      console.error('No se pudo copiar la imagen al portapapeles:', err);
+      descargarImagen(canvas, filas[0].nro_ot);
+      alert('Tu navegador no permite copiar la imagen directamente, así que se descargó el archivo — adjuntalo desde ahí en WhatsApp.');
+    }
   }
 
   async function marcarAvisado(nroOt: string) {
@@ -1074,7 +1089,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
           Trabajos terminados, listos para avisar al cliente ({otsTerminadas.length})
         </div>
         <div style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
-          Aparecen acá solo cuando TODOS los diseños de esa OT ya tienen Fecha fin. "Copiar" lo deja listo para pegar en WhatsApp como texto; "Imprimir" abre una hoja simple para imprimir; "JPG" descarga la tabla como imagen para enviarla por WhatsApp. Una vez avisado al cliente, tildá "Cliente avisado" y desaparece de la lista.
+          Aparecen acá solo cuando TODOS los diseños de esa OT ya tienen Fecha fin. "Copiar" copia la tabla como imagen — pegala directo en WhatsApp con Cmd+V/Ctrl+V; "Imprimir" abre una hoja simple para imprimir. Una vez avisado al cliente, tildá "Cliente avisado" y desaparece de la lista.
         </div>
         <div style={{ ...card, padding: 0, overflow: 'hidden', border: '1px solid #ddd6f0' }}>
           <div style={{ overflowX: 'auto' }}>
@@ -1108,7 +1123,6 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center' }}>
                             <button onClick={() => copiarReporte(filas)} style={{ ...btn, padding: '4px 8px', fontSize: 11 }}>📋 Copiar</button>
                             <button onClick={() => imprimirReporte(filas)} style={{ ...btn, padding: '4px 8px', fontSize: 11 }}>🖨️ Imprimir</button>
-                            <button onClick={() => exportarImagen(filas)} style={{ ...btn, padding: '4px 8px', fontSize: 11 }}>🖼️ JPG</button>
                             <button onClick={() => marcarAvisado(filas[0].nro_ot)} style={{ ...btn, padding: '4px 8px', fontSize: 11, background: '#3B6D11', color: '#fff', borderColor: '#3B6D11' }}>✓ Cliente avisado</button>
                           </div>
                         </td>
