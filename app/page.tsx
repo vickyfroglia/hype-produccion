@@ -949,6 +949,71 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
     ventana.print();
   }
 
+  // Dibuja la tabla del pedido (Fecha Fin/Nro OT/Cliente/Diseño/Mts Imp/Tela)
+  // en un canvas y lo descarga como JPG — pensado para poder enviarlo por
+  // WhatsApp como imagen, en vez de texto plano.
+  function exportarImagen(filas: OrdenDirecta[]) {
+    const columnas = ['Fecha Fin', 'Nro OT', 'Cliente', 'Diseño', 'Mts Imp', 'Tela'];
+    const anchoCol = [110, 130, 170, 220, 90, 170];
+    const anchoTotal = anchoCol.reduce((a, b) => a + b, 0);
+    const altoHeader = 40;
+    const altoFila = 36;
+    const padding = 16;
+    const alto = padding * 2 + altoHeader + filas.length * altoFila;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = anchoTotal + padding * 2;
+    canvas.height = alto;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { alert('No se pudo generar la imagen en este navegador.'); return; }
+
+    function truncar(texto: string, maxAncho: number): string {
+      if (ctx!.measureText(texto).width <= maxAncho) return texto;
+      let t = texto;
+      while (t.length > 1 && ctx!.measureText(t + '…').width > maxAncho) t = t.slice(0, -1);
+      return t + '…';
+    }
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    let x = padding;
+    ctx.font = 'bold 13px Arial';
+    columnas.forEach((col, i) => {
+      ctx.fillStyle = '#8e6fc9';
+      ctx.fillRect(x, padding, anchoCol[i], altoHeader);
+      ctx.strokeStyle = '#ccc';
+      ctx.strokeRect(x, padding, anchoCol[i], altoHeader);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(col.toUpperCase(), x + anchoCol[i] / 2, padding + altoHeader / 2);
+      x += anchoCol[i];
+    });
+
+    ctx.font = '12px Arial';
+    filas.forEach((f, fi) => {
+      const y = padding + altoHeader + fi * altoFila;
+      const valores = [formatFecha(f.fecha_fin), f.nro_ot, f.cliente, f.diseno, String(f.mts_impresos), f.tela || '—'];
+      let xx = padding;
+      valores.forEach((val, ci) => {
+        ctx!.fillStyle = fi % 2 === 0 ? '#f7f4fc' : '#ffffff';
+        ctx!.fillRect(xx, y, anchoCol[ci], altoFila);
+        ctx!.strokeStyle = '#ccc';
+        ctx!.strokeRect(xx, y, anchoCol[ci], altoFila);
+        ctx!.fillStyle = '#000000';
+        ctx!.fillText(truncar(String(val), anchoCol[ci] - 10), xx + anchoCol[ci] / 2, y + altoFila / 2);
+        xx += anchoCol[ci];
+      });
+    });
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `OT_${filas[0].nro_ot}.jpg`;
+    link.click();
+  }
+
   async function marcarAvisado(nroOt: string) {
     if (!confirm(`¿Marcar el pedido ${nroOt} como "cliente avisado"? Va a desaparecer de esta lista.`)) return;
     const { error } = await supabase.from('ordenes_directa').update({ cliente_avisado: true }).eq('nro_ot', nroOt);
@@ -1009,7 +1074,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
           Trabajos terminados, listos para avisar al cliente ({otsTerminadas.length})
         </div>
         <div style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
-          Aparecen acá solo cuando TODOS los diseños de esa OT ya tienen Fecha fin. "Copiar" lo deja listo para pegar en WhatsApp; "Imprimir" abre una hoja simple para imprimir. Una vez avisado al cliente, tildá "Cliente avisado" y desaparece de la lista.
+          Aparecen acá solo cuando TODOS los diseños de esa OT ya tienen Fecha fin. "Copiar" lo deja listo para pegar en WhatsApp como texto; "Imprimir" abre una hoja simple para imprimir; "JPG" descarga la tabla como imagen para enviarla por WhatsApp. Una vez avisado al cliente, tildá "Cliente avisado" y desaparece de la lista.
         </div>
         <div style={{ ...card, padding: 0, overflow: 'hidden', border: '1px solid #ddd6f0' }}>
           <div style={{ overflowX: 'auto' }}>
@@ -1043,6 +1108,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center' }}>
                             <button onClick={() => copiarReporte(filas)} style={{ ...btn, padding: '4px 8px', fontSize: 11 }}>📋 Copiar</button>
                             <button onClick={() => imprimirReporte(filas)} style={{ ...btn, padding: '4px 8px', fontSize: 11 }}>🖨️ Imprimir</button>
+                            <button onClick={() => exportarImagen(filas)} style={{ ...btn, padding: '4px 8px', fontSize: 11 }}>🖼️ JPG</button>
                             <button onClick={() => marcarAvisado(filas[0].nro_ot)} style={{ ...btn, padding: '4px 8px', fontSize: 11, background: '#3B6D11', color: '#fff', borderColor: '#3B6D11' }}>✓ Cliente avisado</button>
                           </div>
                         </td>
