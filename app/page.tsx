@@ -96,6 +96,7 @@ export default function Home() {
     { id: 'dashboard', label: 'Dashboard', icon: '▦', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
     { id: 'diseno', label: 'Nuevo Pedido', icon: '✎', roles: ['admin', 'diseno'] },
     { id: 'general', label: 'Producción', icon: '☷', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
+    { id: 'reporte', label: 'Reporte diario', icon: '▤', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
     { id: 'administracion', label: 'Administración', icon: '$', roles: ['admin', 'administrativo'] },
     { id: 'historial', label: 'Historial', icon: '☰', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
   ].filter((n) => n.roles.includes(rol.trim()) || rol.trim() === 'admin');
@@ -148,6 +149,7 @@ export default function Home() {
           <>
             {pagina === 'dashboard' && <Dashboard ordenes={ordenes} />}
             {pagina === 'general' && <VistaGeneral ordenes={ordenes} onCambio={cargarTodo} rol={rol} />}
+            {pagina === 'reporte' && <PanelReporteDiario ordenes={ordenes} />}
             {pagina === 'diseno' && <PanelDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
             {pagina === 'administracion' && <PanelAdministracion ordenes={ordenes} onCambio={cargarTodo} />}
             {pagina === 'historial' && <Historial eventos={eventos} ordenes={ordenes} />}
@@ -1572,6 +1574,22 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Reporte diario (en construcción — formato a definir)
+// ---------------------------------------------------------------------------
+function PanelReporteDiario({ ordenes }: { ordenes: OrdenDirecta[] }) {
+  return (
+    <div>
+      <div style={{ fontSize: 20, fontWeight: 700, textTransform: 'uppercase', color: '#e85d2f', marginBottom: 4 }}>
+        Reporte diario
+      </div>
+      <div style={{ fontSize: 13, color: '#555', marginBottom: 20 }}>
+        Este módulo todavía está en construcción. Contame qué información y formato necesitás (por OT, por equipo, por operario, comparado día a día, etc.) y lo armamos acá.
       </div>
     </div>
   );
