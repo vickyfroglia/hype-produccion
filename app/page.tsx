@@ -1342,31 +1342,41 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
             <tbody>
               {filtradas.length === 0 && <tr><td colSpan={26} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
               {filtradas.map((o) => {
-                const filaColor = o.fecha_fin ? '#8fce8a' : o.imp_operario === 'NO' ? '#fde8e8' : o.imp_operario ? '#e6f4e1' : undefined;
+                // El verde/rojo de "impreso" ahora solo tiñe las celdas de N
+                // hasta Op Imp (no toda la fila), y el verde únicamente
+                // aparece cuando YA se cargaron Mts Imp Y Op Imp juntos —
+                // no alcanza con uno solo de los dos. El verde oscuro de
+                // Fecha fin (pedido terminado) sigue siendo toda la fila,
+                // porque es un estado distinto (posterior).
+                const terminado = !!o.fecha_fin;
+                const noImprimio = o.imp_operario === 'NO';
+                const impresoCompleto = !noImprimio && !!o.imp_operario && Number(o.mts_impresos) > 0;
+                const colorHastaOpImp = noImprimio ? '#fde8e8' : impresoCompleto ? '#e6f4e1' : undefined;
+                const bgCelda = !terminado && colorHastaOpImp ? { background: colorHastaOpImp } : {};
                 return (
-                <tr key={o.id} style={filaColor ? { background: filaColor } : undefined}>
-                  <td style={{ ...td, color: '#888' }}>{prioridad.get(o.id)}</td>
-                  <td style={{ ...td, width: 40 }}>
+                <tr key={o.id} style={terminado ? { background: '#8fce8a' } : undefined}>
+                  <td style={{ ...td, color: '#888', ...bgCelda }}>{prioridad.get(o.id)}</td>
+                  <td style={{ ...td, width: 40, ...bgCelda }}>
                     <span style={{ padding: '2px 6px', borderRadius: 12, fontSize: 10, fontWeight: 700, color: '#fff', background: o.puede_producir ? '#3B6D11' : '#c00' }}>
                       {o.puede_producir ? 'SÍ' : 'NO'}
                     </span>
                   </td>
-                  <td style={{ ...td, minWidth: 140 }}><input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} disabled={!puede(o, 'fecha')} style={{ ...selSm, width: '100%', minWidth: 130 }} /></td>
-                  <td style={{ ...td, width: 100 }}>
+                  <td style={{ ...td, minWidth: 140, ...bgCelda }}><input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} disabled={!puede(o, 'fecha')} style={{ ...selSm, width: '100%', minWidth: 130 }} /></td>
+                  <td style={{ ...td, width: 100, ...bgCelda }}>
                     <select value={o.equipo || ''} onChange={(e) => actualizar(o.id, 'equipo', e.target.value || null)} disabled={!puede(o, 'equipo')} style={{ ...selSm, textTransform: 'uppercase' }}>
                       <option value="">—</option>{EQUIPOS.map((eq) => <option key={eq} value={eq} style={{ textTransform: 'uppercase' }}>{eq}</option>)}
                     </select>
                   </td>
-                  <td style={{ ...td, width: 55, fontFamily: 'monospace', color: '#e85d2f' }} title={o.nro_ot}>{o.nro_ot.slice(-6)}</td>
-                  <td style={{ ...td, minWidth: 170 }}><input defaultValue={o.cliente} onBlur={(e) => actualizar(o.id, 'cliente', e.target.value)} disabled={!puede(o, 'cliente')} style={{ ...selSm, width: '100%', minWidth: 160 }} /></td>
-                  <td style={{ ...td, minWidth: 170 }}><input defaultValue={o.diseno} onBlur={(e) => actualizar(o.id, 'diseno', e.target.value)} disabled={!puede(o, 'diseno')} style={{ ...selSm, width: '100%', minWidth: 160 }} /></td>
-                  <td style={td}>
+                  <td style={{ ...td, width: 55, fontFamily: 'monospace', color: '#e85d2f', ...bgCelda }} title={o.nro_ot}>{o.nro_ot.slice(-6)}</td>
+                  <td style={{ ...td, minWidth: 170, ...bgCelda }}><input defaultValue={o.cliente} onBlur={(e) => actualizar(o.id, 'cliente', e.target.value)} disabled={!puede(o, 'cliente')} style={{ ...selSm, width: '100%', minWidth: 160 }} /></td>
+                  <td style={{ ...td, minWidth: 170, ...bgCelda }}><input defaultValue={o.diseno} onBlur={(e) => actualizar(o.id, 'diseno', e.target.value)} disabled={!puede(o, 'diseno')} style={{ ...selSm, width: '100%', minWidth: 160 }} /></td>
+                  <td style={{ ...td, ...bgCelda }}>
                     <input type="number" defaultValue={o.mts_pedidos} onBlur={(e) => actualizar(o.id, 'mts_pedidos', parseFloat(e.target.value) || 0)} disabled={!puede(o, 'mts_pedidos')} style={{ ...selSm, width: 60 }} />
                   </td>
-                  <td style={td}>
+                  <td style={{ ...td, ...bgCelda }}>
                     <input type="number" defaultValue={o.mts_impresos} onBlur={(e) => actualizarMtsImpresos(o, e.target.value)} disabled={!puede(o, 'mts_impresos')} style={{ ...selSm, width: 60 }} />
                   </td>
-                  <td style={{ ...td, minWidth: 260, whiteSpace: 'normal' }}>
+                  <td style={{ ...td, minWidth: 260, whiteSpace: 'normal', ...bgCelda }}>
                     <textarea
                       defaultValue={o.observaciones || ''}
                       onBlur={(e) => actualizar(o.id, 'observaciones', e.target.value || null)}
@@ -1375,7 +1385,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                       style={{ ...selSm, width: '100%', minWidth: 250, resize: 'vertical', fontFamily: 'inherit' }}
                     />
                   </td>
-                  <td style={{ ...td, minWidth: 190 }}>
+                  <td style={{ ...td, minWidth: 190, ...bgCelda }}>
                     <input
                       defaultValue={o.tela || ''}
                       onBlur={(e) => { actualizar(o.id, 'tela', e.target.value || null); buscarCodTela(o, e.target.value); }}
@@ -1383,13 +1393,13 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                       style={{ ...selSm, width: '100%', minWidth: 180 }}
                     />
                   </td>
-                  <td style={{ ...td, width: 70, fontFamily: 'monospace', color: '#000', fontWeight: 700, fontSize: 12 }}>{o.cod_tela || '—'}</td>
-                  <td style={{ ...td, width: 95 }}>
+                  <td style={{ ...td, width: 70, fontFamily: 'monospace', color: '#000', fontWeight: 700, fontSize: 12, ...bgCelda }}>{o.cod_tela || '—'}</td>
+                  <td style={{ ...td, width: 95, ...bgCelda }}>
                     <select value={o.aprob} onChange={(e) => actualizar(o.id, 'aprob', e.target.value)} disabled={!puede(o, 'aprob')} style={{ ...selSm, width: 90, fontSize: 10, padding: '3px 2px' }}>
                       {APROB_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
                     </select>
                   </td>
-                  <td style={{ ...td, width: 90 }} title={o.motivo_no_impreso || undefined}>
+                  <td style={{ ...td, width: 90, ...bgCelda }} title={o.motivo_no_impreso || undefined}>
                     <select value={o.imp_operario || ''} onChange={(e) => actualizarImpOperario(o, e.target.value)} disabled={!puede(o, 'imp_operario')} style={{ ...selSm, width: 85 }}>
                       <option value="">—</option>
                       <option value="NO">NO</option>
