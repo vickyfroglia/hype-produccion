@@ -285,6 +285,57 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
         ))}
       </div>
 
+      <div style={{ ...card, marginBottom: 20, border: '1px solid #000', background: '#fdfbf5', color: '#000' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b', letterSpacing: 1, marginBottom: 12 }}>
+          Órdenes atrasadas ({ordenesAtrasadas.length}) — superaron el plazo de entrega de {PLAZO_ENTREGA_DIAS} días
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>{['OT', 'Cliente', 'Fecha pedido', 'Días transcurridos'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {ordenesAtrasadas.length === 0 && <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#000' }}>Ninguna orden superó el plazo 🎉</td></tr>}
+              {ordenesAtrasadas.map((ot) => (
+                <tr key={ot.nro_ot}>
+                  <td style={{ ...td, fontFamily: 'monospace', color: '#000' }}>{ot.nro_ot}</td>
+                  <td style={{ ...td, color: '#000' }}>{ot.cliente}</td>
+                  <td style={{ ...td, color: '#000' }}>{formatFecha(ot.fecha)}</td>
+                  <td style={{ ...td, color: '#000', fontWeight: 700 }}>{ot.dias}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style={{ ...card, marginBottom: 20, background: '#fdfbf5', color: '#000' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b', letterSpacing: 1, marginBottom: 12 }}>
+          Órdenes incompletas ({incompletos.length} ítems en {otsIncompletas} OT) — todavía no tienen Fecha fin
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>{['OT', 'Cliente', 'Diseño', 'Motivo'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {incompletos.length === 0 && <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#000' }}>No hay órdenes incompletas 🎉</td></tr>}
+              {incompletos
+                .slice()
+                .sort((a, b) => a.nro_ot.localeCompare(b.nro_ot))
+                .map((o) => (
+                  <tr key={o.id}>
+                    <td style={{ ...td, fontFamily: 'monospace', color: '#000' }}>{o.nro_ot}</td>
+                    <td style={{ ...td, color: '#000' }}>{o.cliente}</td>
+                    <td style={{ ...td, color: '#000' }}>{o.diseno}</td>
+                    <td style={{ ...td, color: '#000' }}>{motivoIncompleto(o)}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 20 }}>
         {EQUIPOS.map((eq) => {
           const { impresos, pendientes } = totalesPorEquipo(ordenes, eq);
@@ -354,57 +405,6 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
-
-      <div style={{ ...card, marginBottom: 20, border: '1px solid #000', background: '#fdfbf5', color: '#000' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b', letterSpacing: 1, marginBottom: 12 }}>
-          Órdenes atrasadas ({ordenesAtrasadas.length}) — superaron el plazo de entrega de {PLAZO_ENTREGA_DIAS} días
-        </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>{['OT', 'Cliente', 'Fecha pedido', 'Días transcurridos'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
-            </thead>
-            <tbody>
-              {ordenesAtrasadas.length === 0 && <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#000' }}>Ninguna orden superó el plazo 🎉</td></tr>}
-              {ordenesAtrasadas.map((ot) => (
-                <tr key={ot.nro_ot}>
-                  <td style={{ ...td, fontFamily: 'monospace', color: '#000' }}>{ot.nro_ot}</td>
-                  <td style={{ ...td, color: '#000' }}>{ot.cliente}</td>
-                  <td style={{ ...td, color: '#000' }}>{formatFecha(ot.fecha)}</td>
-                  <td style={{ ...td, color: '#000', fontWeight: 700 }}>{ot.dias}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div style={{ ...card, marginBottom: 20, background: '#fdfbf5', color: '#000' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b', letterSpacing: 1, marginBottom: 12 }}>
-          Órdenes incompletas ({incompletos.length} ítems en {otsIncompletas} OT) — todavía no tienen Fecha fin
-        </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>{['OT', 'Cliente', 'Diseño', 'Motivo'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
-            </thead>
-            <tbody>
-              {incompletos.length === 0 && <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#000' }}>No hay órdenes incompletas 🎉</td></tr>}
-              {incompletos
-                .slice()
-                .sort((a, b) => a.nro_ot.localeCompare(b.nro_ot))
-                .map((o) => (
-                  <tr key={o.id}>
-                    <td style={{ ...td, fontFamily: 'monospace', color: '#000' }}>{o.nro_ot}</td>
-                    <td style={{ ...td, color: '#000' }}>{o.cliente}</td>
-                    <td style={{ ...td, color: '#000' }}>{o.diseno}</td>
-                    <td style={{ ...td, color: '#000' }}>{motivoIncompleto(o)}</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>
