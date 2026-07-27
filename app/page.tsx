@@ -277,7 +277,7 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
           { label: 'Órdenes atrasadas', value: ordenesAtrasadas.length, sub: `+${PLAZO_ENTREGA_DIAS} días sin entregar` },
           { label: 'Mts', value: `${mtsImp.toLocaleString()} / ${mtsPed.toLocaleString()}`, sub: 'impresos / pedidos' },
         ].map((m, i) => (
-          <div key={i} style={{ ...card, background: '#fdfbf5', color: '#000' }}>
+          <div key={i} style={{ ...card, background: '#eeeef4', color: '#000' }}>
             <div style={{ fontSize: 11, color: '#000', fontWeight: 700, letterSpacing: 1 }}>{m.label}</div>
             <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4, color: '#000' }}>{m.value}</div>
             <div style={{ fontSize: 11, color: '#000' }}>{m.sub}</div>
