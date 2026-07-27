@@ -1190,8 +1190,8 @@ const CAMPOS_ROL: Record<string, string[]> = {
   diseno: ['fecha', 'equipo', 'cliente', 'diseno', 'mts_pedidos', 'tela', 'aprob', 'post', 'observaciones'],
   administrativo: ['entregar', 'tipo_rto', 'observaciones'],
   operario: ['imp_operario', 'mts_impresos'],
-  encargado: ['imp_operario', 'mts_impresos', 'prep', 'fija_operario', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
-  logistica: ['fija_operario', 'prep', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
+  encargado: ['imp_operario', 'mts_impresos', 'prep', 'fija_operario', 'fecha_fin', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
+  logistica: ['fija_operario', 'fecha_fin', 'prep', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
   comercial: [],
 };
 
@@ -1203,13 +1203,15 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
   // Prod dice NO (falta anticipo, aprobación o tela preparada), salvo admin.
   // Aprob y Prep quedan afuera de esta lista a propósito: son justamente
   // los que hay que completar para que Prod pase a decir SÍ.
-  const CAMPOS_PRODUCCION = ['imp_operario', 'mts_impresos', 'fija_operario', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'entregar', 'tipo_rto'];
-  // Una vez que el pedido tiene Fecha fin (quedó terminado/fijado), se
-  // "congela": nadie salvo admin puede seguir editando esa fila, aunque
-  // el campo en cuestión sea de su parte del circuito.
+  const CAMPOS_PRODUCCION = ['imp_operario', 'mts_impresos', 'fija_operario', 'fecha_fin', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'entregar', 'tipo_rto'];
+  // Una vez que el pedido tiene Fecha fin (se marcó "terminado" a mano),
+  // se "congela": nadie salvo admin puede seguir editando esa fila. La
+  // única excepción es el propio campo fecha_fin: es la manija para volver
+  // a abrir el pedido (revertir "terminado"), así que tiene que quedar
+  // accesible aunque la fila esté congelada — si no, nadie podría revertirlo.
   const puede = (o: OrdenDirecta, campo: string) => {
     if (esAdmin) return true;
-    if (o.fecha_fin) return false;
+    if (o.fecha_fin && campo !== 'fecha_fin') return false;
     if (CAMPOS_PRODUCCION.includes(campo) && !o.puede_producir) return false;
     return (CAMPOS_ROL[rol.trim()] || []).includes(campo);
   };
@@ -1218,6 +1220,24 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
     const { error } = await supabase.from('ordenes_directa').update({ [campo]: valor }).eq('id', id);
     if (error) alert('Error: ' + error.message);
     else onCambio();
+  }
+
+  // "Terminado" ahora es una acción explícita (antes se ponía sola apenas
+  // se cargaba Op Fij, y eso congelaba la fila sin poder revertir nada).
+  // Marcar pone la fecha de hoy; revertir la vuelve a dejar en null y la
+  // fila se destraba de nuevo para seguir editándola.
+  async function marcarTerminado(o: OrdenDirecta) {
+    const hoy = new Date().toISOString().split('T')[0];
+    const { error } = await supabase.from('ordenes_directa').update({ fecha_fin: hoy }).eq('id', o.id);
+    if (error) { alert('Error: ' + error.message); return; }
+    onCambio();
+  }
+
+  async function revertirTerminado(o: OrdenDirecta) {
+    if (!confirm('¿Revertir "terminado"? El pedido vuelve a quedar abierto y editable.')) return;
+    const { error } = await supabase.from('ordenes_directa').update({ fecha_fin: null }).eq('id', o.id);
+    if (error) { alert('Error: ' + error.message); return; }
+    onCambio();
   }
 
   // Lista de nro_ot en el orden actual (por orden_manual). Se usa para
@@ -1498,7 +1518,24 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                       </select>
                     )}
                   </td>
-                  <td style={td}>{formatFecha(o.fecha_fin)}</td>
+                  <td style={td}>
+                    {o.fecha_fin ? (
+                      puede(o, 'fecha_fin') ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                          <span>{formatFecha(o.fecha_fin)}</span>
+                          <button onClick={() => revertirTerminado(o)} style={{ ...btn, padding: '1px 6px', fontSize: 9, color: '#c00', borderColor: '#c00' }}>revertir</button>
+                        </div>
+                      ) : (
+                        formatFecha(o.fecha_fin)
+                      )
+                    ) : puede(o, 'fecha_fin') ? (
+                      <button onClick={() => marcarTerminado(o)} disabled={!o.fija_operario} title={!o.fija_operario ? 'Primero hay que cargar Op Fij' : 'Marcar como terminado hoy'} style={{ ...btn, padding: '2px 6px', fontSize: 10 }}>
+                        ✓ Marcar
+                      </button>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                   <td style={td}>
                     <input type="checkbox" checked={o.prep} onChange={(e) => actualizar(o.id, 'prep', e.target.checked)} disabled={!puede(o, 'prep')} />
                   </td>
