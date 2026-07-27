@@ -290,7 +290,7 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
           const { impresos, pendientes } = totalesPorEquipo(ordenes, eq);
           return (
             <div key={eq} style={{ ...card, background: '#fbe0c8', color: '#000' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#000', letterSpacing: 1, marginBottom: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#000', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
                 Mts — {eq}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
@@ -311,7 +311,7 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 20 }}>
         <div style={{ ...card, background: '#e6dcf7', color: '#000' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#000', letterSpacing: 1, marginBottom: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#000', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
             Impresión — mts por operario y semana
           </div>
           <div style={{ overflowX: 'auto' }}>
@@ -334,7 +334,7 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
         </div>
 
         <div style={{ ...card, background: '#e6dcf7', color: '#000' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#000', letterSpacing: 1, marginBottom: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#000', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
             Terminación (Fijación) — mts por operario y semana
           </div>
           <div style={{ overflowX: 'auto' }}>
