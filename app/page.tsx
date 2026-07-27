@@ -266,10 +266,6 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
 
   return (
     <div style={{ textTransform: 'uppercase' }}>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>Dashboard — Directa</div>
-        <div style={{ fontSize: 13, color: '#fff' }}>Resumen general</div>
-      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
         {[
           { label: 'OT abiertas', value: abiertas.length, sub: 'en almacén' },
