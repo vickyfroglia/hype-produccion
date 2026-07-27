@@ -463,11 +463,21 @@ function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirec
                 <tr key={o.id}>
                   <td style={{ ...td, color: '#888' }}>{prioridad.get(o.id)}</td>
                   <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
-                  <td style={td}>{formatFecha(o.fecha)}</td>
-                  <td style={td}>{o.cliente}</td>
-                  <td style={td}>{o.diseno}</td>
-                  <td style={td}>{o.tela || '—'}</td>
-                  <td style={td}>{o.mts_pedidos}</td>
+                  <td style={{ ...td, minWidth: 130 }}>
+                    <input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 120 }} />
+                  </td>
+                  <td style={{ ...td, minWidth: 150 }}>
+                    <input defaultValue={o.cliente} onBlur={(e) => actualizar(o.id, 'cliente', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 140 }} />
+                  </td>
+                  <td style={{ ...td, minWidth: 150 }}>
+                    <input defaultValue={o.diseno} onBlur={(e) => actualizar(o.id, 'diseno', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 140 }} />
+                  </td>
+                  <td style={{ ...td, minWidth: 150 }}>
+                    <input defaultValue={o.tela || ''} onBlur={(e) => actualizar(o.id, 'tela', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 140 }} />
+                  </td>
+                  <td style={td}>
+                    <input type="number" defaultValue={o.mts_pedidos} onBlur={(e) => actualizar(o.id, 'mts_pedidos', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 70 }} />
+                  </td>
                   <td style={td}>
                     <select value={o.aprob} onChange={(e) => actualizar(o.id, 'aprob', e.target.value)} style={selSm}>
                       {APROB_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
