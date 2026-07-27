@@ -420,6 +420,8 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
 function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirecta[]; nombreUsuario: string; onCambio: () => void }) {
   const [mostrarForm, setMostrarForm] = useState(false);
   const prioridad = calcularPrioridad(ordenes);
+  // Mismo orden que la columna N: el más viejo (1) arriba, el más nuevo abajo.
+  const ordenadas = [...ordenes].sort((a, b) => (prioridad.get(a.id) || 0) - (prioridad.get(b.id) || 0));
 
   async function actualizar(id: number, campo: string, valor: any) {
     const { error } = await supabase.from('ordenes_directa').update({ [campo]: valor }).eq('id', id);
@@ -457,7 +459,7 @@ function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirec
               <tr>{['N', 'OT', 'Fecha', 'Cliente', 'Diseño', 'Tela', 'Mts', 'Aprob', 'Post'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {ordenes.map((o) => (
+              {ordenadas.map((o) => (
                 <tr key={o.id}>
                   <td style={{ ...td, color: '#888' }}>{prioridad.get(o.id)}</td>
                   <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
@@ -476,7 +478,7 @@ function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirec
                   </td>
                 </tr>
               ))}
-              {ordenes.length === 0 && <tr><td colSpan={9} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
+              {ordenadas.length === 0 && <tr><td colSpan={9} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
             </tbody>
           </table>
         </div>
