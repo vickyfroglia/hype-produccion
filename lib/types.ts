@@ -71,6 +71,7 @@ export interface OrdenDirecta {
   observaciones: string | null;
   puede_producir: boolean;
   cliente_avisado: boolean;
+  orden_manual: number | null;
 
   creado_por: string | null;
   created_at: string;
@@ -107,16 +108,29 @@ export function pctAvance(o: OrdenDirecta): number {
 }
 
 // Prioridad = orden de ingreso (empezando en 1), igual que la columna "N"
-// de la planilla. Se ordena por id (autoincremental, único e inmutable):
-// cuando un pedido tiene varios diseños, todos se guardan en el mismo
-// instante exacto (mismo created_at), así que ordenar por fecha de
-// creación podía empatar y la base no garantizaba siempre el mismo orden
-// entre esos renglones — por eso las filas "bailaban" al refrescar. El id
-// nunca se repite y nunca cambia, así que el orden queda fijo para siempre.
+// de la planilla. Se agrupa por nro_ot (una OT con varios diseños se
+// mueve siempre como bloque) y esos bloques se ordenan por orden_manual
+// — el campo que se actualiza con las flechas ↑↓ de Producción. Si una
+// OT todavía no tiene orden_manual asignado (no debería pasar, pero por
+// las dudas), se usa el id más chico de sus renglones como respaldo.
+// Dentro de cada OT, los diseños se numeran por id (orden real de carga).
 export function calcularPrioridad(ordenes: OrdenDirecta[]): Map<number, number> {
-  const ordenados = [...ordenes].sort((a, b) => a.id - b.id);
+  const porOt = new Map<string, OrdenDirecta[]>();
+  ordenes.forEach((o) => {
+    const arr = porOt.get(o.nro_ot) || [];
+    arr.push(o);
+    porOt.set(o.nro_ot, arr);
+  });
+  const grupos = Array.from(porOt.values()).sort((a, b) => {
+    const oa = a[0].orden_manual ?? Math.min(...a.map((f) => f.id));
+    const ob = b[0].orden_manual ?? Math.min(...b.map((f) => f.id));
+    return oa - ob;
+  });
   const mapa = new Map<number, number>();
-  ordenados.forEach((o, i) => mapa.set(o.id, i + 1));
+  let n = 1;
+  grupos.forEach((filas) => {
+    [...filas].sort((a, b) => a.id - b.id).forEach((f) => mapa.set(f.id, n++));
+  });
   return mapa;
 }
 

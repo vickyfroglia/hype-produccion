@@ -429,6 +429,19 @@ function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirec
     else onCambio();
   }
 
+  // Igual que en Producción: al corregir la tela acá, busca en Stock el
+  // id_hype que corresponde a ese cliente + tela y lo completa solo en
+  // cod_tela (columna "ID"). Sin esto, cambiar la tela no actualizaba el ID.
+  async function buscarCodTela(o: OrdenDirecta, telaTexto?: string) {
+    const tela = (telaTexto ?? o.tela) || '';
+    if (!o.cliente || !tela) return;
+    const disponibles = await stockPorCliente(o.cliente);
+    const coincidencias = disponibles.filter((s) => s.tela.trim().toLowerCase() === tela.trim().toLowerCase());
+    if (coincidencias.length === 0) return;
+    const mejor = coincidencias.sort((a, b) => b.disponible - a.disponible)[0];
+    await actualizar(o.id, 'cod_tela', mejor.id_hype);
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -473,7 +486,11 @@ function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirec
                     <input defaultValue={o.diseno} onBlur={(e) => actualizar(o.id, 'diseno', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 140 }} />
                   </td>
                   <td style={{ ...td, minWidth: 150 }}>
-                    <input defaultValue={o.tela || ''} onBlur={(e) => actualizar(o.id, 'tela', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 140 }} />
+                    <input
+                      defaultValue={o.tela || ''}
+                      onBlur={(e) => { actualizar(o.id, 'tela', e.target.value || null); buscarCodTela(o, e.target.value); }}
+                      style={{ ...selSm, width: '100%', minWidth: 140 }}
+                    />
                   </td>
                   <td style={td}>
                     <input type="number" defaultValue={o.mts_pedidos} onBlur={(e) => actualizar(o.id, 'mts_pedidos', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 70 }} />
@@ -645,6 +662,15 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
       if (!confirm(`Estos diseños superan el stock disponible de su tela: ${detalle}. ¿Guardar igual?`)) return;
     }
     setGuardando(true);
+
+    // orden_manual define la posición de la OT en el N de Producción (se
+    // puede mover después con las flechas ↑↓). Si es un diseño nuevo para
+    // una OT que ya existe, hereda la posición que ya tenía esa OT; si es
+    // una OT totalmente nueva, va al final de la lista.
+    const ordenManualExistente = ordenes.find((o) => o.nro_ot === nroOt)?.orden_manual;
+    const maxOrdenManual = ordenes.reduce((max, o) => Math.max(max, o.orden_manual || 0), 0);
+    const ordenManualParaGuardar = ordenManualExistente ?? maxOrdenManual + 1;
+
     const { data: filasInsertadas, error } = await supabase
       .from('ordenes_directa')
       .insert(
@@ -660,6 +686,7 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
           tela: l.tela || null,
           cod_tela: l.codTela || null,
           post: l.post,
+          orden_manual: ordenManualParaGuardar,
           creado_por: nombreUsuario,
         }))
       )
@@ -1193,6 +1220,39 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
     else onCambio();
   }
 
+  // Lista de nro_ot en el orden actual (por orden_manual). Se usa para
+  // mover una OT completa (todos sus diseños juntos) un lugar arriba o
+  // abajo con las flechas ↑↓.
+  function otsEnOrden(): string[] {
+    const porOt = new Map<string, OrdenDirecta[]>();
+    ordenes.forEach((o) => {
+      const arr = porOt.get(o.nro_ot) || [];
+      arr.push(o);
+      porOt.set(o.nro_ot, arr);
+    });
+    return Array.from(porOt.entries())
+      .map(([nroOt, filas]) => ({ nroOt, orden: filas[0].orden_manual ?? Math.min(...filas.map((f) => f.id)) }))
+      .sort((a, b) => a.orden - b.orden)
+      .map((x) => x.nroOt);
+  }
+
+  async function moverOt(nroOt: string, direccion: -1 | 1) {
+    const lista = otsEnOrden();
+    const idx = lista.indexOf(nroOt);
+    const destino = idx + direccion;
+    if (destino < 0 || destino >= lista.length) return;
+    [lista[idx], lista[destino]] = [lista[destino], lista[idx]];
+    const { error } = await (async () => {
+      for (const [i, ot] of lista.entries()) {
+        const { error: errorFila } = await supabase.from('ordenes_directa').update({ orden_manual: i + 1 }).eq('nro_ot', ot);
+        if (errorFila) return { error: errorFila };
+      }
+      return { error: null };
+    })();
+    if (error) { alert('Error al reordenar: ' + error.message); return; }
+    onCambio();
+  }
+
   // Anula (borra) un pedido. También borra el/los egreso(s) de Stock que
   // se hayan generado para esa OT (por ejemplo, la reserva de tela HYPE
   // cargada al ingresar el pedido), para que el stock quede liberado y
@@ -1367,7 +1427,17 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                 const bgCelda = !terminado && colorHastaOpImp ? { background: colorHastaOpImp } : {};
                 return (
                 <tr key={o.id} style={terminado ? { background: '#8fce8a' } : undefined}>
-                  <td style={{ ...td, color: '#888', ...bgCelda }}>{prioridad.get(o.id)}</td>
+                  <td style={{ ...td, color: '#888', ...bgCelda }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                      {prioridad.get(o.id)}
+                      {esAdmin && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <button onClick={() => moverOt(o.nro_ot, -1)} title="Subir esta OT" style={{ border: 'none', background: '#eee', borderRadius: 3, cursor: 'pointer', fontSize: 8, lineHeight: '10px', padding: '1px 3px' }}>▲</button>
+                          <button onClick={() => moverOt(o.nro_ot, 1)} title="Bajar esta OT" style={{ border: 'none', background: '#eee', borderRadius: 3, cursor: 'pointer', fontSize: 8, lineHeight: '10px', padding: '1px 3px' }}>▼</button>
+                        </div>
+                      )}
+                    </div>
+                  </td>
                   <td style={{ ...td, width: 40, ...bgCelda }}>
                     <span style={{ padding: '2px 6px', borderRadius: 12, fontSize: 10, fontWeight: 700, color: '#fff', background: o.puede_producir ? '#3B6D11' : '#c00' }}>
                       {o.puede_producir ? 'SÍ' : 'NO'}
