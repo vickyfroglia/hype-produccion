@@ -24,6 +24,20 @@ import {
   formatFecha,
 } from '../lib/types';
 
+// Trae ingresos/egresos de la app de Stock (mismo Supabase) para el chequeo
+// de tela insuficiente del Dashboard. No usa fetchAll porque esas tablas no
+// tienen por qué tener una columna 'created_at' — sólo pide las columnas
+// que necesita, sin ordenar, hasta 10.000 filas (de sobra para un libro de
+// stock).
+async function fetchStockTabla(tabla: 'ingresos' | 'egresos'): Promise<any[]> {
+  const { data, error } = await supabase.from(tabla).select('id_hype, cliente, mts').range(0, 9999);
+  if (error) {
+    console.error(`No se pudo cargar ${tabla} para el chequeo de tela del Dashboard`, error);
+    return [];
+  }
+  return data || [];
+}
+
 const inp: React.CSSProperties = { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13 };
 const lbl: React.CSSProperties = { fontSize: 11, color: '#888', display: 'block', marginBottom: 4 };
 const btn: React.CSSProperties = { padding: '8px 14px', borderRadius: 8, border: '1px solid #ddd', background: '#fff', fontSize: 13, cursor: 'pointer' };
@@ -37,6 +51,8 @@ export default function Home() {
   const [ordenes, setOrdenes] = useState<OrdenDirecta[]>([]);
   const [eventos, setEventos] = useState<EventoDirecta[]>([]);
   const [rollosReporte, setRollosReporte] = useState<RolloReporte[]>([]);
+  const [ingresosStock, setIngresosStock] = useState<any[]>([]);
+  const [egresosStock, setEgresosStock] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [logueado, setLogueado] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -65,14 +81,18 @@ export default function Home() {
   // hacía que el scroll volviera arriba de todo cada vez que se tocaba algo.
   async function cargarTodo(mostrarLoading = false) {
     if (mostrarLoading) setLoading(true);
-    const [ords, evts, rollos] = await Promise.all([
+    const [ords, evts, rollos, ingresos, egresos] = await Promise.all([
       fetchAll('ordenes_directa', 'created_at'),
       fetchAll('ordenes_directa_eventos', 'created_at'),
       fetchAll('reporte_rollos', 'created_at'),
+      fetchStockTabla('ingresos'),
+      fetchStockTabla('egresos'),
     ]);
     setOrdenes(ords);
     setEventos(evts);
     setRollosReporte(rollos);
+    setIngresosStock(ingresos);
+    setEgresosStock(egresos);
     if (mostrarLoading) setLoading(false);
   }
 
@@ -153,7 +173,7 @@ export default function Home() {
         {loading && <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando...</div>}
         {!loading && (
           <>
-            {pagina === 'dashboard' && <Dashboard ordenes={ordenes} rollosReporte={rollosReporte} />}
+            {pagina === 'dashboard' && <Dashboard ordenes={ordenes} rollosReporte={rollosReporte} ingresosStock={ingresosStock} egresosStock={egresosStock} />}
             {pagina === 'general' && <VistaGeneral ordenes={ordenes} onCambio={cargarTodo} rol={rol} />}
             {pagina === 'reporte' && <PanelReporteDiario ordenes={ordenes} rol={rol} />}
             {pagina === 'diseno' && <PanelDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
@@ -179,6 +199,56 @@ function motivoIncompleto(o: OrdenDirecta): string {
   if (!o.imp_operario) return 'Esperando impresión';
   if (!o.fija_operario) return 'Impreso, esperando fijación';
   return 'En proceso';
+}
+
+// Stock disponible de cada tela, calculado a partir de ingresos/egresos de
+// la app de Stock (mismo Supabase). Dos mapas: uno por cliente+tela (la
+// mayoría de las telas son de un cliente puntual) y otro global por código
+// para las telas "Stock TH" (propias de HYPE, compartidas entre clientes).
+interface MapasStock { porClienteTela: Map<string, number>; porIdTH: Map<string, number> }
+
+function construirMapasStock(ingresos: any[], egresos: any[]): MapasStock {
+  const porClienteTela = new Map<string, number>();
+  const porIdTH = new Map<string, number>();
+  const sumar = (lista: any[], signo: 1 | -1) => {
+    (lista || []).forEach((r) => {
+      const idHype = String(r.id_hype || '').trim();
+      if (!idHype) return;
+      const mts = Number(r.mts || 0) * signo;
+      if (idHype.toUpperCase().startsWith('TH')) {
+        porIdTH.set(idHype, (porIdTH.get(idHype) || 0) + mts);
+      }
+      const cliente = String(r.cliente || '').trim().toLowerCase();
+      if (cliente) {
+        const key = `${cliente}__${idHype}`;
+        porClienteTela.set(key, (porClienteTela.get(key) || 0) + mts);
+      }
+    });
+  };
+  sumar(ingresos, 1);
+  sumar(egresos, -1);
+  return { porClienteTela, porIdTH };
+}
+
+// Motivo por el que una OT figura en "OT incompletas": o bien se marcó NO
+// en Op Imp (no se pudo imprimir), o bien todavía le falta imprimir mts y
+// no hay stock suficiente de su tela para cubrir lo que falta. Devuelve
+// null si la orden no está bloqueada por ninguno de los dos motivos.
+function motivoBloqueo(o: OrdenDirecta, stock: MapasStock): string | null {
+  if (o.imp_operario === 'NO') {
+    return `No se pudo imprimir: ${o.motivo_no_impreso || 'sin motivo especificado'}`;
+  }
+  const faltanImprimir = Number(o.mts_pedidos || 0) - Number(o.mts_impresos || 0);
+  if (faltanImprimir > 0 && o.cod_tela) {
+    const idHype = String(o.cod_tela).trim();
+    const disponible = idHype.toUpperCase().startsWith('TH')
+      ? stock.porIdTH.get(idHype) ?? 0
+      : stock.porClienteTela.get(`${(o.cliente || '').trim().toLowerCase()}__${idHype}`) ?? 0;
+    if (disponible < faltanImprimir) {
+      return `Falta tela: ${o.tela || idHype} (disp. ${disponible.toLocaleString()} / faltan ${faltanImprimir.toLocaleString()} mts)`;
+    }
+  }
+  return null;
 }
 
 // Plazo máximo de entrega: si pasaron más de estos días desde la fecha
@@ -281,9 +351,20 @@ function mtsTerminacionMensualPorOperario(rollosReporte: RolloReporte[]): Agrega
   return Array.from(mapa.values()).sort((a, b) => a.operario.localeCompare(b.operario));
 }
 
-function Dashboard({ ordenes, rollosReporte }: { ordenes: OrdenDirecta[]; rollosReporte: RolloReporte[] }) {
+function Dashboard({
+  ordenes,
+  rollosReporte,
+  ingresosStock,
+  egresosStock,
+}: {
+  ordenes: OrdenDirecta[];
+  rollosReporte: RolloReporte[];
+  ingresosStock: any[];
+  egresosStock: any[];
+}) {
   const abiertas = ordenes.filter((o) => o.estado_entrega === 'En almacén');
-  const incompletos = ordenes.filter((o) => o.imp_operario === 'NO');
+  const stockMapas = construirMapasStock(ingresosStock, egresosStock);
+  const incompletos = ordenes.filter((o) => motivoBloqueo(o, stockMapas) !== null);
   const otsIncompletas = new Set(incompletos.map((o) => o.nro_ot)).size;
   const ordenesAtrasadas = ordenesAtrasadasPorPlazo(ordenes);
   const mtsPed = ordenes.reduce((s, o) => s + Number(o.mts_pedidos || 0), 0);
@@ -296,7 +377,7 @@ function Dashboard({ ordenes, rollosReporte }: { ordenes: OrdenDirecta[]; rollos
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
         {[
           { label: 'OT abiertas', value: abiertas.length, sub: 'en almacén' },
-          { label: 'OT incompletas', value: otsIncompletas, sub: 'marcadas NO en Op Imp' },
+          { label: 'OT incompletas', value: otsIncompletas, sub: 'NO en Op Imp / sin tela' },
           { label: 'Órdenes atrasadas', value: ordenesAtrasadas.length, sub: `+${PLAZO_ENTREGA_DIAS} días sin entregar` },
           { label: 'Mts', value: `${mtsImp.toLocaleString()} / ${mtsPed.toLocaleString()}`, sub: 'impresos / pedidos' },
         ].map((m, i) => (
@@ -334,7 +415,7 @@ function Dashboard({ ordenes, rollosReporte }: { ordenes: OrdenDirecta[]; rollos
 
       <div style={{ ...card, marginBottom: 20, background: '#fdfbf5', color: '#000' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b', letterSpacing: 1, marginBottom: 12 }}>
-          Órdenes incompletas ({incompletos.length} ítems en {otsIncompletas} OT) — marcadas NO en Op Imp
+          Órdenes incompletas ({incompletos.length} ítems en {otsIncompletas} OT) — marcadas NO en Op Imp o sin tela suficiente
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -351,7 +432,7 @@ function Dashboard({ ordenes, rollosReporte }: { ordenes: OrdenDirecta[]; rollos
                     <td style={{ ...td, fontFamily: 'monospace', color: '#000' }}>{o.nro_ot}</td>
                     <td style={{ ...td, color: '#000' }}>{o.cliente}</td>
                     <td style={{ ...td, color: '#000' }}>{o.diseno}</td>
-                    <td style={{ ...td, color: '#000' }}>{motivoIncompleto(o)}</td>
+                    <td style={{ ...td, color: '#000' }}>{motivoBloqueo(o, stockMapas)}</td>
                   </tr>
                 ))}
             </tbody>
