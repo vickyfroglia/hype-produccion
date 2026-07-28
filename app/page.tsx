@@ -2115,8 +2115,8 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                 if (!e.currentTarget.contains(e.relatedTarget as Node)) guardarNuevaFila();
               }}
             >
-              <td style={{ ...td, minWidth: 120 }}>
-                <input type="date" value={nuevo.fecha} onChange={(e) => setNuevo({ ...nuevo, fecha: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 110 }} />
+              <td style={{ ...td, minWidth: 100 }}>
+                <input type="date" value={nuevo.fecha} onChange={(e) => setNuevo({ ...nuevo, fecha: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 95 }} />
               </td>
               <td style={td}>
                 <select value={nuevo.turno} onChange={(e) => setNuevo({ ...nuevo, turno: e.target.value })} style={selSm}>
@@ -2124,7 +2124,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                   {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
               </td>
-              <td style={td}>
+              <td style={{ ...td, minWidth: 190 }}>
                 <select
                   value={nuevo.tipo_proceso}
                   onChange={(e) => {
@@ -2138,7 +2138,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                       tela: telasOt.includes(nuevo.tela) ? nuevo.tela : (telasOt.length === 1 ? telasOt[0] : ''),
                     });
                   }}
-                  style={selSm}
+                  style={{ ...selSm, width: '100%', minWidth: 180 }}
                 >
                   <option value="">—</option>
                   {TIPOS_PROCESO_CIBITEX.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -2168,7 +2168,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
               <td style={{ ...td, minWidth: 130 }}>
                 <input placeholder="— (según Nro OT)" value={nuevo.cliente} readOnly disabled style={{ ...selSm, width: '100%', minWidth: 120, background: '#f0f0f0', color: '#666' }} />
               </td>
-              <td style={{ ...td, minWidth: 130 }}>
+              <td style={{ ...td, minWidth: 200 }}>
                 <select
                   value={nuevo.diseno}
                   onChange={(e) => {
@@ -2176,7 +2176,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                     const telasOt = telasPorNroOt(nuevo.nro_ot, disenoNuevo || undefined);
                     setNuevo({ ...nuevo, diseno: disenoNuevo, tela: telasOt.length === 1 ? telasOt[0] : '' });
                   }}
-                  style={{ ...selSm, width: '100%', minWidth: 120 }}
+                  style={{ ...selSm, width: '100%', minWidth: 190 }}
                   disabled={!nuevo.nro_ot || esTipoPrep(nuevo.tipo_proceso)}
                 >
                   <option value="">
@@ -2197,10 +2197,10 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                 </select>
               </td>
               <td style={td}>
-                <input type="number" placeholder="Mts" value={nuevo.mts_fij} onChange={(e) => setNuevo({ ...nuevo, mts_fij: e.target.value })} style={{ ...selSm, width: 80 }} />
+                <input type="number" placeholder="Mts" value={nuevo.mts_fij} onChange={(e) => setNuevo({ ...nuevo, mts_fij: e.target.value })} style={{ ...selSm, width: 60 }} />
               </td>
               <td style={td}>
-                <input placeholder="Rollos" value={nuevo.nro_rollos_fij} onChange={(e) => setNuevo({ ...nuevo, nro_rollos_fij: e.target.value })} style={{ ...selSm, width: 90 }} />
+                <input placeholder="Rollos" value={nuevo.nro_rollos_fij} onChange={(e) => setNuevo({ ...nuevo, nro_rollos_fij: e.target.value })} style={{ ...selSm, width: 50 }} />
               </td>
               <td style={td}>
                 <select value={nuevo.op_fij} onChange={(e) => setNuevo({ ...nuevo, op_fij: e.target.value })} style={selSm}>
@@ -2212,8 +2212,8 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
             </tr>
             {rollos.map((r) => (
               <tr key={r.id}>
-                <td style={{ ...td, minWidth: 120 }}>
-                  <input type="date" defaultValue={r.fecha} onBlur={(e) => actualizar(r.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 110 }} />
+                <td style={{ ...td, minWidth: 100 }}>
+                  <input type="date" defaultValue={r.fecha} onBlur={(e) => actualizar(r.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 95 }} />
                 </td>
                 <td style={td}>
                   <select defaultValue={r.turno || ''} onChange={(e) => actualizar(r.id, 'turno', e.target.value || null)} style={selSm}>
@@ -2221,14 +2221,14 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                     {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </td>
-                <td style={td}>
+                <td style={{ ...td, minWidth: 190 }}>
                   <select
                     defaultValue={r.tipo_proceso || ''}
                     onChange={(e) => {
                       actualizar(r.id, 'tipo_proceso', e.target.value || null);
                       if (esTipoPrep(e.target.value)) actualizar(r.id, 'diseno', null);
                     }}
-                    style={selSm}
+                    style={{ ...selSm, width: '100%', minWidth: 180 }}
                   >
                     <option value="">—</option>
                     {TIPOS_PROCESO_CIBITEX.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -2254,11 +2254,11 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                 <td style={{ ...td, minWidth: 130 }}>
                   <input defaultValue={r.cliente || ''} readOnly disabled style={{ ...selSm, width: '100%', minWidth: 120, background: '#f0f0f0', color: '#666' }} />
                 </td>
-                <td style={{ ...td, minWidth: 130 }}>
+                <td style={{ ...td, minWidth: 200 }}>
                   <select
                     defaultValue={r.diseno || ''}
                     onChange={(e) => actualizar(r.id, 'diseno', e.target.value || null)}
-                    style={{ ...selSm, width: '100%', minWidth: 120 }}
+                    style={{ ...selSm, width: '100%', minWidth: 190 }}
                     disabled={esTipoPrep(r.tipo_proceso || '')}
                   >
                     <option value="">{esTipoPrep(r.tipo_proceso || '') ? '— (no aplica)' : '—'}</option>
@@ -2282,10 +2282,10 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                   </select>
                 </td>
                 <td style={td}>
-                  <input type="number" defaultValue={r.mts_fij ?? ''} onBlur={(e) => actualizar(r.id, 'mts_fij', e.target.value === '' ? null : parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 80 }} />
+                  <input type="number" defaultValue={r.mts_fij ?? ''} onBlur={(e) => actualizar(r.id, 'mts_fij', e.target.value === '' ? null : parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 60 }} />
                 </td>
                 <td style={td}>
-                  <input defaultValue={r.nro_rollos_fij || ''} onBlur={(e) => actualizar(r.id, 'nro_rollos_fij', e.target.value || null)} style={{ ...selSm, width: 90 }} />
+                  <input defaultValue={r.nro_rollos_fij || ''} onBlur={(e) => actualizar(r.id, 'nro_rollos_fij', e.target.value || null)} style={{ ...selSm, width: 50 }} />
                 </td>
                 <td style={td}>
                   <select defaultValue={r.op_fij || ''} onChange={(e) => actualizar(r.id, 'op_fij', e.target.value || null)} style={selSm}>
