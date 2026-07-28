@@ -1642,7 +1642,6 @@ function filaRolloVacia() {
 function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenDirecta[]; rol: string }) {
   const [rollos, setRollos] = useState<RolloReporte[]>([]);
   const [cargando, setCargando] = useState(true);
-  const [clientesStock, setClientesStock] = useState<string[]>([]);
   const [nuevo, setNuevo] = useState(filaRolloVacia());
   const [guardando, setGuardando] = useState(false);
 
@@ -1666,13 +1665,21 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
   useEffect(() => {
     setCargando(true);
     cargar();
-    fetchAll('clientes', 'nombre', true).then((data) => setClientesStock(data.map((c: any) => c.nombre)));
   }, [equipo]);
 
   async function actualizar(id: number, campo: string, valor: any) {
     const { error } = await supabase.from('reporte_rollos').update({ [campo]: valor }).eq('id', id);
     if (error) alert('Error: ' + error.message);
     else cargar();
+  }
+
+  // El Cliente de esta fila viene solo de Producción: se busca la OT que
+  // coincide (comparando los últimos 6 dígitos, que es lo que se ve y se
+  // escribe acá) y se trae su cliente. No se escribe a mano.
+  function buscarClientePorNroOt(nroOtCorto: string): string | null {
+    if (!nroOtCorto) return null;
+    const orden = ordenes.find((o) => o.nro_ot.slice(-6) === nroOtCorto.trim());
+    return orden ? orden.cliente : null;
   }
 
   // Igual que en Producción y Nuevo Pedido: al elegir/corregir la tela,
@@ -1732,7 +1739,6 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
     cargar();
   }
 
-  const listaClientes = `clientes-${equipo}`;
   const listaDisenos = `disenos-${equipo}`;
   const listaTelas = `telas-${equipo}`;
   const listaNrosOt = `nros-ot-${equipo}`;
@@ -1785,10 +1791,19 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                 </select>
               </td>
               <td style={{ ...td, minWidth: 100 }}>
-                <input list={listaNrosOt} placeholder="Nro OT" value={nuevo.nro_ot} onChange={(e) => setNuevo({ ...nuevo, nro_ot: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 90 }} />
+                <input
+                  list={listaNrosOt}
+                  placeholder="Nro OT"
+                  value={nuevo.nro_ot}
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    setNuevo({ ...nuevo, nro_ot: valor, cliente: buscarClientePorNroOt(valor) || '' });
+                  }}
+                  style={{ ...selSm, width: '100%', minWidth: 90 }}
+                />
               </td>
               <td style={{ ...td, minWidth: 130 }}>
-                <input list={listaClientes} placeholder="Cliente" value={nuevo.cliente} onChange={(e) => setNuevo({ ...nuevo, cliente: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 120 }} />
+                <input placeholder="— (según Nro OT)" value={nuevo.cliente} readOnly disabled style={{ ...selSm, width: '100%', minWidth: 120, background: '#f0f0f0', color: '#666' }} />
               </td>
               <td style={{ ...td, minWidth: 130 }}>
                 <input list={listaDisenos} placeholder="Diseño" value={nuevo.diseno} onChange={(e) => setNuevo({ ...nuevo, diseno: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 120 }} />
@@ -1851,10 +1866,20 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                   </select>
                 </td>
                 <td style={{ ...td, minWidth: 100 }}>
-                  <input list={listaNrosOt} defaultValue={(r.nro_ot || '').slice(-6)} onBlur={(e) => actualizar(r.id, 'nro_ot', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 90 }} />
+                  <input
+                    list={listaNrosOt}
+                    defaultValue={(r.nro_ot || '').slice(-6)}
+                    onBlur={(e) => {
+                      const valor = e.target.value;
+                      actualizar(r.id, 'nro_ot', valor || null);
+                      const cliente = buscarClientePorNroOt(valor);
+                      if (cliente) actualizar(r.id, 'cliente', cliente);
+                    }}
+                    style={{ ...selSm, width: '100%', minWidth: 90 }}
+                  />
                 </td>
                 <td style={{ ...td, minWidth: 130 }}>
-                  <input list={listaClientes} defaultValue={r.cliente || ''} onBlur={(e) => actualizar(r.id, 'cliente', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 120 }} />
+                  <input defaultValue={r.cliente || ''} readOnly disabled style={{ ...selSm, width: '100%', minWidth: 120, background: '#f0f0f0', color: '#666' }} />
                 </td>
                 <td style={{ ...td, minWidth: 130 }}>
                   <input list={listaDisenos} defaultValue={r.diseno || ''} onBlur={(e) => actualizar(r.id, 'diseno', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 120 }} />
@@ -1922,7 +1947,6 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
         </table>
       </div>
 
-      <datalist id={listaClientes}>{clientesStock.map((c) => <option key={c} value={c} />)}</datalist>
       <datalist id={listaDisenos}>{disenosStock.map((d) => <option key={d} value={d} />)}</datalist>
       <datalist id={listaTelas}>{telasStock.map((t) => <option key={t} value={t} />)}</datalist>
       <datalist id={listaNrosOt}>{nrosOt.map((n) => <option key={n} value={n} />)}</datalist>
