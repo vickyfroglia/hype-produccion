@@ -1961,10 +1961,11 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
   const telasStock = Array.from(new Set(ordenes.map((o) => o.tela).filter(Boolean) as string[])).sort();
   const nrosOt = Array.from(new Set(ordenes.map((o) => o.nro_ot.slice(-6)))).sort();
 
-  // Los tipos "PREP Y ..." son a nivel OT, antes de imprimir un diseño en
-  // particular — para esos no aplica elegir un diseño puntual.
+  // Los tipos "PREP Y ..." y "PLANCHADO" son a nivel OT, antes/sin
+  // depender de un diseño en particular — para esos no aplica elegir
+  // un diseño puntual.
   function esTipoPrep(tipo: string): boolean {
-    return tipo.startsWith('PREP');
+    return tipo.startsWith('PREP') || tipo === 'PLANCHADO';
   }
 
   function buscarClientePorNroOt(nroOtCorto: string): string | null {
