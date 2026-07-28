@@ -12,6 +12,11 @@ export const OPERARIOS_IMPRESION = ['Tomás', 'Néstor', 'Cache', 'Ricky'];
 export const OPERARIOS_FIJACION = ['Mati', 'Leo', 'Ciro', 'Lautaro'];
 export const OPERARIOS_ENTREGA = ['Mati', 'Leo', 'Ciro', 'Lautaro', 'Tomás', 'Néstor', 'Cache', 'Ricky'];
 
+// Turnos del Reporte diario (control de mts impresos por rollo, por equipo):
+// T = turno día regular, S = turno día sábado, D = turno día domingo,
+// F = turno día feriado. Cada letra tiene 3 turnos (1/2/3).
+export const TURNOS_REPORTE = ['T1', 'T2', 'T3', 'S1', 'S2', 'S3', 'D1', 'D2', 'D3', 'F1', 'F2', 'F3'] as const;
+
 // Catálogo fijo de telas "Stock TH" (telas propias de HYPE, no de un
 // cliente en particular). Al escribir "HYPE" en el campo Tela de Nuevo
 // Pedido aparece un desplegable con estas opciones para cargar rápido.
@@ -83,6 +88,26 @@ export interface EventoDirecta {
   orden_id: number;
   evento: string;
   detalle: string | null;
+  created_at: string;
+}
+
+// Reporte diario: control exhaustivo de mts impresos por rollo y por turno,
+// por equipo (Monalisa 32 / Monalisa 8). Es independiente de ordenes_directa
+// (una misma OT puede tener varios rollos, incluso en distintos turnos).
+export interface RolloReporte {
+  id: number;
+  equipo: string;
+  fecha: string;
+  turno: string;
+  nro_ot: string | null;
+  cliente: string | null;
+  diseno: string | null;
+  mts_imp_rollo: number | null;
+  rollo_nro: string | null;
+  tela: string | null;
+  cod_tela: string | null;
+  op_imp: string | null;
+  novedades: string | null;
   created_at: string;
 }
 

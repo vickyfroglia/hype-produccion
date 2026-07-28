@@ -16,6 +16,8 @@ import {
   OPERARIOS_FIJACION,
   OPERARIOS_ENTREGA,
   TELAS_HYPE_TH,
+  TURNOS_REPORTE,
+  RolloReporte,
   faltaParaProducir,
   calcularPrioridad,
   formatFecha,
@@ -149,7 +151,7 @@ export default function Home() {
           <>
             {pagina === 'dashboard' && <Dashboard ordenes={ordenes} />}
             {pagina === 'general' && <VistaGeneral ordenes={ordenes} onCambio={cargarTodo} rol={rol} />}
-            {pagina === 'reporte' && <PanelReporteDiario ordenes={ordenes} />}
+            {pagina === 'reporte' && <PanelReporteDiario ordenes={ordenes} rol={rol} />}
             {pagina === 'diseno' && <PanelDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
             {pagina === 'administracion' && <PanelAdministracion ordenes={ordenes} onCambio={cargarTodo} />}
             {pagina === 'historial' && <Historial eventos={eventos} ordenes={ordenes} />}
@@ -1580,17 +1582,266 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
 }
 
 // ---------------------------------------------------------------------------
-// Reporte diario (en construcción — formato a definir)
+// Reporte diario: control de mts impresos por rollo y por turno,
+// un módulo idéntico para cada equipo (Monalisa 32 / Monalisa 8).
 // ---------------------------------------------------------------------------
-function PanelReporteDiario({ ordenes }: { ordenes: OrdenDirecta[] }) {
+function PanelReporteDiario({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }) {
+  const [equipoActivo, setEquipoActivo] = useState<string>(EQUIPOS[0]);
+
   return (
     <div>
       <div style={{ fontSize: 20, fontWeight: 700, textTransform: 'uppercase', color: '#e85d2f', marginBottom: 4 }}>
         Reporte diario
       </div>
-      <div style={{ fontSize: 13, color: '#555', marginBottom: 20 }}>
-        Este módulo todavía está en construcción. Contame qué información y formato necesitás (por OT, por equipo, por operario, comparado día a día, etc.) y lo armamos acá.
+      <div style={{ fontSize: 13, color: '#555', marginBottom: 16 }}>
+        Control de mts impresos por rollo y por turno, un módulo por equipo.
       </div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {EQUIPOS.map((eq) => (
+          <button
+            key={eq}
+            onClick={() => setEquipoActivo(eq)}
+            style={{
+              ...btn,
+              background: equipoActivo === eq ? '#1a1a2e' : '#fff',
+              color: equipoActivo === eq ? '#fff' : '#1a1a2e',
+              border: '1px solid #1a1a2e',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+            }}
+          >
+            {eq}
+          </button>
+        ))}
+      </div>
+      <TablaRollos equipo={equipoActivo} ordenes={ordenes} rol={rol} />
+    </div>
+  );
+}
+
+function filaRolloVacia() {
+  return {
+    fecha: new Date().toISOString().split('T')[0],
+    turno: '',
+    nro_ot: '',
+    cliente: '',
+    diseno: '',
+    mts_imp_rollo: '',
+    rollo_nro: '',
+    tela: '',
+    op_imp: '',
+    novedades: '',
+  };
+}
+
+function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenDirecta[]; rol: string }) {
+  const [rollos, setRollos] = useState<RolloReporte[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [clientesStock, setClientesStock] = useState<string[]>([]);
+  const [nuevo, setNuevo] = useState(filaRolloVacia());
+  const [guardando, setGuardando] = useState(false);
+
+  const disenosStock = Array.from(new Set(ordenes.map((o) => o.diseno).filter(Boolean))).sort();
+  const telasStock = Array.from(new Set(ordenes.map((o) => o.tela).filter(Boolean) as string[])).sort();
+  const nrosOt = Array.from(new Set(ordenes.map((o) => o.nro_ot))).sort();
+
+  async function cargar() {
+    const { data, error } = await supabase
+      .from('reporte_rollos')
+      .select('*')
+      .eq('equipo', equipo)
+      .order('fecha', { ascending: false })
+      .order('id', { ascending: false });
+    if (!error) setRollos(data || []);
+    setCargando(false);
+  }
+
+  useEffect(() => {
+    setCargando(true);
+    cargar();
+    fetchAll('clientes', 'nombre', true).then((data) => setClientesStock(data.map((c: any) => c.nombre)));
+  }, [equipo]);
+
+  async function actualizar(id: number, campo: string, valor: any) {
+    const { error } = await supabase.from('reporte_rollos').update({ [campo]: valor }).eq('id', id);
+    if (error) alert('Error: ' + error.message);
+    else cargar();
+  }
+
+  // Igual que en Producción y Nuevo Pedido: al elegir/corregir la tela,
+  // busca en Stock el id_hype de ese cliente + tela y lo completa solo.
+  async function buscarCodTela(r: RolloReporte, telaTexto?: string) {
+    const tela = (telaTexto ?? r.tela) || '';
+    if (!r.cliente || !tela) return;
+    const disponibles = await stockPorCliente(r.cliente);
+    const coincidencias = disponibles.filter((s) => s.tela.trim().toLowerCase() === tela.trim().toLowerCase());
+    if (coincidencias.length === 0) return;
+    const mejor = coincidencias.sort((a, b) => b.disponible - a.disponible)[0];
+    await actualizar(r.id, 'cod_tela', mejor.id_hype);
+  }
+
+  async function eliminar(id: number) {
+    if (!confirm('¿Borrar este registro de rollo? No se puede deshacer.')) return;
+    const { error } = await supabase.from('reporte_rollos').delete().eq('id', id);
+    if (error) alert('Error: ' + error.message);
+    else cargar();
+  }
+
+  async function agregar() {
+    if (!nuevo.turno) { alert('Elegí el turno.'); return; }
+    setGuardando(true);
+    const { data, error } = await supabase
+      .from('reporte_rollos')
+      .insert({
+        equipo,
+        fecha: nuevo.fecha,
+        turno: nuevo.turno,
+        nro_ot: nuevo.nro_ot || null,
+        cliente: nuevo.cliente || null,
+        diseno: nuevo.diseno || null,
+        mts_imp_rollo: parseFloat(nuevo.mts_imp_rollo) || 0,
+        rollo_nro: nuevo.rollo_nro || null,
+        tela: nuevo.tela || null,
+        op_imp: nuevo.op_imp || null,
+        novedades: nuevo.novedades || null,
+      })
+      .select()
+      .single();
+    setGuardando(false);
+    if (error) { alert('Error: ' + error.message); return; }
+    if (data && nuevo.cliente && nuevo.tela) await buscarCodTela(data as RolloReporte, nuevo.tela);
+    setNuevo(filaRolloVacia());
+    cargar();
+  }
+
+  const listaClientes = `clientes-${equipo}`;
+  const listaDisenos = `disenos-${equipo}`;
+  const listaTelas = `telas-${equipo}`;
+  const listaNrosOt = `nros-ot-${equipo}`;
+  const esAdmin = rol.trim() === 'admin';
+
+  const columnas = ['Fecha', 'Turno', 'Nro OT', 'Cliente', 'Diseño', 'Mts Imp x Rollo', 'Rollo Nro', 'Tela', 'Op Imp', 'Novedades cambio de turno', ...(esAdmin ? ['Borrar'] : [])];
+
+  return (
+    <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+      <div style={{ padding: 16, borderBottom: '1px solid #eee', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end', background: '#fafafa' }}>
+        <div>
+          <label style={lbl}>Fecha</label>
+          <input type="date" value={nuevo.fecha} onChange={(e) => setNuevo({ ...nuevo, fecha: e.target.value })} style={{ ...selSm, width: 130 }} />
+        </div>
+        <div>
+          <label style={lbl}>Turno</label>
+          <select value={nuevo.turno} onChange={(e) => setNuevo({ ...nuevo, turno: e.target.value })} style={{ ...selSm, width: 70 }}>
+            <option value="">—</option>
+            {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={lbl}>Nro OT</label>
+          <input list={listaNrosOt} value={nuevo.nro_ot} onChange={(e) => setNuevo({ ...nuevo, nro_ot: e.target.value })} style={{ ...selSm, width: 110 }} />
+        </div>
+        <div>
+          <label style={lbl}>Cliente</label>
+          <input list={listaClientes} value={nuevo.cliente} onChange={(e) => setNuevo({ ...nuevo, cliente: e.target.value })} style={{ ...selSm, width: 140 }} />
+        </div>
+        <div>
+          <label style={lbl}>Diseño</label>
+          <input list={listaDisenos} value={nuevo.diseno} onChange={(e) => setNuevo({ ...nuevo, diseno: e.target.value })} style={{ ...selSm, width: 140 }} />
+        </div>
+        <div>
+          <label style={lbl}>Mts Imp x Rollo</label>
+          <input type="number" value={nuevo.mts_imp_rollo} onChange={(e) => setNuevo({ ...nuevo, mts_imp_rollo: e.target.value })} style={{ ...selSm, width: 90 }} />
+        </div>
+        <div>
+          <label style={lbl}>Rollo Nro</label>
+          <input value={nuevo.rollo_nro} onChange={(e) => setNuevo({ ...nuevo, rollo_nro: e.target.value })} style={{ ...selSm, width: 90 }} />
+        </div>
+        <div>
+          <label style={lbl}>Tela</label>
+          <input list={listaTelas} value={nuevo.tela} onChange={(e) => setNuevo({ ...nuevo, tela: e.target.value })} style={{ ...selSm, width: 140 }} />
+        </div>
+        <div>
+          <label style={lbl}>Op Imp</label>
+          <select value={nuevo.op_imp} onChange={(e) => setNuevo({ ...nuevo, op_imp: e.target.value })} style={{ ...selSm, width: 100 }}>
+            <option value="">—</option>
+            {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: 1, minWidth: 180 }}>
+          <label style={lbl}>Novedades cambio de turno</label>
+          <input value={nuevo.novedades} onChange={(e) => setNuevo({ ...nuevo, novedades: e.target.value })} style={{ ...selSm, width: '100%' }} />
+        </div>
+        <button onClick={agregar} disabled={guardando} style={{ ...btn, background: '#e85d2f', color: '#fff', border: 'none', fontWeight: 700 }}>
+          {guardando ? 'Guardando...' : '+ Agregar'}
+        </button>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>{columnas.map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {rollos.map((r) => (
+              <tr key={r.id}>
+                <td style={{ ...td, minWidth: 120 }}>
+                  <input type="date" defaultValue={r.fecha} onBlur={(e) => actualizar(r.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 110 }} />
+                </td>
+                <td style={td}>
+                  <select defaultValue={r.turno} onChange={(e) => actualizar(r.id, 'turno', e.target.value)} style={selSm}>
+                    {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </td>
+                <td style={{ ...td, minWidth: 100 }}>
+                  <input list={listaNrosOt} defaultValue={r.nro_ot || ''} onBlur={(e) => actualizar(r.id, 'nro_ot', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 90 }} />
+                </td>
+                <td style={{ ...td, minWidth: 130 }}>
+                  <input list={listaClientes} defaultValue={r.cliente || ''} onBlur={(e) => actualizar(r.id, 'cliente', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 120 }} />
+                </td>
+                <td style={{ ...td, minWidth: 130 }}>
+                  <input list={listaDisenos} defaultValue={r.diseno || ''} onBlur={(e) => actualizar(r.id, 'diseno', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 120 }} />
+                </td>
+                <td style={td}>
+                  <input type="number" defaultValue={r.mts_imp_rollo ?? ''} onBlur={(e) => actualizar(r.id, 'mts_imp_rollo', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 80 }} />
+                </td>
+                <td style={td}>
+                  <input defaultValue={r.rollo_nro || ''} onBlur={(e) => actualizar(r.id, 'rollo_nro', e.target.value || null)} style={{ ...selSm, width: 80 }} />
+                </td>
+                <td style={{ ...td, minWidth: 130 }}>
+                  <input
+                    list={listaTelas}
+                    defaultValue={r.tela || ''}
+                    onBlur={(e) => { actualizar(r.id, 'tela', e.target.value || null); buscarCodTela(r, e.target.value); }}
+                    style={{ ...selSm, width: '100%', minWidth: 120 }}
+                  />
+                </td>
+                <td style={td}>
+                  <select defaultValue={r.op_imp || ''} onChange={(e) => actualizar(r.id, 'op_imp', e.target.value || null)} style={selSm}>
+                    <option value="">—</option>
+                    {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
+                  </select>
+                </td>
+                <td style={{ ...td, minWidth: 180 }}>
+                  <input defaultValue={r.novedades || ''} onBlur={(e) => actualizar(r.id, 'novedades', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 170 }} />
+                </td>
+                {esAdmin && (
+                  <td style={td}>
+                    <button onClick={() => eliminar(r.id)} style={{ ...btn, padding: '4px 8px', color: '#c0392b', borderColor: '#c0392b' }}>✕</button>
+                  </td>
+                )}
+              </tr>
+            ))}
+            {!cargando && rollos.length === 0 && (
+              <tr><td colSpan={columnas.length} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin registros todavía para {equipo}</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <datalist id={listaClientes}>{clientesStock.map((c) => <option key={c} value={c} />)}</datalist>
+      <datalist id={listaDisenos}>{disenosStock.map((d) => <option key={d} value={d} />)}</datalist>
+      <datalist id={listaTelas}>{telasStock.map((t) => <option key={t} value={t} />)}</datalist>
+      <datalist id={listaNrosOt}>{nrosOt.map((n) => <option key={n} value={n} />)}</datalist>
     </div>
   );
 }
