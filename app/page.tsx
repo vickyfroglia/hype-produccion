@@ -1732,7 +1732,22 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr>{columnas.map((h) => <th key={h} style={{ ...th, fontWeight: 700, textTransform: 'uppercase', fontSize: 12 }}>{h}</th>)}</tr>
+            <tr>
+              {columnas.map((h) => (
+                <th
+                  key={h}
+                  style={{
+                    ...th,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    fontSize: 12,
+                    ...(h !== 'Borrar' ? { background: '#fbe0c8', color: '#000' } : {}),
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
           </thead>
           <tbody>
             <tr
