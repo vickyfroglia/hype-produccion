@@ -1659,8 +1659,8 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
       .from('reporte_rollos')
       .select('*')
       .eq('equipo', equipo)
-      .order('fecha', { ascending: false })
-      .order('id', { ascending: false });
+      .order('fecha', { ascending: true })
+      .order('id', { ascending: true });
     if (!error) setRollos(data || []);
     setCargando(false);
   }
@@ -1785,6 +1785,83 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
             </tr>
           </thead>
           <tbody>
+            {rollos.map((r) => (
+              <tr key={r.id}>
+                <td style={{ ...td, minWidth: 120 }}>
+                  <input type="date" defaultValue={r.fecha} onBlur={(e) => actualizar(r.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 110 }} />
+                </td>
+                <td style={td}>
+                  <select defaultValue={r.turno} onChange={(e) => actualizar(r.id, 'turno', e.target.value)} style={selSm}>
+                    {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </td>
+                <td style={{ ...td, minWidth: 100 }}>
+                  <input
+                    list={listaNrosOt}
+                    defaultValue={(r.nro_ot || '').slice(-6)}
+                    onBlur={(e) => {
+                      const valor = e.target.value;
+                      actualizar(r.id, 'nro_ot', valor || null);
+                      const cliente = buscarClientePorNroOt(valor);
+                      if (cliente) actualizar(r.id, 'cliente', cliente);
+                      const disenosOt = disenosPorNroOt(valor);
+                      if (disenosOt.length === 1) actualizar(r.id, 'diseno', disenosOt[0]);
+                    }}
+                    style={{ ...selSm, width: '100%', minWidth: 90 }}
+                  />
+                </td>
+                <td style={{ ...td, minWidth: 130 }}>
+                  <input defaultValue={r.cliente || ''} readOnly disabled style={{ ...selSm, width: '100%', minWidth: 120, background: '#f0f0f0', color: '#666' }} />
+                </td>
+                <td style={{ ...td, minWidth: 130 }}>
+                  <select defaultValue={r.diseno || ''} onChange={(e) => actualizar(r.id, 'diseno', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 120 }}>
+                    <option value="">—</option>
+                    {disenosPorNroOt((r.nro_ot || '').slice(-6)).map((d) => <option key={d} value={d}>{d}</option>)}
+                    {r.diseno && !disenosPorNroOt((r.nro_ot || '').slice(-6)).includes(r.diseno) && (
+                      <option value={r.diseno}>{r.diseno} (ya no está en esa OT)</option>
+                    )}
+                  </select>
+                </td>
+                <td style={td}>
+                  <input type="number" defaultValue={r.mts_imp_rollo ?? ''} onBlur={(e) => actualizar(r.id, 'mts_imp_rollo', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 80 }} />
+                </td>
+                <td style={td}>
+                  <input defaultValue={r.rollo_nro || ''} onBlur={(e) => actualizar(r.id, 'rollo_nro', e.target.value || null)} style={{ ...selSm, width: 80 }} />
+                </td>
+                <td style={{ ...td, minWidth: 130 }}>
+                  <select
+                    defaultValue={r.tela || ''}
+                    onChange={(e) => { actualizar(r.id, 'tela', e.target.value || null); buscarCodTela(r, e.target.value); }}
+                    style={{ ...selSm, width: '100%', minWidth: 120 }}
+                  >
+                    <option value="">—</option>
+                    {telasPorNroOt((r.nro_ot || '').slice(-6), r.diseno || undefined).map((t) => <option key={t} value={t}>{t}</option>)}
+                    {r.tela && !telasPorNroOt((r.nro_ot || '').slice(-6), r.diseno || undefined).includes(r.tela) && (
+                      <option value={r.tela}>{r.tela} (ya no está en esa OT/diseño)</option>
+                    )}
+                  </select>
+                </td>
+                <td style={td}>
+                  <select defaultValue={r.op_imp || ''} onChange={(e) => actualizar(r.id, 'op_imp', e.target.value || null)} style={selSm}>
+                    <option value="">—</option>
+                    {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
+                  </select>
+                </td>
+                <td style={{ ...td, minWidth: 240, whiteSpace: 'normal', verticalAlign: 'top' }}>
+                  <textarea
+                    rows={2}
+                    defaultValue={r.novedades || ''}
+                    onBlur={(e) => actualizar(r.id, 'novedades', e.target.value || null)}
+                    style={{ ...selSm, width: '100%', minWidth: 230, resize: 'vertical', fontFamily: 'inherit' }}
+                  />
+                </td>
+                {esAdmin && (
+                  <td style={td}>
+                    <button onClick={() => eliminar(r.id)} style={{ ...btn, padding: '4px 8px', color: '#c0392b', borderColor: '#c0392b' }}>✕</button>
+                  </td>
+                )}
+              </tr>
+            ))}
             <tr
               style={{ background: '#fff8ec' }}
               onBlur={(e) => {
@@ -1873,83 +1950,6 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
               </td>
               {esAdmin && <td style={{ ...td, color: '#bbb', fontSize: 11 }}>{guardando ? 'Guardando…' : ''}</td>}
             </tr>
-            {rollos.map((r) => (
-              <tr key={r.id}>
-                <td style={{ ...td, minWidth: 120 }}>
-                  <input type="date" defaultValue={r.fecha} onBlur={(e) => actualizar(r.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 110 }} />
-                </td>
-                <td style={td}>
-                  <select defaultValue={r.turno} onChange={(e) => actualizar(r.id, 'turno', e.target.value)} style={selSm}>
-                    {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </td>
-                <td style={{ ...td, minWidth: 100 }}>
-                  <input
-                    list={listaNrosOt}
-                    defaultValue={(r.nro_ot || '').slice(-6)}
-                    onBlur={(e) => {
-                      const valor = e.target.value;
-                      actualizar(r.id, 'nro_ot', valor || null);
-                      const cliente = buscarClientePorNroOt(valor);
-                      if (cliente) actualizar(r.id, 'cliente', cliente);
-                      const disenosOt = disenosPorNroOt(valor);
-                      if (disenosOt.length === 1) actualizar(r.id, 'diseno', disenosOt[0]);
-                    }}
-                    style={{ ...selSm, width: '100%', minWidth: 90 }}
-                  />
-                </td>
-                <td style={{ ...td, minWidth: 130 }}>
-                  <input defaultValue={r.cliente || ''} readOnly disabled style={{ ...selSm, width: '100%', minWidth: 120, background: '#f0f0f0', color: '#666' }} />
-                </td>
-                <td style={{ ...td, minWidth: 130 }}>
-                  <select defaultValue={r.diseno || ''} onChange={(e) => actualizar(r.id, 'diseno', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 120 }}>
-                    <option value="">—</option>
-                    {disenosPorNroOt((r.nro_ot || '').slice(-6)).map((d) => <option key={d} value={d}>{d}</option>)}
-                    {r.diseno && !disenosPorNroOt((r.nro_ot || '').slice(-6)).includes(r.diseno) && (
-                      <option value={r.diseno}>{r.diseno} (ya no está en esa OT)</option>
-                    )}
-                  </select>
-                </td>
-                <td style={td}>
-                  <input type="number" defaultValue={r.mts_imp_rollo ?? ''} onBlur={(e) => actualizar(r.id, 'mts_imp_rollo', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 80 }} />
-                </td>
-                <td style={td}>
-                  <input defaultValue={r.rollo_nro || ''} onBlur={(e) => actualizar(r.id, 'rollo_nro', e.target.value || null)} style={{ ...selSm, width: 80 }} />
-                </td>
-                <td style={{ ...td, minWidth: 130 }}>
-                  <select
-                    defaultValue={r.tela || ''}
-                    onChange={(e) => { actualizar(r.id, 'tela', e.target.value || null); buscarCodTela(r, e.target.value); }}
-                    style={{ ...selSm, width: '100%', minWidth: 120 }}
-                  >
-                    <option value="">—</option>
-                    {telasPorNroOt((r.nro_ot || '').slice(-6), r.diseno || undefined).map((t) => <option key={t} value={t}>{t}</option>)}
-                    {r.tela && !telasPorNroOt((r.nro_ot || '').slice(-6), r.diseno || undefined).includes(r.tela) && (
-                      <option value={r.tela}>{r.tela} (ya no está en esa OT/diseño)</option>
-                    )}
-                  </select>
-                </td>
-                <td style={td}>
-                  <select defaultValue={r.op_imp || ''} onChange={(e) => actualizar(r.id, 'op_imp', e.target.value || null)} style={selSm}>
-                    <option value="">—</option>
-                    {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
-                  </select>
-                </td>
-                <td style={{ ...td, minWidth: 240, whiteSpace: 'normal', verticalAlign: 'top' }}>
-                  <textarea
-                    rows={2}
-                    defaultValue={r.novedades || ''}
-                    onBlur={(e) => actualizar(r.id, 'novedades', e.target.value || null)}
-                    style={{ ...selSm, width: '100%', minWidth: 230, resize: 'vertical', fontFamily: 'inherit' }}
-                  />
-                </td>
-                {esAdmin && (
-                  <td style={td}>
-                    <button onClick={() => eliminar(r.id)} style={{ ...btn, padding: '4px 8px', color: '#c0392b', borderColor: '#c0392b' }}>✕</button>
-                  </td>
-                )}
-              </tr>
-            ))}
             {!cargando && rollos.length === 0 && (
               <tr><td colSpan={columnas.length} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin registros todavía para {equipo}</td></tr>
             )}
@@ -2020,8 +2020,8 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
       .from('reporte_rollos')
       .select('*')
       .eq('equipo', 'Cibitex')
-      .order('fecha', { ascending: false })
-      .order('id', { ascending: false });
+      .order('fecha', { ascending: true })
+      .order('id', { ascending: true });
     if (!error) setRollos(data || []);
     setCargando(false);
   }
@@ -2109,6 +2109,96 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
             </tr>
           </thead>
           <tbody>
+            {rollos.map((r) => (
+              <tr key={r.id}>
+                <td style={{ ...td, minWidth: 100 }}>
+                  <input type="date" defaultValue={r.fecha} onBlur={(e) => actualizar(r.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 95 }} />
+                </td>
+                <td style={td}>
+                  <select defaultValue={r.turno || ''} onChange={(e) => actualizar(r.id, 'turno', e.target.value || null)} style={selSm}>
+                    <option value="">—</option>
+                    {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </td>
+                <td style={{ ...td, minWidth: 190 }}>
+                  <select
+                    defaultValue={r.tipo_proceso || ''}
+                    onChange={(e) => {
+                      actualizar(r.id, 'tipo_proceso', e.target.value || null);
+                      if (esTipoPrep(e.target.value)) actualizar(r.id, 'diseno', null);
+                    }}
+                    style={{ ...selSm, width: '100%', minWidth: 180 }}
+                  >
+                    <option value="">—</option>
+                    {TIPOS_PROCESO_CIBITEX.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </td>
+                <td style={{ ...td, minWidth: 100 }}>
+                  <input
+                    list={listaNrosOt}
+                    defaultValue={(r.nro_ot || '').slice(-6)}
+                    onBlur={(e) => {
+                      const valor = e.target.value;
+                      actualizar(r.id, 'nro_ot', valor || null);
+                      const cliente = buscarClientePorNroOt(valor);
+                      if (cliente) actualizar(r.id, 'cliente', cliente);
+                      if (!esTipoPrep(r.tipo_proceso || '')) {
+                        const disenosOt = disenosPorNroOt(valor);
+                        if (disenosOt.length === 1) actualizar(r.id, 'diseno', disenosOt[0]);
+                      }
+                    }}
+                    style={{ ...selSm, width: '100%', minWidth: 90 }}
+                  />
+                </td>
+                <td style={{ ...td, minWidth: 130 }}>
+                  <input defaultValue={r.cliente || ''} readOnly disabled style={{ ...selSm, width: '100%', minWidth: 120, background: '#f0f0f0', color: '#666' }} />
+                </td>
+                <td style={{ ...td, minWidth: 200 }}>
+                  <select
+                    defaultValue={r.diseno || ''}
+                    onChange={(e) => actualizar(r.id, 'diseno', e.target.value || null)}
+                    style={{ ...selSm, width: '100%', minWidth: 190 }}
+                    disabled={esTipoPrep(r.tipo_proceso || '')}
+                  >
+                    <option value="">{esTipoPrep(r.tipo_proceso || '') ? '— (no aplica)' : '—'}</option>
+                    {disenosPorNroOt((r.nro_ot || '').slice(-6)).map((d) => <option key={d} value={d}>{d}</option>)}
+                    {r.diseno && !disenosPorNroOt((r.nro_ot || '').slice(-6)).includes(r.diseno) && (
+                      <option value={r.diseno}>{r.diseno} (ya no está en esa OT)</option>
+                    )}
+                  </select>
+                </td>
+                <td style={{ ...td, minWidth: 130 }}>
+                  <select
+                    defaultValue={r.tela || ''}
+                    onChange={(e) => { actualizar(r.id, 'tela', e.target.value || null); buscarCodTela(r, e.target.value); }}
+                    style={{ ...selSm, width: '100%', minWidth: 120 }}
+                  >
+                    <option value="">—</option>
+                    {telasPorNroOt((r.nro_ot || '').slice(-6), esTipoPrep(r.tipo_proceso || '') ? undefined : (r.diseno || undefined)).map((t) => <option key={t} value={t}>{t}</option>)}
+                    {r.tela && !telasPorNroOt((r.nro_ot || '').slice(-6), esTipoPrep(r.tipo_proceso || '') ? undefined : (r.diseno || undefined)).includes(r.tela) && (
+                      <option value={r.tela}>{r.tela} (ya no está en esa OT/diseño)</option>
+                    )}
+                  </select>
+                </td>
+                <td style={td}>
+                  <input type="number" defaultValue={r.mts_fij ?? ''} onBlur={(e) => actualizar(r.id, 'mts_fij', e.target.value === '' ? null : parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 60 }} />
+                </td>
+                <td style={td}>
+                  <input defaultValue={r.nro_rollos_fij || ''} onBlur={(e) => actualizar(r.id, 'nro_rollos_fij', e.target.value || null)} style={{ ...selSm, width: 50 }} />
+                </td>
+                <td style={td}>
+                  <select defaultValue={r.op_fij || ''} onChange={(e) => actualizar(r.id, 'op_fij', e.target.value || null)} style={selSm}>
+                    <option value="">—</option>
+                    {OPERARIOS_FIJACION.map((op) => <option key={op} value={op}>{op}</option>)}
+                  </select>
+                </td>
+                {esAdmin && (
+                  <td style={td}>
+                    <button onClick={() => eliminar(r.id)} style={{ ...btn, padding: '4px 8px', color: '#c0392b', borderColor: '#c0392b' }}>✕</button>
+                  </td>
+                )}
+              </tr>
+            ))}
             <tr
               style={{ background: '#fff8ec' }}
               onBlur={(e) => {
@@ -2210,96 +2300,6 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
               </td>
               {esAdmin && <td style={{ ...td, color: '#bbb', fontSize: 11 }}>{guardando ? 'Guardando…' : ''}</td>}
             </tr>
-            {rollos.map((r) => (
-              <tr key={r.id}>
-                <td style={{ ...td, minWidth: 100 }}>
-                  <input type="date" defaultValue={r.fecha} onBlur={(e) => actualizar(r.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 95 }} />
-                </td>
-                <td style={td}>
-                  <select defaultValue={r.turno || ''} onChange={(e) => actualizar(r.id, 'turno', e.target.value || null)} style={selSm}>
-                    <option value="">—</option>
-                    {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </td>
-                <td style={{ ...td, minWidth: 190 }}>
-                  <select
-                    defaultValue={r.tipo_proceso || ''}
-                    onChange={(e) => {
-                      actualizar(r.id, 'tipo_proceso', e.target.value || null);
-                      if (esTipoPrep(e.target.value)) actualizar(r.id, 'diseno', null);
-                    }}
-                    style={{ ...selSm, width: '100%', minWidth: 180 }}
-                  >
-                    <option value="">—</option>
-                    {TIPOS_PROCESO_CIBITEX.map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </td>
-                <td style={{ ...td, minWidth: 100 }}>
-                  <input
-                    list={listaNrosOt}
-                    defaultValue={(r.nro_ot || '').slice(-6)}
-                    onBlur={(e) => {
-                      const valor = e.target.value;
-                      actualizar(r.id, 'nro_ot', valor || null);
-                      const cliente = buscarClientePorNroOt(valor);
-                      if (cliente) actualizar(r.id, 'cliente', cliente);
-                      if (!esTipoPrep(r.tipo_proceso || '')) {
-                        const disenosOt = disenosPorNroOt(valor);
-                        if (disenosOt.length === 1) actualizar(r.id, 'diseno', disenosOt[0]);
-                      }
-                    }}
-                    style={{ ...selSm, width: '100%', minWidth: 90 }}
-                  />
-                </td>
-                <td style={{ ...td, minWidth: 130 }}>
-                  <input defaultValue={r.cliente || ''} readOnly disabled style={{ ...selSm, width: '100%', minWidth: 120, background: '#f0f0f0', color: '#666' }} />
-                </td>
-                <td style={{ ...td, minWidth: 200 }}>
-                  <select
-                    defaultValue={r.diseno || ''}
-                    onChange={(e) => actualizar(r.id, 'diseno', e.target.value || null)}
-                    style={{ ...selSm, width: '100%', minWidth: 190 }}
-                    disabled={esTipoPrep(r.tipo_proceso || '')}
-                  >
-                    <option value="">{esTipoPrep(r.tipo_proceso || '') ? '— (no aplica)' : '—'}</option>
-                    {disenosPorNroOt((r.nro_ot || '').slice(-6)).map((d) => <option key={d} value={d}>{d}</option>)}
-                    {r.diseno && !disenosPorNroOt((r.nro_ot || '').slice(-6)).includes(r.diseno) && (
-                      <option value={r.diseno}>{r.diseno} (ya no está en esa OT)</option>
-                    )}
-                  </select>
-                </td>
-                <td style={{ ...td, minWidth: 130 }}>
-                  <select
-                    defaultValue={r.tela || ''}
-                    onChange={(e) => { actualizar(r.id, 'tela', e.target.value || null); buscarCodTela(r, e.target.value); }}
-                    style={{ ...selSm, width: '100%', minWidth: 120 }}
-                  >
-                    <option value="">—</option>
-                    {telasPorNroOt((r.nro_ot || '').slice(-6), esTipoPrep(r.tipo_proceso || '') ? undefined : (r.diseno || undefined)).map((t) => <option key={t} value={t}>{t}</option>)}
-                    {r.tela && !telasPorNroOt((r.nro_ot || '').slice(-6), esTipoPrep(r.tipo_proceso || '') ? undefined : (r.diseno || undefined)).includes(r.tela) && (
-                      <option value={r.tela}>{r.tela} (ya no está en esa OT/diseño)</option>
-                    )}
-                  </select>
-                </td>
-                <td style={td}>
-                  <input type="number" defaultValue={r.mts_fij ?? ''} onBlur={(e) => actualizar(r.id, 'mts_fij', e.target.value === '' ? null : parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 60 }} />
-                </td>
-                <td style={td}>
-                  <input defaultValue={r.nro_rollos_fij || ''} onBlur={(e) => actualizar(r.id, 'nro_rollos_fij', e.target.value || null)} style={{ ...selSm, width: 50 }} />
-                </td>
-                <td style={td}>
-                  <select defaultValue={r.op_fij || ''} onChange={(e) => actualizar(r.id, 'op_fij', e.target.value || null)} style={selSm}>
-                    <option value="">—</option>
-                    {OPERARIOS_FIJACION.map((op) => <option key={op} value={op}>{op}</option>)}
-                  </select>
-                </td>
-                {esAdmin && (
-                  <td style={td}>
-                    <button onClick={() => eliminar(r.id)} style={{ ...btn, padding: '4px 8px', color: '#c0392b', borderColor: '#c0392b' }}>✕</button>
-                  </td>
-                )}
-              </tr>
-            ))}
             {!cargando && rollos.length === 0 && (
               <tr><td colSpan={columnas.length} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin registros todavía para Cibitex</td></tr>
             )}
