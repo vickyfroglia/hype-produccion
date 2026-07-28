@@ -1758,6 +1758,7 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                     textTransform: 'uppercase',
                     fontSize: 12,
                     ...(columnasImpresion.includes(h) ? { background: '#fbe0c8', color: '#000' } : {}),
+                    ...(columnasFijado.includes(h) ? { background: '#e6dcf7', color: '#000' } : {}),
                   }}
                 >
                   {h}
