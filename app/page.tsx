@@ -239,59 +239,46 @@ function formatSemana(inicio: string): string {
 const GRUPO_PREP_PLANCHADO = ['PREP Y PRETRATADO', 'PLANCHADO', 'PREP Y REENCANUTADO'];
 const GRUPO_FIJADO = ['FIJADO', 'FIJ Y POSTRATADO'];
 
-interface AgregadoOperarioImpresion { operario: string; equipo: string; hoy: number; semana: number; mes: number }
-interface AgregadoOperarioTerminacion { operario: string; grupo: string; hoy: number; semana: number; mes: number }
+interface AgregadoImpresionMensual { operario: string; monalisa32: number; monalisa8: number }
+interface AgregadoTerminacionMensual { operario: string; fijado: number; prepPlanchado: number }
 
-// Mts totales impresos por operario y por equipo (Monalisa 32/8), con
-// tres totales: hoy, esta semana y este mes. Se calcula a partir del
-// Reporte diario (reporte_rollos), no de ordenes_directa — ahí es donde
-// se carga el detalle real por rollo y por turno.
-function mtsImpresionPorOperario(rollosReporte: RolloReporte[]): AgregadoOperarioImpresion[] {
-  const hoy = new Date().toISOString().split('T')[0];
-  const semanaActual = inicioSemana(hoy);
-  const mesActual = hoy.slice(0, 7);
-
-  const mapa = new Map<string, AgregadoOperarioImpresion>();
+// Mts totales impresos ESTE MES por operario, separados por equipo
+// (Monalisa 32/8). Se calcula a partir del Reporte diario (reporte_rollos),
+// no de ordenes_directa — ahí es donde se carga el detalle real por rollo y turno.
+function mtsImpresionMensualPorOperario(rollosReporte: RolloReporte[]): AgregadoImpresionMensual[] {
+  const mesActual = new Date().toISOString().slice(0, 7);
+  const mapa = new Map<string, AgregadoImpresionMensual>();
   rollosReporte
-    .filter((r) => (r.equipo === 'Monalisa 32' || r.equipo === 'Monalisa 8') && r.op_imp && Number(r.mts_imp_rollo || 0) > 0)
+    .filter((r) => (r.equipo === 'Monalisa 32' || r.equipo === 'Monalisa 8') && r.op_imp && r.fecha && r.fecha.slice(0, 7) === mesActual)
     .forEach((r) => {
-      const key = `${r.op_imp}__${r.equipo}`;
-      const actual = mapa.get(key) || { operario: r.op_imp as string, equipo: r.equipo, hoy: 0, semana: 0, mes: 0 };
+      const operario = r.op_imp as string;
+      const actual = mapa.get(operario) || { operario, monalisa32: 0, monalisa8: 0 };
       const mts = Number(r.mts_imp_rollo || 0);
-      if (r.fecha === hoy) actual.hoy += mts;
-      if (inicioSemana(r.fecha) === semanaActual) actual.semana += mts;
-      if (r.fecha.slice(0, 7) === mesActual) actual.mes += mts;
-      mapa.set(key, actual);
+      if (r.equipo === 'Monalisa 32') actual.monalisa32 += mts;
+      if (r.equipo === 'Monalisa 8') actual.monalisa8 += mts;
+      mapa.set(operario, actual);
     });
-  return Array.from(mapa.values()).sort((a, b) => a.operario.localeCompare(b.operario) || a.equipo.localeCompare(b.equipo));
+  return Array.from(mapa.values()).sort((a, b) => a.operario.localeCompare(b.operario));
 }
 
-// Mts totales de Terminación (Cibitex) por operario, agrupados en dos
-// columnas según el tipo de proceso: Preparación/Planchado por un lado,
-// Fijado por otro — con los mismos tres totales (hoy/semana/mes).
-function mtsTerminacionPorOperario(rollosReporte: RolloReporte[]): AgregadoOperarioTerminacion[] {
-  const hoy = new Date().toISOString().split('T')[0];
-  const semanaActual = inicioSemana(hoy);
-  const mesActual = hoy.slice(0, 7);
-
-  const mapa = new Map<string, AgregadoOperarioTerminacion>();
+// Mts totales de Terminación (Cibitex) ESTE MES por operario, agrupados en
+// dos totales según el tipo de proceso: Fijado (FIJADO / FIJ Y POSTRATADO)
+// por un lado, Preparación/Planchado (PREP Y REENCANUTADO / PREP Y
+// PRETRATADO / PLANCHADO) por otro.
+function mtsTerminacionMensualPorOperario(rollosReporte: RolloReporte[]): AgregadoTerminacionMensual[] {
+  const mesActual = new Date().toISOString().slice(0, 7);
+  const mapa = new Map<string, AgregadoTerminacionMensual>();
   rollosReporte
-    .filter((r) => r.equipo === 'Cibitex' && r.op_fij && Number(r.mts_fij || 0) > 0)
+    .filter((r) => r.equipo === 'Cibitex' && r.op_fij && r.fecha && r.fecha.slice(0, 7) === mesActual)
     .forEach((r) => {
-      const grupo = GRUPO_PREP_PLANCHADO.includes(r.tipo_proceso || '')
-        ? 'Preparación / Planchado'
-        : GRUPO_FIJADO.includes(r.tipo_proceso || '')
-        ? 'Fijado'
-        : 'Sin tipo';
-      const key = `${r.op_fij}__${grupo}`;
-      const actual = mapa.get(key) || { operario: r.op_fij as string, grupo, hoy: 0, semana: 0, mes: 0 };
+      const operario = r.op_fij as string;
+      const actual = mapa.get(operario) || { operario, fijado: 0, prepPlanchado: 0 };
       const mts = Number(r.mts_fij || 0);
-      if (r.fecha === hoy) actual.hoy += mts;
-      if (inicioSemana(r.fecha) === semanaActual) actual.semana += mts;
-      if (r.fecha.slice(0, 7) === mesActual) actual.mes += mts;
-      mapa.set(key, actual);
+      if (GRUPO_FIJADO.includes(r.tipo_proceso || '')) actual.fijado += mts;
+      if (GRUPO_PREP_PLANCHADO.includes(r.tipo_proceso || '')) actual.prepPlanchado += mts;
+      mapa.set(operario, actual);
     });
-  return Array.from(mapa.values()).sort((a, b) => a.operario.localeCompare(b.operario) || a.grupo.localeCompare(b.grupo));
+  return Array.from(mapa.values()).sort((a, b) => a.operario.localeCompare(b.operario));
 }
 
 function Dashboard({ ordenes, rollosReporte }: { ordenes: OrdenDirecta[]; rollosReporte: RolloReporte[] }) {
@@ -301,8 +288,8 @@ function Dashboard({ ordenes, rollosReporte }: { ordenes: OrdenDirecta[]; rollos
   const ordenesAtrasadas = ordenesAtrasadasPorPlazo(ordenes);
   const mtsPed = ordenes.reduce((s, o) => s + Number(o.mts_pedidos || 0), 0);
   const mtsImp = ordenes.reduce((s, o) => s + Number(o.mts_impresos || 0), 0);
-  const impresionPorOperario = mtsImpresionPorOperario(rollosReporte);
-  const terminacionPorOperario = mtsTerminacionPorOperario(rollosReporte);
+  const impresionPorOperario = mtsImpresionMensualPorOperario(rollosReporte);
+  const terminacionPorOperario = mtsTerminacionMensualPorOperario(rollosReporte);
 
   return (
     <div style={{ textTransform: 'uppercase' }}>
@@ -399,22 +386,20 @@ function Dashboard({ ordenes, rollosReporte }: { ordenes: OrdenDirecta[]; rollos
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 20 }}>
         <div style={{ ...card, background: '#e6dcf7', color: '#000' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#000', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
-            Impresión — mts por operario y equipo
+            Impresión — mts del mes por operario
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>{['Operario', 'Equipo', 'Hoy', 'Semana', 'Mes'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
+                <tr>{['Operario', 'Monalisa 32', 'Monalisa 8'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
               </thead>
               <tbody>
-                {impresionPorOperario.length === 0 && <tr><td colSpan={5} style={{ ...td, textAlign: 'center', color: '#000' }}>Todavía no hay datos</td></tr>}
+                {impresionPorOperario.length === 0 && <tr><td colSpan={3} style={{ ...td, textAlign: 'center', color: '#000' }}>Todavía no hay datos</td></tr>}
                 {impresionPorOperario.map((r) => (
-                  <tr key={`${r.operario}-${r.equipo}`}>
+                  <tr key={r.operario}>
                     <td style={{ ...td, color: '#000' }}>{r.operario}</td>
-                    <td style={{ ...td, color: '#000' }}>{r.equipo}</td>
-                    <td style={{ ...td, color: '#000' }}>{r.hoy.toLocaleString()}</td>
-                    <td style={{ ...td, color: '#000' }}>{r.semana.toLocaleString()}</td>
-                    <td style={{ ...td, fontWeight: 700, color: '#000' }}>{r.mes.toLocaleString()}</td>
+                    <td style={{ ...td, fontWeight: 700, color: '#000' }}>{r.monalisa32.toLocaleString()}</td>
+                    <td style={{ ...td, fontWeight: 700, color: '#000' }}>{r.monalisa8.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -424,22 +409,20 @@ function Dashboard({ ordenes, rollosReporte }: { ordenes: OrdenDirecta[]; rollos
 
         <div style={{ ...card, background: '#e6dcf7', color: '#000' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#000', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
-            Terminación — mts por operario
+            Terminación — mts del mes por operario
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>{['Operario', 'Tipo', 'Hoy', 'Semana', 'Mes'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
+                <tr>{['Operario', 'Fijado', 'Prep / Planchado'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
               </thead>
               <tbody>
-                {terminacionPorOperario.length === 0 && <tr><td colSpan={5} style={{ ...td, textAlign: 'center', color: '#000' }}>Todavía no hay datos</td></tr>}
+                {terminacionPorOperario.length === 0 && <tr><td colSpan={3} style={{ ...td, textAlign: 'center', color: '#000' }}>Todavía no hay datos</td></tr>}
                 {terminacionPorOperario.map((r) => (
-                  <tr key={`${r.operario}-${r.grupo}`}>
+                  <tr key={r.operario}>
                     <td style={{ ...td, color: '#000' }}>{r.operario}</td>
-                    <td style={{ ...td, color: '#000' }}>{r.grupo}</td>
-                    <td style={{ ...td, color: '#000' }}>{r.hoy.toLocaleString()}</td>
-                    <td style={{ ...td, color: '#000' }}>{r.semana.toLocaleString()}</td>
-                    <td style={{ ...td, fontWeight: 700, color: '#000' }}>{r.mes.toLocaleString()}</td>
+                    <td style={{ ...td, fontWeight: 700, color: '#000' }}>{r.fijado.toLocaleString()}</td>
+                    <td style={{ ...td, fontWeight: 700, color: '#000' }}>{r.prepPlanchado.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
