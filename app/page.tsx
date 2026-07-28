@@ -1631,6 +1631,11 @@ function filaRolloVacia() {
     tela: '',
     op_imp: '',
     novedades: '',
+    fecha_fij: new Date().toISOString().split('T')[0],
+    turno_fij: '',
+    op_fij: '',
+    mts_fij: '',
+    nro_rollos_fij: '',
   };
 }
 
@@ -1689,18 +1694,19 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
 
   // Se guarda solo, directamente desde la fila en blanco de la tabla: no
   // hay botón de "Agregar". Se dispara cuando el foco sale de la fila
-  // (clic afuera o tab al final) y ya se eligió el turno (único campo
-  // obligatorio). Si todavía no hay turno elegido, no hace nada — los
-  // datos quedan en la fila hasta que lo completen.
+  // (clic afuera o tab al final) y ya se eligió algún turno (impresión
+  // o fijado — al menos uno de los dos es obligatorio). Si todavía no
+  // hay ningún turno elegido, no hace nada — los datos quedan en la
+  // fila hasta que la completen.
   async function guardarNuevaFila() {
-    if (!nuevo.turno) return;
+    if (!nuevo.turno && !nuevo.turno_fij) return;
     setGuardando(true);
     const { data, error } = await supabase
       .from('reporte_rollos')
       .insert({
         equipo,
         fecha: nuevo.fecha,
-        turno: nuevo.turno,
+        turno: nuevo.turno || null,
         nro_ot: nuevo.nro_ot || null,
         cliente: nuevo.cliente || null,
         diseno: nuevo.diseno || null,
@@ -1709,6 +1715,11 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
         tela: nuevo.tela || null,
         op_imp: nuevo.op_imp || null,
         novedades: nuevo.novedades || null,
+        fecha_fij: nuevo.turno_fij ? nuevo.fecha_fij : null,
+        turno_fij: nuevo.turno_fij || null,
+        op_fij: nuevo.op_fij || null,
+        mts_fij: nuevo.mts_fij ? parseFloat(nuevo.mts_fij) || 0 : null,
+        nro_rollos_fij: nuevo.nro_rollos_fij || null,
       })
       .select()
       .single();
@@ -1725,7 +1736,12 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
   const listaNrosOt = `nros-ot-${equipo}`;
   const esAdmin = rol.trim() === 'admin';
 
-  const columnas = ['Fecha', 'Turno', 'Nro OT', 'Cliente', 'Diseño', 'Mts Imp x Rollo', 'Rollo Nro', 'Tela', 'Op Imp', 'Novedades cambio de turno', ...(esAdmin ? ['Borrar'] : [])];
+  // Columnas de impresión (naranja pastel — todo lo que completan los
+  // operarios de impresión), seguidas por las de fijado/terminación
+  // hacia la derecha, y por último Borrar (solo admin).
+  const columnasImpresion = ['Fecha', 'Turno', 'Nro OT', 'Cliente', 'Diseño', 'Mts Imp x Rollo', 'Rollo Nro', 'Tela', 'Op Imp', 'Novedades cambio de turno'];
+  const columnasFijado = ['Fecha Fij', 'Turno Fij', 'Op Fij', 'Mts Fij', 'Nro de Rollos'];
+  const columnas = [...columnasImpresion, ...columnasFijado, ...(esAdmin ? ['Borrar'] : [])];
 
   return (
     <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
@@ -1741,7 +1757,7 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     fontSize: 12,
-                    ...(h !== 'Borrar' ? { background: '#fbe0c8', color: '#000' } : {}),
+                    ...(columnasImpresion.includes(h) ? { background: '#fbe0c8', color: '#000' } : {}),
                   }}
                 >
                   {h}
@@ -1798,6 +1814,27 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                   style={{ ...selSm, width: '100%', minWidth: 230, resize: 'vertical', fontFamily: 'inherit' }}
                 />
               </td>
+              <td style={{ ...td, minWidth: 120 }}>
+                <input type="date" value={nuevo.fecha_fij} onChange={(e) => setNuevo({ ...nuevo, fecha_fij: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 110 }} />
+              </td>
+              <td style={td}>
+                <select value={nuevo.turno_fij} onChange={(e) => setNuevo({ ...nuevo, turno_fij: e.target.value })} style={selSm}>
+                  <option value="">—</option>
+                  {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </td>
+              <td style={td}>
+                <select value={nuevo.op_fij} onChange={(e) => setNuevo({ ...nuevo, op_fij: e.target.value })} style={selSm}>
+                  <option value="">—</option>
+                  {OPERARIOS_FIJACION.map((op) => <option key={op} value={op}>{op}</option>)}
+                </select>
+              </td>
+              <td style={td}>
+                <input type="number" placeholder="Mts" value={nuevo.mts_fij} onChange={(e) => setNuevo({ ...nuevo, mts_fij: e.target.value })} style={{ ...selSm, width: 80 }} />
+              </td>
+              <td style={td}>
+                <input placeholder="Rollos" value={nuevo.nro_rollos_fij} onChange={(e) => setNuevo({ ...nuevo, nro_rollos_fij: e.target.value })} style={{ ...selSm, width: 90 }} />
+              </td>
               {esAdmin && <td style={{ ...td, color: '#bbb', fontSize: 11 }}>{guardando ? 'Guardando…' : ''}</td>}
             </tr>
             {rollos.map((r) => (
@@ -1846,6 +1883,27 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                     onBlur={(e) => actualizar(r.id, 'novedades', e.target.value || null)}
                     style={{ ...selSm, width: '100%', minWidth: 230, resize: 'vertical', fontFamily: 'inherit' }}
                   />
+                </td>
+                <td style={{ ...td, minWidth: 120 }}>
+                  <input type="date" defaultValue={r.fecha_fij || ''} onBlur={(e) => actualizar(r.id, 'fecha_fij', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 110 }} />
+                </td>
+                <td style={td}>
+                  <select defaultValue={r.turno_fij || ''} onChange={(e) => actualizar(r.id, 'turno_fij', e.target.value || null)} style={selSm}>
+                    <option value="">—</option>
+                    {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </td>
+                <td style={td}>
+                  <select defaultValue={r.op_fij || ''} onChange={(e) => actualizar(r.id, 'op_fij', e.target.value || null)} style={selSm}>
+                    <option value="">—</option>
+                    {OPERARIOS_FIJACION.map((op) => <option key={op} value={op}>{op}</option>)}
+                  </select>
+                </td>
+                <td style={td}>
+                  <input type="number" defaultValue={r.mts_fij ?? ''} onBlur={(e) => actualizar(r.id, 'mts_fij', e.target.value === '' ? null : parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 80 }} />
+                </td>
+                <td style={td}>
+                  <input defaultValue={r.nro_rollos_fij || ''} onBlur={(e) => actualizar(r.id, 'nro_rollos_fij', e.target.value || null)} style={{ ...selSm, width: 90 }} />
                 </td>
                 {esAdmin && (
                   <td style={td}>

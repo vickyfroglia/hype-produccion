@@ -108,6 +108,11 @@ export interface RolloReporte {
   cod_tela: string | null;
   op_imp: string | null;
   novedades: string | null;
+  fecha_fij: string | null;
+  turno_fij: string | null;
+  op_fij: string | null;
+  mts_fij: number | null;
+  nro_rollos_fij: string | null;
   created_at: string;
 }
 
