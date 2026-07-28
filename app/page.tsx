@@ -1645,7 +1645,6 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
   const [nuevo, setNuevo] = useState(filaRolloVacia());
   const [guardando, setGuardando] = useState(false);
 
-  const disenosStock = Array.from(new Set(ordenes.map((o) => o.diseno).filter(Boolean))).sort();
   const telasStock = Array.from(new Set(ordenes.map((o) => o.tela).filter(Boolean) as string[])).sort();
   // Solo los últimos 6 dígitos del nro_ot (más fácil de leer y escribir
   // que el correlativo completo de 12 dígitos).
@@ -1680,6 +1679,14 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
     if (!nroOtCorto) return null;
     const orden = ordenes.find((o) => o.nro_ot.slice(-6) === nroOtCorto.trim());
     return orden ? orden.cliente : null;
+  }
+
+  // El Diseño también viene solo de Producción: una misma OT puede tener
+  // varios diseños, así que se listan todos los de esa OT en un
+  // desplegable en vez de tipearlo a mano.
+  function disenosPorNroOt(nroOtCorto: string): string[] {
+    if (!nroOtCorto) return [];
+    return Array.from(new Set(ordenes.filter((o) => o.nro_ot.slice(-6) === nroOtCorto.trim()).map((o) => o.diseno)));
   }
 
   // Igual que en Producción y Nuevo Pedido: al elegir/corregir la tela,
@@ -1739,7 +1746,6 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
     cargar();
   }
 
-  const listaDisenos = `disenos-${equipo}`;
   const listaTelas = `telas-${equipo}`;
   const listaNrosOt = `nros-ot-${equipo}`;
   const esAdmin = rol.trim() === 'admin';
@@ -1797,7 +1803,13 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                   value={nuevo.nro_ot}
                   onChange={(e) => {
                     const valor = e.target.value;
-                    setNuevo({ ...nuevo, nro_ot: valor, cliente: buscarClientePorNroOt(valor) || '' });
+                    const disenosOt = disenosPorNroOt(valor);
+                    setNuevo({
+                      ...nuevo,
+                      nro_ot: valor,
+                      cliente: buscarClientePorNroOt(valor) || '',
+                      diseno: disenosOt.length === 1 ? disenosOt[0] : '',
+                    });
                   }}
                   style={{ ...selSm, width: '100%', minWidth: 90 }}
                 />
@@ -1806,7 +1818,10 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                 <input placeholder="— (según Nro OT)" value={nuevo.cliente} readOnly disabled style={{ ...selSm, width: '100%', minWidth: 120, background: '#f0f0f0', color: '#666' }} />
               </td>
               <td style={{ ...td, minWidth: 130 }}>
-                <input list={listaDisenos} placeholder="Diseño" value={nuevo.diseno} onChange={(e) => setNuevo({ ...nuevo, diseno: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 120 }} />
+                <select value={nuevo.diseno} onChange={(e) => setNuevo({ ...nuevo, diseno: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 120 }} disabled={!nuevo.nro_ot}>
+                  <option value="">{nuevo.nro_ot ? '— (elegir diseño)' : '— (elegir Nro OT primero)'}</option>
+                  {disenosPorNroOt(nuevo.nro_ot).map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
               </td>
               <td style={td}>
                 <input type="number" placeholder="Mts" value={nuevo.mts_imp_rollo} onChange={(e) => setNuevo({ ...nuevo, mts_imp_rollo: e.target.value })} style={{ ...selSm, width: 80 }} />
@@ -1874,6 +1889,8 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                       actualizar(r.id, 'nro_ot', valor || null);
                       const cliente = buscarClientePorNroOt(valor);
                       if (cliente) actualizar(r.id, 'cliente', cliente);
+                      const disenosOt = disenosPorNroOt(valor);
+                      if (disenosOt.length === 1) actualizar(r.id, 'diseno', disenosOt[0]);
                     }}
                     style={{ ...selSm, width: '100%', minWidth: 90 }}
                   />
@@ -1882,7 +1899,13 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                   <input defaultValue={r.cliente || ''} readOnly disabled style={{ ...selSm, width: '100%', minWidth: 120, background: '#f0f0f0', color: '#666' }} />
                 </td>
                 <td style={{ ...td, minWidth: 130 }}>
-                  <input list={listaDisenos} defaultValue={r.diseno || ''} onBlur={(e) => actualizar(r.id, 'diseno', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 120 }} />
+                  <select defaultValue={r.diseno || ''} onChange={(e) => actualizar(r.id, 'diseno', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 120 }}>
+                    <option value="">—</option>
+                    {disenosPorNroOt((r.nro_ot || '').slice(-6)).map((d) => <option key={d} value={d}>{d}</option>)}
+                    {r.diseno && !disenosPorNroOt((r.nro_ot || '').slice(-6)).includes(r.diseno) && (
+                      <option value={r.diseno}>{r.diseno} (ya no está en esa OT)</option>
+                    )}
+                  </select>
                 </td>
                 <td style={td}>
                   <input type="number" defaultValue={r.mts_imp_rollo ?? ''} onBlur={(e) => actualizar(r.id, 'mts_imp_rollo', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 80 }} />
@@ -1947,7 +1970,6 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
         </table>
       </div>
 
-      <datalist id={listaDisenos}>{disenosStock.map((d) => <option key={d} value={d} />)}</datalist>
       <datalist id={listaTelas}>{telasStock.map((t) => <option key={t} value={t} />)}</datalist>
       <datalist id={listaNrosOt}>{nrosOt.map((n) => <option key={n} value={n} />)}</datalist>
     </div>
