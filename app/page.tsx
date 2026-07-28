@@ -1961,6 +1961,12 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
   const telasStock = Array.from(new Set(ordenes.map((o) => o.tela).filter(Boolean) as string[])).sort();
   const nrosOt = Array.from(new Set(ordenes.map((o) => o.nro_ot.slice(-6)))).sort();
 
+  // Los tipos "PREP Y ..." son a nivel OT, antes de imprimir un diseño en
+  // particular — para esos no aplica elegir un diseño puntual.
+  function esTipoPrep(tipo: string): boolean {
+    return tipo.startsWith('PREP');
+  }
+
   function buscarClientePorNroOt(nroOtCorto: string): string | null {
     if (!nroOtCorto) return null;
     const orden = ordenes.find((o) => o.nro_ot.slice(-6) === nroOtCorto.trim());
@@ -2025,7 +2031,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
         tipo_proceso: nuevo.tipo_proceso || null,
         nro_ot: nuevo.nro_ot || null,
         cliente: nuevo.cliente || null,
-        diseno: nuevo.tipo_proceso === 'Preparación' ? null : nuevo.diseno || null,
+        diseno: esTipoPrep(nuevo.tipo_proceso) ? null : nuevo.diseno || null,
         tela: nuevo.tela || null,
         mts_fij: nuevo.mts_fij ? parseFloat(nuevo.mts_fij) || 0 : null,
         nro_rollos_fij: nuevo.nro_rollos_fij || null,
@@ -2085,7 +2091,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
               <td style={td}>
                 <select
                   value={nuevo.tipo_proceso}
-                  onChange={(e) => setNuevo({ ...nuevo, tipo_proceso: e.target.value, diseno: e.target.value === 'Preparación' ? '' : nuevo.diseno })}
+                  onChange={(e) => setNuevo({ ...nuevo, tipo_proceso: e.target.value, diseno: esTipoPrep(e.target.value) ? '' : nuevo.diseno })}
                   style={selSm}
                 >
                   <option value="">—</option>
@@ -2104,7 +2110,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                       ...nuevo,
                       nro_ot: valor,
                       cliente: buscarClientePorNroOt(valor) || '',
-                      diseno: nuevo.tipo_proceso === 'Preparación' ? '' : (disenosOt.length === 1 ? disenosOt[0] : ''),
+                      diseno: esTipoPrep(nuevo.tipo_proceso) ? '' : (disenosOt.length === 1 ? disenosOt[0] : ''),
                     });
                   }}
                   style={{ ...selSm, width: '100%', minWidth: 90 }}
@@ -2118,12 +2124,12 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                   value={nuevo.diseno}
                   onChange={(e) => setNuevo({ ...nuevo, diseno: e.target.value })}
                   style={{ ...selSm, width: '100%', minWidth: 120 }}
-                  disabled={!nuevo.nro_ot || nuevo.tipo_proceso === 'Preparación'}
+                  disabled={!nuevo.nro_ot || esTipoPrep(nuevo.tipo_proceso)}
                 >
                   <option value="">
-                    {nuevo.tipo_proceso === 'Preparación' ? '— (no aplica)' : nuevo.nro_ot ? '— (elegir diseño)' : '— (elegir Nro OT primero)'}
+                    {esTipoPrep(nuevo.tipo_proceso) ? '— (no aplica)' : nuevo.nro_ot ? '— (elegir diseño)' : '— (elegir Nro OT primero)'}
                   </option>
-                  {nuevo.tipo_proceso !== 'Preparación' && disenosPorNroOt(nuevo.nro_ot).map((d) => <option key={d} value={d}>{d}</option>)}
+                  {!esTipoPrep(nuevo.tipo_proceso) && disenosPorNroOt(nuevo.nro_ot).map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
               </td>
               <td style={{ ...td, minWidth: 130 }}>
@@ -2159,7 +2165,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                     defaultValue={r.tipo_proceso || ''}
                     onChange={(e) => {
                       actualizar(r.id, 'tipo_proceso', e.target.value || null);
-                      if (e.target.value === 'Preparación') actualizar(r.id, 'diseno', null);
+                      if (esTipoPrep(e.target.value)) actualizar(r.id, 'diseno', null);
                     }}
                     style={selSm}
                   >
@@ -2176,7 +2182,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                       actualizar(r.id, 'nro_ot', valor || null);
                       const cliente = buscarClientePorNroOt(valor);
                       if (cliente) actualizar(r.id, 'cliente', cliente);
-                      if (r.tipo_proceso !== 'Preparación') {
+                      if (!esTipoPrep(r.tipo_proceso || '')) {
                         const disenosOt = disenosPorNroOt(valor);
                         if (disenosOt.length === 1) actualizar(r.id, 'diseno', disenosOt[0]);
                       }
@@ -2192,9 +2198,9 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                     defaultValue={r.diseno || ''}
                     onChange={(e) => actualizar(r.id, 'diseno', e.target.value || null)}
                     style={{ ...selSm, width: '100%', minWidth: 120 }}
-                    disabled={r.tipo_proceso === 'Preparación'}
+                    disabled={esTipoPrep(r.tipo_proceso || '')}
                   >
-                    <option value="">{r.tipo_proceso === 'Preparación' ? '— (no aplica)' : '—'}</option>
+                    <option value="">{esTipoPrep(r.tipo_proceso || '') ? '— (no aplica)' : '—'}</option>
                     {disenosPorNroOt((r.nro_ot || '').slice(-6)).map((d) => <option key={d} value={d}>{d}</option>)}
                     {r.diseno && !disenosPorNroOt((r.nro_ot || '').slice(-6)).includes(r.diseno) && (
                       <option value={r.diseno}>{r.diseno} (ya no está en esa OT)</option>

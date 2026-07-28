@@ -18,8 +18,9 @@ export const OPERARIOS_ENTREGA = ['Mati', 'Leo', 'Ciro', 'Lautaro', 'Tomás', 'N
 export const TURNOS_REPORTE = ['T1', 'T2', 'T3', 'S1', 'S2', 'S3', 'D1', 'D2', 'D3', 'F1', 'F2', 'F3'] as const;
 
 // Reporte diario — Cibitex (preparación/fijado): tipo de proceso que se
-// está registrando en esa fila.
-export const TIPOS_PROCESO_CIBITEX = ['Preparación', 'Fijado'] as const;
+// está registrando en esa fila. Los que arrancan con "PREP" no tienen
+// un diseño puntual asociado (se hacen a nivel OT, antes de imprimir).
+export const TIPOS_PROCESO_CIBITEX = ['PREP Y REENCANUTADO', 'PREP Y PRETRATADO', 'PLANCHADO', 'FIJADO', 'FIJ Y POSTRATADO'] as const;
 
 // Catálogo fijo de telas "Stock TH" (telas propias de HYPE, no de un
 // cliente en particular). Al escribir "HYPE" en el campo Tela de Nuevo
