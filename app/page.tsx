@@ -283,7 +283,7 @@ function mtsTerminacionMensualPorOperario(rollosReporte: RolloReporte[]): Agrega
 
 function Dashboard({ ordenes, rollosReporte }: { ordenes: OrdenDirecta[]; rollosReporte: RolloReporte[] }) {
   const abiertas = ordenes.filter((o) => o.estado_entrega === 'En almacén');
-  const incompletos = ordenes.filter((o) => !o.fecha_fin);
+  const incompletos = ordenes.filter((o) => o.imp_operario === 'NO');
   const otsIncompletas = new Set(incompletos.map((o) => o.nro_ot)).size;
   const ordenesAtrasadas = ordenesAtrasadasPorPlazo(ordenes);
   const mtsPed = ordenes.reduce((s, o) => s + Number(o.mts_pedidos || 0), 0);
@@ -296,7 +296,7 @@ function Dashboard({ ordenes, rollosReporte }: { ordenes: OrdenDirecta[]; rollos
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
         {[
           { label: 'OT abiertas', value: abiertas.length, sub: 'en almacén' },
-          { label: 'OT incompletas', value: otsIncompletas, sub: 'con algún ítem sin terminar' },
+          { label: 'OT incompletas', value: otsIncompletas, sub: 'marcadas NO en Op Imp' },
           { label: 'Órdenes atrasadas', value: ordenesAtrasadas.length, sub: `+${PLAZO_ENTREGA_DIAS} días sin entregar` },
           { label: 'Mts', value: `${mtsImp.toLocaleString()} / ${mtsPed.toLocaleString()}`, sub: 'impresos / pedidos' },
         ].map((m, i) => (
@@ -334,7 +334,7 @@ function Dashboard({ ordenes, rollosReporte }: { ordenes: OrdenDirecta[]; rollos
 
       <div style={{ ...card, marginBottom: 20, background: '#fdfbf5', color: '#000' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b', letterSpacing: 1, marginBottom: 12 }}>
-          Órdenes incompletas ({incompletos.length} ítems en {otsIncompletas} OT) — todavía no tienen Fecha fin
+          Órdenes incompletas ({incompletos.length} ítems en {otsIncompletas} OT) — marcadas NO en Op Imp
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
