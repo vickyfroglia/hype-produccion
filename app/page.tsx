@@ -391,7 +391,14 @@ function Dashboard({ ordenes, rollosReporte }: { ordenes: OrdenDirecta[]; rollos
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>{['Operario', 'Monalisa 32', 'Monalisa 8'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
+                <tr>
+                  {['Operario', 'Monalisa 32', 'Monalisa 8'].map((h) => (
+                    <th key={h} style={{ ...th, color: '#000' }}>
+                      {h}
+                      {h !== 'Operario' && <span style={{ textTransform: 'lowercase' }}> (mts.)</span>}
+                    </th>
+                  ))}
+                </tr>
               </thead>
               <tbody>
                 {impresionPorOperario.length === 0 && <tr><td colSpan={3} style={{ ...td, textAlign: 'center', color: '#000' }}>Todavía no hay datos</td></tr>}
@@ -414,7 +421,14 @@ function Dashboard({ ordenes, rollosReporte }: { ordenes: OrdenDirecta[]; rollos
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>{['Operario', 'Fijado', 'Prep / Planchado'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
+                <tr>
+                  {['Operario', 'Fijado', 'Preparación'].map((h) => (
+                    <th key={h} style={{ ...th, color: '#000' }}>
+                      {h}
+                      {h !== 'Operario' && <span style={{ textTransform: 'lowercase' }}> (mts.)</span>}
+                    </th>
+                  ))}
+                </tr>
               </thead>
               <tbody>
                 {terminacionPorOperario.length === 0 && <tr><td colSpan={3} style={{ ...td, textAlign: 'center', color: '#000' }}>Todavía no hay datos</td></tr>}
