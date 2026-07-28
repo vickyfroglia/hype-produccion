@@ -245,7 +245,8 @@ function motivoBloqueo(o: OrdenDirecta, stock: MapasStock): string | null {
       ? stock.porIdTH.get(idHype) ?? 0
       : stock.porClienteTela.get(`${(o.cliente || '').trim().toLowerCase()}__${idHype}`) ?? 0;
     if (disponible < faltanImprimir) {
-      return `Falta tela: ${o.tela || idHype} (disp. ${disponible.toLocaleString()} / faltan ${faltanImprimir.toLocaleString()} mts)`;
+      const faltante = faltanImprimir - disponible;
+      return `Faltan ${faltante.toLocaleString()} mts de ${o.tela || idHype} para poder realizar la orden`;
     }
   }
   return null;
