@@ -363,31 +363,37 @@ function Dashboard({
   ingresosStock: any[];
   egresosStock: any[];
 }) {
-  const abiertas = ordenes.filter((o) => o.estado_entrega === 'En almacén');
   const stockMapas = construirMapasStock(ingresosStock, egresosStock);
   const incompletos = ordenes.filter((o) => motivoBloqueo(o, stockMapas) !== null);
   const otsIncompletas = new Set(incompletos.map((o) => o.nro_ot)).size;
   const ordenesAtrasadas = ordenesAtrasadasPorPlazo(ordenes);
-  const mtsPed = ordenes.reduce((s, o) => s + Number(o.mts_pedidos || 0), 0);
-  const mtsImp = ordenes.reduce((s, o) => s + Number(o.mts_impresos || 0), 0);
   const impresionPorOperario = mtsImpresionMensualPorOperario(rollosReporte);
   const terminacionPorOperario = mtsTerminacionMensualPorOperario(rollosReporte);
 
   return (
     <div style={{ textTransform: 'uppercase' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
-        {[
-          { label: 'OT abiertas', value: abiertas.length, sub: 'en almacén' },
-          { label: 'OT incompletas', value: otsIncompletas, sub: 'NO en Op Imp / sin tela' },
-          { label: 'Órdenes atrasadas', value: ordenesAtrasadas.length, sub: `+${PLAZO_ENTREGA_DIAS} días sin entregar` },
-          { label: 'Mts', value: `${mtsImp.toLocaleString()} / ${mtsPed.toLocaleString()}`, sub: 'impresos / pedidos' },
-        ].map((m, i) => (
-          <div key={i} style={{ ...card, background: '#eeeef4', color: '#000' }}>
-            <div style={{ fontSize: 11, color: '#000', fontWeight: 700, letterSpacing: 1 }}>{m.label}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4, color: '#000' }}>{m.value}</div>
-            <div style={{ fontSize: 11, color: '#000' }}>{m.sub}</div>
-          </div>
-        ))}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 20 }}>
+        {EQUIPOS.map((eq) => {
+          const { impresos, pendientes } = totalesPorEquipo(ordenes, eq);
+          return (
+            <div key={eq} style={{ ...card, background: '#fbe0c8', color: '#000' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#000', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
+                Mts — {eq}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+                <span style={{ color: '#000' }}>Mts impresos</span>
+                <span style={{ fontWeight: 700, color: '#000' }}>{impresos.toLocaleString()}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ color: '#000' }}>Mts pendientes por imprimir</span>
+                <span style={{ fontWeight: 700, color: '#000' }}>{pendientes.toLocaleString()}</span>
+              </div>
+              <div style={{ fontSize: 10, color: '#000', marginTop: 10 }}>
+                "Pendientes por imprimir" es la suma de Mts Ped de los pedidos de este equipo que todavía no tienen nada impreso.
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div style={{ ...card, marginBottom: 20, border: '1px solid #000', background: '#fdfbf5', color: '#000' }}>
@@ -439,30 +445,6 @@ function Dashboard({
             </tbody>
           </table>
         </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 20 }}>
-        {EQUIPOS.map((eq) => {
-          const { impresos, pendientes } = totalesPorEquipo(ordenes, eq);
-          return (
-            <div key={eq} style={{ ...card, background: '#fbe0c8', color: '#000' }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#000', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
-                Mts — {eq}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
-                <span style={{ color: '#000' }}>Mts impresos</span>
-                <span style={{ fontWeight: 700, color: '#000' }}>{impresos.toLocaleString()}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: '#000' }}>Mts pendientes por imprimir</span>
-                <span style={{ fontWeight: 700, color: '#000' }}>{pendientes.toLocaleString()}</span>
-              </div>
-              <div style={{ fontSize: 10, color: '#000', marginTop: 10 }}>
-                "Pendientes por imprimir" es la suma de Mts Ped de los pedidos de este equipo que todavía no tienen nada impreso.
-              </div>
-            </div>
-          );
-        })}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 20 }}>
