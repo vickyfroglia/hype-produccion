@@ -17,6 +17,10 @@ export const OPERARIOS_ENTREGA = ['Mati', 'Leo', 'Ciro', 'Lautaro', 'Tomás', 'N
 // F = turno día feriado. Cada letra tiene 3 turnos (1/2/3).
 export const TURNOS_REPORTE = ['T1', 'T2', 'T3', 'S1', 'S2', 'S3', 'D1', 'D2', 'D3', 'F1', 'F2', 'F3'] as const;
 
+// Reporte diario — Cibitex (preparación/fijado): tipo de proceso que se
+// está registrando en esa fila.
+export const TIPOS_PROCESO_CIBITEX = ['Preparación', 'Fijado'] as const;
+
 // Catálogo fijo de telas "Stock TH" (telas propias de HYPE, no de un
 // cliente en particular). Al escribir "HYPE" en el campo Tela de Nuevo
 // Pedido aparece un desplegable con estas opciones para cargar rápido.
@@ -92,13 +96,14 @@ export interface EventoDirecta {
 }
 
 // Reporte diario: control exhaustivo de mts impresos por rollo y por turno,
-// por equipo (Monalisa 32 / Monalisa 8). Es independiente de ordenes_directa
-// (una misma OT puede tener varios rollos, incluso en distintos turnos).
+// por equipo (Monalisa 32 / Monalisa 8 = impresión, Cibitex = preparación/
+// fijado, en su propia pestaña). Es independiente de ordenes_directa (una
+// misma OT puede tener varios rollos, incluso en distintos turnos).
 export interface RolloReporte {
   id: number;
   equipo: string;
   fecha: string;
-  turno: string;
+  turno: string | null;
   nro_ot: string | null;
   cliente: string | null;
   diseno: string | null;
@@ -108,8 +113,8 @@ export interface RolloReporte {
   cod_tela: string | null;
   op_imp: string | null;
   novedades: string | null;
-  fecha_fij: string | null;
-  turno_fij: string | null;
+  // Cibitex (preparación/fijado): usa fecha/turno de arriba + estos campos.
+  tipo_proceso: string | null;
   op_fij: string | null;
   mts_fij: number | null;
   nro_rollos_fij: string | null;

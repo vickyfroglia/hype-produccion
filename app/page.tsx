@@ -17,6 +17,7 @@ import {
   OPERARIOS_ENTREGA,
   TELAS_HYPE_TH,
   TURNOS_REPORTE,
+  TIPOS_PROCESO_CIBITEX,
   RolloReporte,
   faltaParaProducir,
   calcularPrioridad,
@@ -1585,8 +1586,13 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
 // Reporte diario: control de mts impresos por rollo y por turno,
 // un módulo idéntico para cada equipo (Monalisa 32 / Monalisa 8).
 // ---------------------------------------------------------------------------
+// Equipos que tiene el Reporte diario: Monalisa 32/8 (impresión) son los
+// mismos equipos de Producción; Cibitex (preparación/fijado) es propio
+// de este reporte y no existe como equipo en ordenes_directa.
+const EQUIPOS_REPORTE = [...EQUIPOS, 'Cibitex'];
+
 function PanelReporteDiario({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }) {
-  const [equipoActivo, setEquipoActivo] = useState<string>(EQUIPOS[0]);
+  const [equipoActivo, setEquipoActivo] = useState<string>(EQUIPOS_REPORTE[0]);
 
   return (
     <div>
@@ -1597,7 +1603,7 @@ function PanelReporteDiario({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: st
         Control de mts impresos por rollo y por turno, un módulo por equipo.
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {EQUIPOS.map((eq) => (
+        {EQUIPOS_REPORTE.map((eq) => (
           <button
             key={eq}
             onClick={() => setEquipoActivo(eq)}
@@ -1614,7 +1620,11 @@ function PanelReporteDiario({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: st
           </button>
         ))}
       </div>
-      <TablaRollos equipo={equipoActivo} ordenes={ordenes} rol={rol} />
+      {equipoActivo === 'Cibitex' ? (
+        <TablaCibitex rol={rol} />
+      ) : (
+        <TablaRollos equipo={equipoActivo} ordenes={ordenes} rol={rol} />
+      )}
     </div>
   );
 }
@@ -1631,11 +1641,6 @@ function filaRolloVacia() {
     tela: '',
     op_imp: '',
     novedades: '',
-    fecha_fij: new Date().toISOString().split('T')[0],
-    turno_fij: '',
-    op_fij: '',
-    mts_fij: '',
-    nro_rollos_fij: '',
   };
 }
 
@@ -1710,19 +1715,18 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
 
   // Se guarda solo, directamente desde la fila en blanco de la tabla: no
   // hay botón de "Agregar". Se dispara cuando el foco sale de la fila
-  // (clic afuera o tab al final) y ya se eligió algún turno (impresión
-  // o fijado — al menos uno de los dos es obligatorio). Si todavía no
-  // hay ningún turno elegido, no hace nada — los datos quedan en la
-  // fila hasta que la completen.
+  // (clic afuera o tab al final) y ya se eligió el turno (único campo
+  // obligatorio). Si todavía no hay turno elegido, no hace nada — los
+  // datos quedan en la fila hasta que lo completen.
   async function guardarNuevaFila() {
-    if (!nuevo.turno && !nuevo.turno_fij) return;
+    if (!nuevo.turno) return;
     setGuardando(true);
     const { data, error } = await supabase
       .from('reporte_rollos')
       .insert({
         equipo,
         fecha: nuevo.fecha,
-        turno: nuevo.turno || null,
+        turno: nuevo.turno,
         nro_ot: nuevo.nro_ot || null,
         cliente: nuevo.cliente || null,
         diseno: nuevo.diseno || null,
@@ -1731,11 +1735,6 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
         tela: nuevo.tela || null,
         op_imp: nuevo.op_imp || null,
         novedades: nuevo.novedades || null,
-        fecha_fij: nuevo.turno_fij ? nuevo.fecha_fij : null,
-        turno_fij: nuevo.turno_fij || null,
-        op_fij: nuevo.op_fij || null,
-        mts_fij: nuevo.mts_fij ? parseFloat(nuevo.mts_fij) || 0 : null,
-        nro_rollos_fij: nuevo.nro_rollos_fij || null,
       })
       .select()
       .single();
@@ -1751,11 +1750,10 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
   const esAdmin = rol.trim() === 'admin';
 
   // Columnas de impresión (naranja pastel — todo lo que completan los
-  // operarios de impresión), seguidas por las de fijado/terminación
-  // hacia la derecha, y por último Borrar (solo admin).
+  // operarios de impresión), y por último Borrar (solo admin). El
+  // fijado/terminación ahora vive en su propia pestaña (Cibitex).
   const columnasImpresion = ['Fecha', 'Turno', 'Nro OT', 'Cliente', 'Diseño', 'Mts Imp x Rollo', 'Rollo Nro', 'Tela', 'Op Imp', 'Novedades cambio de turno'];
-  const columnasFijado = ['Fecha Fij', 'Turno Fij', 'Op Fij', 'Mts Fij', 'Nro de Rollos'];
-  const columnas = [...columnasImpresion, ...columnasFijado, ...(esAdmin ? ['Borrar'] : [])];
+  const columnas = [...columnasImpresion, ...(esAdmin ? ['Borrar'] : [])];
 
   return (
     <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
@@ -1772,7 +1770,6 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                     textTransform: 'uppercase',
                     fontSize: 12,
                     ...(columnasImpresion.includes(h) ? { background: '#fbe0c8', color: '#000' } : {}),
-                    ...(columnasFijado.includes(h) ? { background: '#e6dcf7', color: '#000' } : {}),
                   }}
                 >
                   {h}
@@ -1847,27 +1844,6 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                   style={{ ...selSm, width: '100%', minWidth: 230, resize: 'vertical', fontFamily: 'inherit' }}
                 />
               </td>
-              <td style={{ ...td, minWidth: 120 }}>
-                <input type="date" value={nuevo.fecha_fij} onChange={(e) => setNuevo({ ...nuevo, fecha_fij: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 110 }} />
-              </td>
-              <td style={td}>
-                <select value={nuevo.turno_fij} onChange={(e) => setNuevo({ ...nuevo, turno_fij: e.target.value })} style={selSm}>
-                  <option value="">—</option>
-                  {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </td>
-              <td style={td}>
-                <select value={nuevo.op_fij} onChange={(e) => setNuevo({ ...nuevo, op_fij: e.target.value })} style={selSm}>
-                  <option value="">—</option>
-                  {OPERARIOS_FIJACION.map((op) => <option key={op} value={op}>{op}</option>)}
-                </select>
-              </td>
-              <td style={td}>
-                <input type="number" placeholder="Mts" value={nuevo.mts_fij} onChange={(e) => setNuevo({ ...nuevo, mts_fij: e.target.value })} style={{ ...selSm, width: 80 }} />
-              </td>
-              <td style={td}>
-                <input placeholder="Rollos" value={nuevo.nro_rollos_fij} onChange={(e) => setNuevo({ ...nuevo, nro_rollos_fij: e.target.value })} style={{ ...selSm, width: 90 }} />
-              </td>
               {esAdmin && <td style={{ ...td, color: '#bbb', fontSize: 11 }}>{guardando ? 'Guardando…' : ''}</td>}
             </tr>
             {rollos.map((r) => (
@@ -1935,13 +1911,171 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                     style={{ ...selSm, width: '100%', minWidth: 230, resize: 'vertical', fontFamily: 'inherit' }}
                   />
                 </td>
+                {esAdmin && (
+                  <td style={td}>
+                    <button onClick={() => eliminar(r.id)} style={{ ...btn, padding: '4px 8px', color: '#c0392b', borderColor: '#c0392b' }}>✕</button>
+                  </td>
+                )}
+              </tr>
+            ))}
+            {!cargando && rollos.length === 0 && (
+              <tr><td colSpan={columnas.length} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin registros todavía para {equipo}</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <datalist id={listaTelas}>{telasStock.map((t) => <option key={t} value={t} />)}</datalist>
+      <datalist id={listaNrosOt}>{nrosOt.map((n) => <option key={n} value={n} />)}</datalist>
+    </div>
+  );
+}
+
+function filaCibitexVacia() {
+  return {
+    fecha: new Date().toISOString().split('T')[0],
+    turno: '',
+    tipo_proceso: '',
+    op_fij: '',
+    mts_fij: '',
+    nro_rollos_fij: '',
+  };
+}
+
+// Cibitex: equipo propio de preparación/fijado, separado de Monalisa
+// 32/8 (que son de impresión). Filas independientes, sin relación con
+// un Nro OT puntual.
+function TablaCibitex({ rol }: { rol: string }) {
+  const [rollos, setRollos] = useState<RolloReporte[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [nuevo, setNuevo] = useState(filaCibitexVacia());
+  const [guardando, setGuardando] = useState(false);
+  const esAdmin = rol.trim() === 'admin';
+
+  async function cargar() {
+    const { data, error } = await supabase
+      .from('reporte_rollos')
+      .select('*')
+      .eq('equipo', 'Cibitex')
+      .order('fecha', { ascending: false })
+      .order('id', { ascending: false });
+    if (!error) setRollos(data || []);
+    setCargando(false);
+  }
+
+  useEffect(() => {
+    setCargando(true);
+    cargar();
+  }, []);
+
+  async function actualizar(id: number, campo: string, valor: any) {
+    const { error } = await supabase.from('reporte_rollos').update({ [campo]: valor }).eq('id', id);
+    if (error) alert('Error: ' + error.message);
+    else cargar();
+  }
+
+  async function eliminar(id: number) {
+    if (!confirm('¿Borrar este registro? No se puede deshacer.')) return;
+    const { error } = await supabase.from('reporte_rollos').delete().eq('id', id);
+    if (error) alert('Error: ' + error.message);
+    else cargar();
+  }
+
+  // Igual que en las tablas de Monalisa: se guarda solo al salir de la
+  // fila en blanco, sin botón, en cuanto se eligió el turno.
+  async function guardarNuevaFila() {
+    if (!nuevo.turno) return;
+    setGuardando(true);
+    const { error } = await supabase.from('reporte_rollos').insert({
+      equipo: 'Cibitex',
+      fecha: nuevo.fecha,
+      turno: nuevo.turno,
+      tipo_proceso: nuevo.tipo_proceso || null,
+      op_fij: nuevo.op_fij || null,
+      mts_fij: nuevo.mts_fij ? parseFloat(nuevo.mts_fij) || 0 : null,
+      nro_rollos_fij: nuevo.nro_rollos_fij || null,
+    });
+    setGuardando(false);
+    if (error) { alert('Error: ' + error.message); return; }
+    setNuevo(filaCibitexVacia());
+    cargar();
+  }
+
+  const columnas = ['Fecha', 'Turno Term', 'Tipo', 'Op Fij', 'Mts', 'Nro de Rollos', ...(esAdmin ? ['Borrar'] : [])];
+
+  return (
+    <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              {columnas.map((h) => (
+                <th
+                  key={h}
+                  style={{
+                    ...th,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    fontSize: 12,
+                    ...(h !== 'Borrar' ? { background: '#e6dcf7', color: '#000' } : {}),
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              style={{ background: '#fff8ec' }}
+              onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) guardarNuevaFila();
+              }}
+            >
+              <td style={{ ...td, minWidth: 120 }}>
+                <input type="date" value={nuevo.fecha} onChange={(e) => setNuevo({ ...nuevo, fecha: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 110 }} />
+              </td>
+              <td style={td}>
+                <select value={nuevo.turno} onChange={(e) => setNuevo({ ...nuevo, turno: e.target.value })} style={selSm}>
+                  <option value="">—</option>
+                  {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </td>
+              <td style={td}>
+                <select value={nuevo.tipo_proceso} onChange={(e) => setNuevo({ ...nuevo, tipo_proceso: e.target.value })} style={selSm}>
+                  <option value="">—</option>
+                  {TIPOS_PROCESO_CIBITEX.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </td>
+              <td style={td}>
+                <select value={nuevo.op_fij} onChange={(e) => setNuevo({ ...nuevo, op_fij: e.target.value })} style={selSm}>
+                  <option value="">—</option>
+                  {OPERARIOS_FIJACION.map((op) => <option key={op} value={op}>{op}</option>)}
+                </select>
+              </td>
+              <td style={td}>
+                <input type="number" placeholder="Mts" value={nuevo.mts_fij} onChange={(e) => setNuevo({ ...nuevo, mts_fij: e.target.value })} style={{ ...selSm, width: 80 }} />
+              </td>
+              <td style={td}>
+                <input placeholder="Rollos" value={nuevo.nro_rollos_fij} onChange={(e) => setNuevo({ ...nuevo, nro_rollos_fij: e.target.value })} style={{ ...selSm, width: 90 }} />
+              </td>
+              {esAdmin && <td style={{ ...td, color: '#bbb', fontSize: 11 }}>{guardando ? 'Guardando…' : ''}</td>}
+            </tr>
+            {rollos.map((r) => (
+              <tr key={r.id}>
                 <td style={{ ...td, minWidth: 120 }}>
-                  <input type="date" defaultValue={r.fecha_fij || ''} onBlur={(e) => actualizar(r.id, 'fecha_fij', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 110 }} />
+                  <input type="date" defaultValue={r.fecha} onBlur={(e) => actualizar(r.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 110 }} />
                 </td>
                 <td style={td}>
-                  <select defaultValue={r.turno_fij || ''} onChange={(e) => actualizar(r.id, 'turno_fij', e.target.value || null)} style={selSm}>
+                  <select defaultValue={r.turno || ''} onChange={(e) => actualizar(r.id, 'turno', e.target.value || null)} style={selSm}>
                     <option value="">—</option>
                     {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </td>
+                <td style={td}>
+                  <select defaultValue={r.tipo_proceso || ''} onChange={(e) => actualizar(r.id, 'tipo_proceso', e.target.value || null)} style={selSm}>
+                    <option value="">—</option>
+                    {TIPOS_PROCESO_CIBITEX.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </td>
                 <td style={td}>
@@ -1964,14 +2098,11 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
               </tr>
             ))}
             {!cargando && rollos.length === 0 && (
-              <tr><td colSpan={columnas.length} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin registros todavía para {equipo}</td></tr>
+              <tr><td colSpan={columnas.length} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin registros todavía para Cibitex</td></tr>
             )}
           </tbody>
         </table>
       </div>
-
-      <datalist id={listaTelas}>{telasStock.map((t) => <option key={t} value={t} />)}</datalist>
-      <datalist id={listaNrosOt}>{nrosOt.map((n) => <option key={n} value={n} />)}</datalist>
     </div>
   );
 }
