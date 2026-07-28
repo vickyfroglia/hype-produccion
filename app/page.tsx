@@ -432,7 +432,7 @@ function Dashboard({
                     <td style={{ ...td, fontFamily: 'monospace', color: '#000' }}>{o.nro_ot}</td>
                     <td style={{ ...td, color: '#000' }}>{o.cliente}</td>
                     <td style={{ ...td, color: '#000' }}>{o.diseno}</td>
-                    <td style={{ ...td, color: '#000' }}>{motivoBloqueo(o, stockMapas)}</td>
+                    <td style={{ ...td, color: '#ff6b6b', fontWeight: 700, textTransform: 'uppercase' }}>{motivoBloqueo(o, stockMapas)}</td>
                   </tr>
                 ))}
             </tbody>
