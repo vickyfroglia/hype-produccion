@@ -1774,8 +1774,14 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                   {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
                 </select>
               </td>
-              <td style={{ ...td, minWidth: 180 }}>
-                <input placeholder="Novedades" value={nuevo.novedades} onChange={(e) => setNuevo({ ...nuevo, novedades: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 170 }} />
+              <td style={{ ...td, minWidth: 240, whiteSpace: 'normal', verticalAlign: 'top' }}>
+                <textarea
+                  placeholder="Novedades"
+                  rows={2}
+                  value={nuevo.novedades}
+                  onChange={(e) => setNuevo({ ...nuevo, novedades: e.target.value })}
+                  style={{ ...selSm, width: '100%', minWidth: 230, resize: 'vertical', fontFamily: 'inherit' }}
+                />
               </td>
               {esAdmin && <td style={{ ...td, color: '#bbb', fontSize: 11 }}>{guardando ? 'Guardando…' : ''}</td>}
             </tr>
@@ -1818,8 +1824,13 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                     {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
                   </select>
                 </td>
-                <td style={{ ...td, minWidth: 180 }}>
-                  <input defaultValue={r.novedades || ''} onBlur={(e) => actualizar(r.id, 'novedades', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 170 }} />
+                <td style={{ ...td, minWidth: 240, whiteSpace: 'normal', verticalAlign: 'top' }}>
+                  <textarea
+                    rows={2}
+                    defaultValue={r.novedades || ''}
+                    onBlur={(e) => actualizar(r.id, 'novedades', e.target.value || null)}
+                    style={{ ...selSm, width: '100%', minWidth: 230, resize: 'vertical', fontFamily: 'inherit' }}
+                  />
                 </td>
                 {esAdmin && (
                   <td style={td}>
