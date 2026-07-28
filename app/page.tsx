@@ -1650,7 +1650,6 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
   const [nuevo, setNuevo] = useState(filaRolloVacia());
   const [guardando, setGuardando] = useState(false);
 
-  const telasStock = Array.from(new Set(ordenes.map((o) => o.tela).filter(Boolean) as string[])).sort();
   // Solo los últimos 6 dígitos del nro_ot (más fácil de leer y escribir
   // que el correlativo completo de 12 dígitos).
   const nrosOt = Array.from(new Set(ordenes.map((o) => o.nro_ot.slice(-6)))).sort();
@@ -1692,6 +1691,15 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
   function disenosPorNroOt(nroOtCorto: string): string[] {
     if (!nroOtCorto) return [];
     return Array.from(new Set(ordenes.filter((o) => o.nro_ot.slice(-6) === nroOtCorto.trim()).map((o) => o.diseno)));
+  }
+
+  // La Tela también viene de Producción: si ya se eligió un diseño se
+  // acota a la tela de ese diseño puntual; si no, se listan todas las
+  // telas de esa OT.
+  function telasPorNroOt(nroOtCorto: string, diseno?: string): string[] {
+    if (!nroOtCorto) return [];
+    const candidatas = ordenes.filter((o) => o.nro_ot.slice(-6) === nroOtCorto.trim() && (!diseno || o.diseno === diseno));
+    return Array.from(new Set(candidatas.map((o) => o.tela).filter(Boolean) as string[]));
   }
 
   // Igual que en Producción y Nuevo Pedido: al elegir/corregir la tela,
@@ -1745,7 +1753,6 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
     cargar();
   }
 
-  const listaTelas = `telas-${equipo}`;
   const listaNrosOt = `nros-ot-${equipo}`;
   const esAdmin = rol.trim() === 'admin';
 
@@ -1801,11 +1808,14 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                   onChange={(e) => {
                     const valor = e.target.value;
                     const disenosOt = disenosPorNroOt(valor);
+                    const disenoAuto = disenosOt.length === 1 ? disenosOt[0] : '';
+                    const telasOt = telasPorNroOt(valor, disenoAuto || undefined);
                     setNuevo({
                       ...nuevo,
                       nro_ot: valor,
                       cliente: buscarClientePorNroOt(valor) || '',
-                      diseno: disenosOt.length === 1 ? disenosOt[0] : '',
+                      diseno: disenoAuto,
+                      tela: telasOt.length === 1 ? telasOt[0] : '',
                     });
                   }}
                   style={{ ...selSm, width: '100%', minWidth: 90 }}
@@ -1815,7 +1825,16 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                 <input placeholder="— (según Nro OT)" value={nuevo.cliente} readOnly disabled style={{ ...selSm, width: '100%', minWidth: 120, background: '#f0f0f0', color: '#666' }} />
               </td>
               <td style={{ ...td, minWidth: 130 }}>
-                <select value={nuevo.diseno} onChange={(e) => setNuevo({ ...nuevo, diseno: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 120 }} disabled={!nuevo.nro_ot}>
+                <select
+                  value={nuevo.diseno}
+                  onChange={(e) => {
+                    const disenoNuevo = e.target.value;
+                    const telasOt = telasPorNroOt(nuevo.nro_ot, disenoNuevo || undefined);
+                    setNuevo({ ...nuevo, diseno: disenoNuevo, tela: telasOt.length === 1 ? telasOt[0] : '' });
+                  }}
+                  style={{ ...selSm, width: '100%', minWidth: 120 }}
+                  disabled={!nuevo.nro_ot}
+                >
                   <option value="">{nuevo.nro_ot ? '— (elegir diseño)' : '— (elegir Nro OT primero)'}</option>
                   {disenosPorNroOt(nuevo.nro_ot).map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
@@ -1827,7 +1846,15 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                 <input placeholder="Rollo" value={nuevo.rollo_nro} onChange={(e) => setNuevo({ ...nuevo, rollo_nro: e.target.value })} style={{ ...selSm, width: 80 }} />
               </td>
               <td style={{ ...td, minWidth: 130 }}>
-                <input list={listaTelas} placeholder="Tela" value={nuevo.tela} onChange={(e) => setNuevo({ ...nuevo, tela: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 120 }} />
+                <select
+                  value={nuevo.tela}
+                  onChange={(e) => setNuevo({ ...nuevo, tela: e.target.value })}
+                  style={{ ...selSm, width: '100%', minWidth: 120 }}
+                  disabled={!nuevo.nro_ot}
+                >
+                  <option value="">{nuevo.nro_ot ? '— (elegir tela)' : '— (elegir Nro OT primero)'}</option>
+                  {telasPorNroOt(nuevo.nro_ot, nuevo.diseno || undefined).map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
               </td>
               <td style={td}>
                 <select value={nuevo.op_imp} onChange={(e) => setNuevo({ ...nuevo, op_imp: e.target.value })} style={selSm}>
@@ -1890,12 +1917,17 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                   <input defaultValue={r.rollo_nro || ''} onBlur={(e) => actualizar(r.id, 'rollo_nro', e.target.value || null)} style={{ ...selSm, width: 80 }} />
                 </td>
                 <td style={{ ...td, minWidth: 130 }}>
-                  <input
-                    list={listaTelas}
+                  <select
                     defaultValue={r.tela || ''}
-                    onBlur={(e) => { actualizar(r.id, 'tela', e.target.value || null); buscarCodTela(r, e.target.value); }}
+                    onChange={(e) => { actualizar(r.id, 'tela', e.target.value || null); buscarCodTela(r, e.target.value); }}
                     style={{ ...selSm, width: '100%', minWidth: 120 }}
-                  />
+                  >
+                    <option value="">—</option>
+                    {telasPorNroOt((r.nro_ot || '').slice(-6), r.diseno || undefined).map((t) => <option key={t} value={t}>{t}</option>)}
+                    {r.tela && !telasPorNroOt((r.nro_ot || '').slice(-6), r.diseno || undefined).includes(r.tela) && (
+                      <option value={r.tela}>{r.tela} (ya no está en esa OT/diseño)</option>
+                    )}
+                  </select>
                 </td>
                 <td style={td}>
                   <select defaultValue={r.op_imp || ''} onChange={(e) => actualizar(r.id, 'op_imp', e.target.value || null)} style={selSm}>
@@ -1925,7 +1957,6 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
         </table>
       </div>
 
-      <datalist id={listaTelas}>{telasStock.map((t) => <option key={t} value={t} />)}</datalist>
       <datalist id={listaNrosOt}>{nrosOt.map((n) => <option key={n} value={n} />)}</datalist>
     </div>
   );
@@ -1958,7 +1989,6 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
   const [guardando, setGuardando] = useState(false);
   const esAdmin = rol.trim() === 'admin';
 
-  const telasStock = Array.from(new Set(ordenes.map((o) => o.tela).filter(Boolean) as string[])).sort();
   const nrosOt = Array.from(new Set(ordenes.map((o) => o.nro_ot.slice(-6)))).sort();
 
   // Los tipos "PREP Y ..." y "PLANCHADO" son a nivel OT, antes/sin
@@ -1977,6 +2007,12 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
   function disenosPorNroOt(nroOtCorto: string): string[] {
     if (!nroOtCorto) return [];
     return Array.from(new Set(ordenes.filter((o) => o.nro_ot.slice(-6) === nroOtCorto.trim()).map((o) => o.diseno)));
+  }
+
+  function telasPorNroOt(nroOtCorto: string, diseno?: string): string[] {
+    if (!nroOtCorto) return [];
+    const candidatas = ordenes.filter((o) => o.nro_ot.slice(-6) === nroOtCorto.trim() && (!diseno || o.diseno === diseno));
+    return Array.from(new Set(candidatas.map((o) => o.tela).filter(Boolean) as string[]));
   }
 
   async function cargar() {
@@ -2047,7 +2083,6 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
     cargar();
   }
 
-  const listaTelas = 'telas-cibitex';
   const listaNrosOt = 'nros-ot-cibitex';
   const columnas = ['Fecha', 'Turno Term', 'Tipo', 'Nro OT', 'Cliente', 'Diseño', 'Tela', 'Mts', 'Nro de Rollos', 'Op Fij', ...(esAdmin ? ['Borrar'] : [])];
 
@@ -2092,7 +2127,17 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
               <td style={td}>
                 <select
                   value={nuevo.tipo_proceso}
-                  onChange={(e) => setNuevo({ ...nuevo, tipo_proceso: e.target.value, diseno: esTipoPrep(e.target.value) ? '' : nuevo.diseno })}
+                  onChange={(e) => {
+                    const tipoNuevo = e.target.value;
+                    const disenoNuevo = esTipoPrep(tipoNuevo) ? '' : nuevo.diseno;
+                    const telasOt = telasPorNroOt(nuevo.nro_ot, disenoNuevo || undefined);
+                    setNuevo({
+                      ...nuevo,
+                      tipo_proceso: tipoNuevo,
+                      diseno: disenoNuevo,
+                      tela: telasOt.includes(nuevo.tela) ? nuevo.tela : (telasOt.length === 1 ? telasOt[0] : ''),
+                    });
+                  }}
                   style={selSm}
                 >
                   <option value="">—</option>
@@ -2107,11 +2152,14 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                   onChange={(e) => {
                     const valor = e.target.value;
                     const disenosOt = disenosPorNroOt(valor);
+                    const disenoAuto = esTipoPrep(nuevo.tipo_proceso) ? '' : (disenosOt.length === 1 ? disenosOt[0] : '');
+                    const telasOt = telasPorNroOt(valor, disenoAuto || undefined);
                     setNuevo({
                       ...nuevo,
                       nro_ot: valor,
                       cliente: buscarClientePorNroOt(valor) || '',
-                      diseno: esTipoPrep(nuevo.tipo_proceso) ? '' : (disenosOt.length === 1 ? disenosOt[0] : ''),
+                      diseno: disenoAuto,
+                      tela: telasOt.length === 1 ? telasOt[0] : '',
                     });
                   }}
                   style={{ ...selSm, width: '100%', minWidth: 90 }}
@@ -2123,7 +2171,11 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
               <td style={{ ...td, minWidth: 130 }}>
                 <select
                   value={nuevo.diseno}
-                  onChange={(e) => setNuevo({ ...nuevo, diseno: e.target.value })}
+                  onChange={(e) => {
+                    const disenoNuevo = e.target.value;
+                    const telasOt = telasPorNroOt(nuevo.nro_ot, disenoNuevo || undefined);
+                    setNuevo({ ...nuevo, diseno: disenoNuevo, tela: telasOt.length === 1 ? telasOt[0] : '' });
+                  }}
                   style={{ ...selSm, width: '100%', minWidth: 120 }}
                   disabled={!nuevo.nro_ot || esTipoPrep(nuevo.tipo_proceso)}
                 >
@@ -2134,7 +2186,15 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                 </select>
               </td>
               <td style={{ ...td, minWidth: 130 }}>
-                <input list={listaTelas} placeholder="Tela" value={nuevo.tela} onChange={(e) => setNuevo({ ...nuevo, tela: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 120 }} />
+                <select
+                  value={nuevo.tela}
+                  onChange={(e) => setNuevo({ ...nuevo, tela: e.target.value })}
+                  style={{ ...selSm, width: '100%', minWidth: 120 }}
+                  disabled={!nuevo.nro_ot}
+                >
+                  <option value="">{nuevo.nro_ot ? '— (elegir tela)' : '— (elegir Nro OT primero)'}</option>
+                  {telasPorNroOt(nuevo.nro_ot, esTipoPrep(nuevo.tipo_proceso) ? undefined : (nuevo.diseno || undefined)).map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
               </td>
               <td style={td}>
                 <input type="number" placeholder="Mts" value={nuevo.mts_fij} onChange={(e) => setNuevo({ ...nuevo, mts_fij: e.target.value })} style={{ ...selSm, width: 80 }} />
@@ -2209,12 +2269,17 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                   </select>
                 </td>
                 <td style={{ ...td, minWidth: 130 }}>
-                  <input
-                    list={listaTelas}
+                  <select
                     defaultValue={r.tela || ''}
-                    onBlur={(e) => { actualizar(r.id, 'tela', e.target.value || null); buscarCodTela(r, e.target.value); }}
+                    onChange={(e) => { actualizar(r.id, 'tela', e.target.value || null); buscarCodTela(r, e.target.value); }}
                     style={{ ...selSm, width: '100%', minWidth: 120 }}
-                  />
+                  >
+                    <option value="">—</option>
+                    {telasPorNroOt((r.nro_ot || '').slice(-6), esTipoPrep(r.tipo_proceso || '') ? undefined : (r.diseno || undefined)).map((t) => <option key={t} value={t}>{t}</option>)}
+                    {r.tela && !telasPorNroOt((r.nro_ot || '').slice(-6), esTipoPrep(r.tipo_proceso || '') ? undefined : (r.diseno || undefined)).includes(r.tela) && (
+                      <option value={r.tela}>{r.tela} (ya no está en esa OT/diseño)</option>
+                    )}
+                  </select>
                 </td>
                 <td style={td}>
                   <input type="number" defaultValue={r.mts_fij ?? ''} onBlur={(e) => actualizar(r.id, 'mts_fij', e.target.value === '' ? null : parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 80 }} />
@@ -2242,7 +2307,6 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
         </table>
       </div>
 
-      <datalist id={listaTelas}>{telasStock.map((t) => <option key={t} value={t} />)}</datalist>
       <datalist id={listaNrosOt}>{nrosOt.map((n) => <option key={n} value={n} />)}</datalist>
     </div>
   );
