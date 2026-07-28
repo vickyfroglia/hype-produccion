@@ -1648,7 +1648,9 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
 
   const disenosStock = Array.from(new Set(ordenes.map((o) => o.diseno).filter(Boolean))).sort();
   const telasStock = Array.from(new Set(ordenes.map((o) => o.tela).filter(Boolean) as string[])).sort();
-  const nrosOt = Array.from(new Set(ordenes.map((o) => o.nro_ot))).sort();
+  // Solo los últimos 6 dígitos del nro_ot (más fácil de leer y escribir
+  // que el correlativo completo de 12 dígitos).
+  const nrosOt = Array.from(new Set(ordenes.map((o) => o.nro_ot.slice(-6)))).sort();
 
   async function cargar() {
     const { data, error } = await supabase
@@ -1849,7 +1851,7 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                   </select>
                 </td>
                 <td style={{ ...td, minWidth: 100 }}>
-                  <input list={listaNrosOt} defaultValue={r.nro_ot || ''} onBlur={(e) => actualizar(r.id, 'nro_ot', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 90 }} />
+                  <input list={listaNrosOt} defaultValue={(r.nro_ot || '').slice(-6)} onBlur={(e) => actualizar(r.id, 'nro_ot', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 90 }} />
                 </td>
                 <td style={{ ...td, minWidth: 130 }}>
                   <input list={listaClientes} defaultValue={r.cliente || ''} onBlur={(e) => actualizar(r.id, 'cliente', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 120 }} />
