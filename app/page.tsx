@@ -1687,8 +1687,13 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
     else cargar();
   }
 
-  async function agregar() {
-    if (!nuevo.turno) { alert('Elegí el turno.'); return; }
+  // Se guarda solo, directamente desde la fila en blanco de la tabla: no
+  // hay botón de "Agregar". Se dispara cuando el foco sale de la fila
+  // (clic afuera o tab al final) y ya se eligió el turno (único campo
+  // obligatorio). Si todavía no hay turno elegido, no hace nada — los
+  // datos quedan en la fila hasta que lo completen.
+  async function guardarNuevaFila() {
+    if (!nuevo.turno) return;
     setGuardando(true);
     const { data, error } = await supabase
       .from('reporte_rollos')
@@ -1724,64 +1729,56 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
 
   return (
     <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: 16, borderBottom: '1px solid #eee', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end', background: '#fafafa' }}>
-        <div>
-          <label style={lbl}>Fecha</label>
-          <input type="date" value={nuevo.fecha} onChange={(e) => setNuevo({ ...nuevo, fecha: e.target.value })} style={{ ...selSm, width: 130 }} />
-        </div>
-        <div>
-          <label style={lbl}>Turno</label>
-          <select value={nuevo.turno} onChange={(e) => setNuevo({ ...nuevo, turno: e.target.value })} style={{ ...selSm, width: 70 }}>
-            <option value="">—</option>
-            {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </div>
-        <div>
-          <label style={lbl}>Nro OT</label>
-          <input list={listaNrosOt} value={nuevo.nro_ot} onChange={(e) => setNuevo({ ...nuevo, nro_ot: e.target.value })} style={{ ...selSm, width: 110 }} />
-        </div>
-        <div>
-          <label style={lbl}>Cliente</label>
-          <input list={listaClientes} value={nuevo.cliente} onChange={(e) => setNuevo({ ...nuevo, cliente: e.target.value })} style={{ ...selSm, width: 140 }} />
-        </div>
-        <div>
-          <label style={lbl}>Diseño</label>
-          <input list={listaDisenos} value={nuevo.diseno} onChange={(e) => setNuevo({ ...nuevo, diseno: e.target.value })} style={{ ...selSm, width: 140 }} />
-        </div>
-        <div>
-          <label style={lbl}>Mts Imp x Rollo</label>
-          <input type="number" value={nuevo.mts_imp_rollo} onChange={(e) => setNuevo({ ...nuevo, mts_imp_rollo: e.target.value })} style={{ ...selSm, width: 90 }} />
-        </div>
-        <div>
-          <label style={lbl}>Rollo Nro</label>
-          <input value={nuevo.rollo_nro} onChange={(e) => setNuevo({ ...nuevo, rollo_nro: e.target.value })} style={{ ...selSm, width: 90 }} />
-        </div>
-        <div>
-          <label style={lbl}>Tela</label>
-          <input list={listaTelas} value={nuevo.tela} onChange={(e) => setNuevo({ ...nuevo, tela: e.target.value })} style={{ ...selSm, width: 140 }} />
-        </div>
-        <div>
-          <label style={lbl}>Op Imp</label>
-          <select value={nuevo.op_imp} onChange={(e) => setNuevo({ ...nuevo, op_imp: e.target.value })} style={{ ...selSm, width: 100 }}>
-            <option value="">—</option>
-            {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
-          </select>
-        </div>
-        <div style={{ flex: 1, minWidth: 180 }}>
-          <label style={lbl}>Novedades cambio de turno</label>
-          <input value={nuevo.novedades} onChange={(e) => setNuevo({ ...nuevo, novedades: e.target.value })} style={{ ...selSm, width: '100%' }} />
-        </div>
-        <button onClick={agregar} disabled={guardando} style={{ ...btn, background: '#e85d2f', color: '#fff', border: 'none', fontWeight: 700 }}>
-          {guardando ? 'Guardando...' : '+ Agregar'}
-        </button>
-      </div>
-
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>{columnas.map((h) => <th key={h} style={{ ...th, fontWeight: 700, textTransform: 'uppercase', fontSize: 12 }}>{h}</th>)}</tr>
           </thead>
           <tbody>
+            <tr
+              style={{ background: '#fff8ec' }}
+              onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) guardarNuevaFila();
+              }}
+            >
+              <td style={{ ...td, minWidth: 120 }}>
+                <input type="date" value={nuevo.fecha} onChange={(e) => setNuevo({ ...nuevo, fecha: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 110 }} />
+              </td>
+              <td style={td}>
+                <select value={nuevo.turno} onChange={(e) => setNuevo({ ...nuevo, turno: e.target.value })} style={selSm}>
+                  <option value="">—</option>
+                  {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </td>
+              <td style={{ ...td, minWidth: 100 }}>
+                <input list={listaNrosOt} placeholder="Nro OT" value={nuevo.nro_ot} onChange={(e) => setNuevo({ ...nuevo, nro_ot: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 90 }} />
+              </td>
+              <td style={{ ...td, minWidth: 130 }}>
+                <input list={listaClientes} placeholder="Cliente" value={nuevo.cliente} onChange={(e) => setNuevo({ ...nuevo, cliente: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 120 }} />
+              </td>
+              <td style={{ ...td, minWidth: 130 }}>
+                <input list={listaDisenos} placeholder="Diseño" value={nuevo.diseno} onChange={(e) => setNuevo({ ...nuevo, diseno: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 120 }} />
+              </td>
+              <td style={td}>
+                <input type="number" placeholder="Mts" value={nuevo.mts_imp_rollo} onChange={(e) => setNuevo({ ...nuevo, mts_imp_rollo: e.target.value })} style={{ ...selSm, width: 80 }} />
+              </td>
+              <td style={td}>
+                <input placeholder="Rollo" value={nuevo.rollo_nro} onChange={(e) => setNuevo({ ...nuevo, rollo_nro: e.target.value })} style={{ ...selSm, width: 80 }} />
+              </td>
+              <td style={{ ...td, minWidth: 130 }}>
+                <input list={listaTelas} placeholder="Tela" value={nuevo.tela} onChange={(e) => setNuevo({ ...nuevo, tela: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 120 }} />
+              </td>
+              <td style={td}>
+                <select value={nuevo.op_imp} onChange={(e) => setNuevo({ ...nuevo, op_imp: e.target.value })} style={selSm}>
+                  <option value="">—</option>
+                  {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
+                </select>
+              </td>
+              <td style={{ ...td, minWidth: 180 }}>
+                <input placeholder="Novedades" value={nuevo.novedades} onChange={(e) => setNuevo({ ...nuevo, novedades: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 170 }} />
+              </td>
+              {esAdmin && <td style={{ ...td, color: '#bbb', fontSize: 11 }}>{guardando ? 'Guardando…' : ''}</td>}
+            </tr>
             {rollos.map((r) => (
               <tr key={r.id}>
                 <td style={{ ...td, minWidth: 120 }}>
