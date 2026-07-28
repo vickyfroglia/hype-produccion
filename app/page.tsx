@@ -36,6 +36,7 @@ export default function Home() {
   const [pagina, setPagina] = useState('dashboard');
   const [ordenes, setOrdenes] = useState<OrdenDirecta[]>([]);
   const [eventos, setEventos] = useState<EventoDirecta[]>([]);
+  const [rollosReporte, setRollosReporte] = useState<RolloReporte[]>([]);
   const [loading, setLoading] = useState(true);
   const [logueado, setLogueado] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -64,12 +65,14 @@ export default function Home() {
   // hacía que el scroll volviera arriba de todo cada vez que se tocaba algo.
   async function cargarTodo(mostrarLoading = false) {
     if (mostrarLoading) setLoading(true);
-    const [ords, evts] = await Promise.all([
+    const [ords, evts, rollos] = await Promise.all([
       fetchAll('ordenes_directa', 'created_at'),
       fetchAll('ordenes_directa_eventos', 'created_at'),
+      fetchAll('reporte_rollos', 'created_at'),
     ]);
     setOrdenes(ords);
     setEventos(evts);
+    setRollosReporte(rollos);
     if (mostrarLoading) setLoading(false);
   }
 
@@ -150,7 +153,7 @@ export default function Home() {
         {loading && <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando...</div>}
         {!loading && (
           <>
-            {pagina === 'dashboard' && <Dashboard ordenes={ordenes} />}
+            {pagina === 'dashboard' && <Dashboard ordenes={ordenes} rollosReporte={rollosReporte} />}
             {pagina === 'general' && <VistaGeneral ordenes={ordenes} onCambio={cargarTodo} rol={rol} />}
             {pagina === 'reporte' && <PanelReporteDiario ordenes={ordenes} rol={rol} />}
             {pagina === 'diseno' && <PanelDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
@@ -230,44 +233,76 @@ function formatSemana(inicio: string): string {
   return `${formatFecha(inicio)} al ${formatFecha(d.toISOString().split('T')[0])}`;
 }
 
-interface AgregadoSemanal { semana: string; operario: string; mts: number }
+// Los dos grupos que pidió Vicky para Terminación (Cibitex): por un lado
+// preparación/planchado, por otro lado fijado — cada tipo de proceso cae
+// en uno de los dos.
+const GRUPO_PREP_PLANCHADO = ['PREP Y PRETRATADO', 'PLANCHADO', 'PREP Y REENCANUTADO'];
+const GRUPO_FIJADO = ['FIJADO', 'FIJ Y POSTRATADO'];
 
-// Suma los mts impresos (o fijados) por operario y por semana. Para
-// Impresión se agrupa por fecha_impresion; para Fijación/Terminación por
-// fecha_fin (no hay un "mts fijados" separado: se usa mts_impresos, que
-// es lo que efectivamente se produjo de ese diseño).
-function mtsPorOperarioYSemana(
-  ordenes: OrdenDirecta[],
-  campoOperario: 'imp_operario' | 'fija_operario',
-  campoFecha: 'fecha_impresion' | 'fecha_fin'
-): AgregadoSemanal[] {
-  const mapa = new Map<string, number>();
-  ordenes.forEach((o) => {
-    const operario = o[campoOperario];
-    const fecha = o[campoFecha];
-    const mts = Number(o.mts_impresos || 0);
-    if (!operario || operario === 'NO' || !fecha || mts <= 0) return;
-    const semana = inicioSemana(fecha);
-    const key = `${semana}__${operario}`;
-    mapa.set(key, (mapa.get(key) || 0) + mts);
-  });
-  return Array.from(mapa.entries())
-    .map(([key, mts]) => {
-      const [semana, operario] = key.split('__');
-      return { semana, operario, mts };
-    })
-    .sort((a, b) => (a.semana === b.semana ? a.operario.localeCompare(b.operario) : b.semana.localeCompare(a.semana)));
+interface AgregadoOperarioImpresion { operario: string; equipo: string; hoy: number; semana: number; mes: number }
+interface AgregadoOperarioTerminacion { operario: string; grupo: string; hoy: number; semana: number; mes: number }
+
+// Mts totales impresos por operario y por equipo (Monalisa 32/8), con
+// tres totales: hoy, esta semana y este mes. Se calcula a partir del
+// Reporte diario (reporte_rollos), no de ordenes_directa — ahí es donde
+// se carga el detalle real por rollo y por turno.
+function mtsImpresionPorOperario(rollosReporte: RolloReporte[]): AgregadoOperarioImpresion[] {
+  const hoy = new Date().toISOString().split('T')[0];
+  const semanaActual = inicioSemana(hoy);
+  const mesActual = hoy.slice(0, 7);
+
+  const mapa = new Map<string, AgregadoOperarioImpresion>();
+  rollosReporte
+    .filter((r) => (r.equipo === 'Monalisa 32' || r.equipo === 'Monalisa 8') && r.op_imp && Number(r.mts_imp_rollo || 0) > 0)
+    .forEach((r) => {
+      const key = `${r.op_imp}__${r.equipo}`;
+      const actual = mapa.get(key) || { operario: r.op_imp as string, equipo: r.equipo, hoy: 0, semana: 0, mes: 0 };
+      const mts = Number(r.mts_imp_rollo || 0);
+      if (r.fecha === hoy) actual.hoy += mts;
+      if (inicioSemana(r.fecha) === semanaActual) actual.semana += mts;
+      if (r.fecha.slice(0, 7) === mesActual) actual.mes += mts;
+      mapa.set(key, actual);
+    });
+  return Array.from(mapa.values()).sort((a, b) => a.operario.localeCompare(b.operario) || a.equipo.localeCompare(b.equipo));
 }
 
-function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
+// Mts totales de Terminación (Cibitex) por operario, agrupados en dos
+// columnas según el tipo de proceso: Preparación/Planchado por un lado,
+// Fijado por otro — con los mismos tres totales (hoy/semana/mes).
+function mtsTerminacionPorOperario(rollosReporte: RolloReporte[]): AgregadoOperarioTerminacion[] {
+  const hoy = new Date().toISOString().split('T')[0];
+  const semanaActual = inicioSemana(hoy);
+  const mesActual = hoy.slice(0, 7);
+
+  const mapa = new Map<string, AgregadoOperarioTerminacion>();
+  rollosReporte
+    .filter((r) => r.equipo === 'Cibitex' && r.op_fij && Number(r.mts_fij || 0) > 0)
+    .forEach((r) => {
+      const grupo = GRUPO_PREP_PLANCHADO.includes(r.tipo_proceso || '')
+        ? 'Preparación / Planchado'
+        : GRUPO_FIJADO.includes(r.tipo_proceso || '')
+        ? 'Fijado'
+        : 'Sin tipo';
+      const key = `${r.op_fij}__${grupo}`;
+      const actual = mapa.get(key) || { operario: r.op_fij as string, grupo, hoy: 0, semana: 0, mes: 0 };
+      const mts = Number(r.mts_fij || 0);
+      if (r.fecha === hoy) actual.hoy += mts;
+      if (inicioSemana(r.fecha) === semanaActual) actual.semana += mts;
+      if (r.fecha.slice(0, 7) === mesActual) actual.mes += mts;
+      mapa.set(key, actual);
+    });
+  return Array.from(mapa.values()).sort((a, b) => a.operario.localeCompare(b.operario) || a.grupo.localeCompare(b.grupo));
+}
+
+function Dashboard({ ordenes, rollosReporte }: { ordenes: OrdenDirecta[]; rollosReporte: RolloReporte[] }) {
   const abiertas = ordenes.filter((o) => o.estado_entrega === 'En almacén');
   const incompletos = ordenes.filter((o) => !o.fecha_fin);
   const otsIncompletas = new Set(incompletos.map((o) => o.nro_ot)).size;
   const ordenesAtrasadas = ordenesAtrasadasPorPlazo(ordenes);
   const mtsPed = ordenes.reduce((s, o) => s + Number(o.mts_pedidos || 0), 0);
   const mtsImp = ordenes.reduce((s, o) => s + Number(o.mts_impresos || 0), 0);
-  const mtsImpresionPorOperario = mtsPorOperarioYSemana(ordenes, 'imp_operario', 'fecha_impresion');
-  const mtsFijacionPorOperario = mtsPorOperarioYSemana(ordenes, 'fija_operario', 'fecha_fin');
+  const impresionPorOperario = mtsImpresionPorOperario(rollosReporte);
+  const terminacionPorOperario = mtsTerminacionPorOperario(rollosReporte);
 
   return (
     <div style={{ textTransform: 'uppercase' }}>
@@ -364,20 +399,22 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 20 }}>
         <div style={{ ...card, background: '#e6dcf7', color: '#000' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#000', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
-            Impresión — mts por operario y semana
+            Impresión — mts por operario y equipo
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>{['Semana', 'Operario', 'Mts impresos'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
+                <tr>{['Operario', 'Equipo', 'Hoy', 'Semana', 'Mes'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
               </thead>
               <tbody>
-                {mtsImpresionPorOperario.length === 0 && <tr><td colSpan={3} style={{ ...td, textAlign: 'center', color: '#000' }}>Todavía no hay datos</td></tr>}
-                {mtsImpresionPorOperario.map((r) => (
-                  <tr key={`${r.semana}-${r.operario}`}>
-                    <td style={{ ...td, color: '#000' }}>{formatSemana(r.semana)}</td>
+                {impresionPorOperario.length === 0 && <tr><td colSpan={5} style={{ ...td, textAlign: 'center', color: '#000' }}>Todavía no hay datos</td></tr>}
+                {impresionPorOperario.map((r) => (
+                  <tr key={`${r.operario}-${r.equipo}`}>
                     <td style={{ ...td, color: '#000' }}>{r.operario}</td>
-                    <td style={{ ...td, fontWeight: 700, color: '#000' }}>{r.mts.toLocaleString()}</td>
+                    <td style={{ ...td, color: '#000' }}>{r.equipo}</td>
+                    <td style={{ ...td, color: '#000' }}>{r.hoy.toLocaleString()}</td>
+                    <td style={{ ...td, color: '#000' }}>{r.semana.toLocaleString()}</td>
+                    <td style={{ ...td, fontWeight: 700, color: '#000' }}>{r.mes.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -387,20 +424,22 @@ function Dashboard({ ordenes }: { ordenes: OrdenDirecta[] }) {
 
         <div style={{ ...card, background: '#e6dcf7', color: '#000' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#000', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
-            Terminación (Fijación) — mts por operario y semana
+            Terminación — mts por operario
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>{['Semana', 'Operario', 'Mts fijados'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
+                <tr>{['Operario', 'Tipo', 'Hoy', 'Semana', 'Mes'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
               </thead>
               <tbody>
-                {mtsFijacionPorOperario.length === 0 && <tr><td colSpan={3} style={{ ...td, textAlign: 'center', color: '#000' }}>Todavía no hay datos</td></tr>}
-                {mtsFijacionPorOperario.map((r) => (
-                  <tr key={`${r.semana}-${r.operario}`}>
-                    <td style={{ ...td, color: '#000' }}>{formatSemana(r.semana)}</td>
+                {terminacionPorOperario.length === 0 && <tr><td colSpan={5} style={{ ...td, textAlign: 'center', color: '#000' }}>Todavía no hay datos</td></tr>}
+                {terminacionPorOperario.map((r) => (
+                  <tr key={`${r.operario}-${r.grupo}`}>
                     <td style={{ ...td, color: '#000' }}>{r.operario}</td>
-                    <td style={{ ...td, fontWeight: 700, color: '#000' }}>{r.mts.toLocaleString()}</td>
+                    <td style={{ ...td, color: '#000' }}>{r.grupo}</td>
+                    <td style={{ ...td, color: '#000' }}>{r.hoy.toLocaleString()}</td>
+                    <td style={{ ...td, color: '#000' }}>{r.semana.toLocaleString()}</td>
+                    <td style={{ ...td, fontWeight: 700, color: '#000' }}>{r.mes.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
