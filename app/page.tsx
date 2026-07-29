@@ -120,7 +120,7 @@ export default function Home() {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '▦', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
-    { id: 'diseno', label: 'Ingreso y Modificación de Pedidos', icon: '✎', roles: ['admin', 'diseno'] },
+    { id: 'diseno', label: 'Ingreso y Modif Pedidos', icon: '✎', roles: ['admin', 'diseno'] },
     { id: 'general', label: 'Producción', icon: '☷', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
     { id: 'reporte', label: 'Reporte diario', icon: '▤', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
     { id: 'administracion', label: 'Administración', icon: '$', roles: ['admin', 'administrativo'] },
@@ -140,9 +140,8 @@ export default function Home() {
               key={n.id}
               onClick={() => setPagina(n.id)}
               style={{
-                padding: '10px 14px',
+                padding: '8px 12px',
                 cursor: 'pointer',
-                whiteSpace: 'nowrap',
                 color: pagina === n.id ? '#fff' : 'rgba(255,255,255,0.55)',
                 background: pagina === n.id ? 'rgba(255,255,255,0.1)' : 'transparent',
                 borderBottom: pagina === n.id ? '2px solid #e85d2f' : '2px solid transparent',
@@ -154,7 +153,7 @@ export default function Home() {
               }}
             >
               <span>{n.icon}</span>
-              {n.label}
+              <span style={{ whiteSpace: 'normal', lineHeight: 1.15, maxWidth: 82 }}>{n.label}</span>
             </div>
           ))}
         </div>
