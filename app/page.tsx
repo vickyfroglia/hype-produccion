@@ -134,25 +134,28 @@ export default function Home() {
           <img src="/logo.png" alt="HYPE printlab" style={{ height: 46, display: 'block' }} />
           <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', letterSpacing: 2, marginTop: 2 }}>PRODUCCIÓN · DIRECTA</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'stretch', justifyContent: 'space-evenly', flex: 1, height: 60 }}>
           {navItems.map((n) => (
             <div
               key={n.id}
               onClick={() => setPagina(n.id)}
               style={{
-                padding: '8px 12px',
+                padding: '6px 8px',
                 cursor: 'pointer',
                 color: pagina === n.id ? '#fff' : 'rgba(255,255,255,0.55)',
                 background: pagina === n.id ? 'rgba(255,255,255,0.1)' : 'transparent',
                 borderBottom: pagina === n.id ? '2px solid #e85d2f' : '2px solid transparent',
-                fontSize: 12,
+                fontSize: 11,
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                gap: 6,
+                justifyContent: 'center',
+                gap: 3,
                 textTransform: 'uppercase',
+                textAlign: 'center',
+                minWidth: 78,
               }}
             >
-              <span>{n.icon}</span>
               <span style={{ whiteSpace: 'normal', lineHeight: 1.15, maxWidth: 82 }}>{n.label}</span>
             </div>
           ))}
