@@ -3,6 +3,14 @@
     {
       "path": "/api/reporte-diario?secret=b54d327bfbebc09ea8c2b8511a00f3fc95638a5e3154e91c",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/reporte-semanal?secret=b54d327bfbebc09ea8c2b8511a00f3fc95638a5e3154e91c",
+      "schedule": "0 11 * * 1"
+    },
+    {
+      "path": "/api/reporte-mensual?secret=b54d327bfbebc09ea8c2b8511a00f3fc95638a5e3154e91c",
+      "schedule": "0 11 1 * *"
     }
   ]
 }
