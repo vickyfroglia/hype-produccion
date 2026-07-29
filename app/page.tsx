@@ -593,6 +593,7 @@ function BuscarPedido({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
   // Anula (borra) un pedido, y libera el stock reservado que se le haya
   // generado (por ejemplo, la reserva de tela HYPE cargada al ingresarlo).
   async function anular(o: OrdenDirecta) {
+    if (Number(o.mts_impresos || 0) > 0) return; // ya se imprimió algo: no se puede anular ni modificar acá
     if (!confirm(`¿Anular el pedido ${o.nro_ot} — ${o.cliente} — ${o.diseno}?\n\nEsto también libera el stock reservado para este pedido (si lo hay). No se puede deshacer.`)) return;
     const { error: errorEgresos } = await supabase.from('egresos').delete().eq('orden_id', o.id);
     if (errorEgresos) console.error('No se pudo liberar el stock reservado de este pedido:', errorEgresos);
@@ -621,33 +622,46 @@ function BuscarPedido({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
               </thead>
               <tbody>
                 {resultados.length === 0 && <tr><td colSpan={7} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin resultados</td></tr>}
-                {resultados.map((o) => (
-                  <tr key={o.id}>
-                    <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
-                    <td style={{ ...td, minWidth: 120 }}>
-                      <input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 110 }} />
-                    </td>
-                    <td style={{ ...td, minWidth: 140 }}>
-                      <input defaultValue={o.cliente} onBlur={(e) => actualizar(o.id, 'cliente', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 130 }} />
-                    </td>
-                    <td style={{ ...td, minWidth: 140 }}>
-                      <input defaultValue={o.diseno} onBlur={(e) => actualizar(o.id, 'diseno', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 130 }} />
-                    </td>
-                    <td style={{ ...td, minWidth: 150 }}>
-                      <input
-                        defaultValue={o.tela || ''}
-                        onBlur={(e) => { actualizar(o.id, 'tela', e.target.value || null); buscarCodTela(o, e.target.value); }}
-                        style={{ ...selSm, width: '100%', minWidth: 140 }}
-                      />
-                    </td>
-                    <td style={td}>
-                      <input type="number" defaultValue={o.mts_pedidos} onBlur={(e) => actualizar(o.id, 'mts_pedidos', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 70 }} />
-                    </td>
-                    <td style={td}>
-                      <button onClick={() => anular(o)} style={{ ...btn, padding: '4px 8px', fontSize: 11, color: '#c00', borderColor: '#c00' }}>✕ Anular</button>
-                    </td>
-                  </tr>
-                ))}
+                {resultados.map((o) => {
+                  const bloqueada = Number(o.mts_impresos || 0) > 0;
+                  const estiloBloqueado: React.CSSProperties = bloqueada
+                    ? { ...selSm, width: '100%', background: '#f5e5e5', color: '#c00', cursor: 'not-allowed' }
+                    : {};
+                  return (
+                    <tr key={o.id} style={bloqueada ? { background: '#fff5f5' } : undefined}>
+                      <td style={{ ...td, fontFamily: 'monospace', color: bloqueada ? '#c00' : '#e85d2f' }}>{o.nro_ot}</td>
+                      <td style={{ ...td, minWidth: 120 }}>
+                        <input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} disabled={bloqueada} style={{ ...selSm, width: '100%', minWidth: 110, ...estiloBloqueado }} />
+                      </td>
+                      <td style={{ ...td, minWidth: 140 }}>
+                        <input defaultValue={o.cliente} onBlur={(e) => actualizar(o.id, 'cliente', e.target.value)} disabled={bloqueada} style={{ ...selSm, width: '100%', minWidth: 130, ...estiloBloqueado }} />
+                      </td>
+                      <td style={{ ...td, minWidth: 140 }}>
+                        <input defaultValue={o.diseno} onBlur={(e) => actualizar(o.id, 'diseno', e.target.value)} disabled={bloqueada} style={{ ...selSm, width: '100%', minWidth: 130, ...estiloBloqueado }} />
+                      </td>
+                      <td style={{ ...td, minWidth: 150 }}>
+                        <input
+                          defaultValue={o.tela || ''}
+                          onBlur={(e) => { actualizar(o.id, 'tela', e.target.value || null); buscarCodTela(o, e.target.value); }}
+                          disabled={bloqueada}
+                          style={{ ...selSm, width: '100%', minWidth: 140, ...estiloBloqueado }}
+                        />
+                      </td>
+                      <td style={td}>
+                        <input type="number" defaultValue={o.mts_pedidos} onBlur={(e) => actualizar(o.id, 'mts_pedidos', parseFloat(e.target.value) || 0)} disabled={bloqueada} style={{ ...selSm, width: 70, ...estiloBloqueado }} />
+                      </td>
+                      <td style={td}>
+                        {bloqueada ? (
+                          <span title="Ya tiene mts impresos cargados en Producción: no se puede anular ni modificar acá." style={{ fontSize: 11, color: '#c00', fontWeight: 700 }}>
+                            🔒 En producción
+                          </span>
+                        ) : (
+                          <button onClick={() => anular(o)} style={{ ...btn, padding: '4px 8px', fontSize: 11, color: '#c00', borderColor: '#c00' }}>✕ Anular</button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
