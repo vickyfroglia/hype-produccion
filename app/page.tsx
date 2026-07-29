@@ -658,8 +658,10 @@ function BuscarPedido({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
 }
 
 interface LineaDiseno {
+  equipo: string;
   diseno: string;
   mtsPedidos: string;
+  perfil: string;
   tela: string;
   codTela: string;
   disponibleTela: number | null;
@@ -668,7 +670,7 @@ interface LineaDiseno {
 }
 
 function lineaVacia(telaManualPorDefecto = false): LineaDiseno {
-  return { diseno: '', mtsPedidos: '', tela: '', codTela: '', disponibleTela: null, telaManual: telaManualPorDefecto, post: false };
+  return { equipo: '', diseno: '', mtsPedidos: '', perfil: '', tela: '', codTela: '', disponibleTela: null, telaManual: telaManualPorDefecto, post: false };
 }
 
 function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: OrdenDirecta[]; nombreUsuario: string; onGuardado: () => void }) {
@@ -676,8 +678,6 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
   const [nroOtExistente, setNroOtExistente] = useState('');
   const [nroOtGenerado, setNroOtGenerado] = useState('');
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
-  const [equipo, setEquipo] = useState('');
-  const [perfil, setPerfil] = useState('');
   const [tipoOt, setTipoOt] = useState('');
   const [cliente, setCliente] = useState('');
   const [guardando, setGuardando] = useState(false);
@@ -729,8 +729,6 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
       if (ref) {
         setCliente(ref.cliente);
         setFecha(ref.fecha);
-        setEquipo(ref.equipo || '');
-        setPerfil(ref.perfil || '');
         setTipoOt(ref.tipo_ot || '');
         buscarStockDeCliente(ref.cliente);
       }
@@ -834,8 +832,8 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
         lineasValidas.map((l) => ({
           nro_ot: nroOt,
           fecha,
-          equipo: equipo || null,
-          perfil: perfil || null,
+          equipo: l.equipo || null,
+          perfil: l.perfil || null,
           tipo_ot: tipoOt || null,
           cliente,
           diseno: l.diseno,
@@ -889,8 +887,6 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
     setCliente('');
     setStockCliente([]);
     setFecha(new Date().toISOString().split('T')[0]);
-    setEquipo('');
-    setPerfil('');
     setTipoOt('');
     setNroOtExistente('');
     if (modo === 'nuevo') generarNuevoOt();
@@ -911,8 +907,6 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
             <div><div style={lbl}>Nro. OT</div><div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#e85d2f' }}>{modo === 'nuevo' ? nroOtGenerado : nroOtExistente}</div></div>
             <div><div style={lbl}>Cliente</div><div style={{ fontWeight: 600 }}>{cliente}</div></div>
             <div><div style={lbl}>Fecha</div><div>{formatFecha(fecha)}</div></div>
-            <div><div style={lbl}>Equipo</div><div style={{ textTransform: 'uppercase' }}>{equipo || '—'}</div></div>
-            <div><div style={lbl}>Perfil</div><div>{perfil || '—'}</div></div>
             <div><div style={lbl}>Tipo OT</div><div>{tipoOt || '—'}</div></div>
           </div>
 
@@ -920,18 +914,20 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr>{['Diseño', 'Tela', 'Mts pedidos', 'Postratado'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+                  <tr>{['Equipo', 'Diseño', 'Mts pedidos', 'Perfil', 'Tela', 'Postratado'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
                 </thead>
                 <tbody>
                   {lineasParaRevisar.map((l, idx) => {
                     const excede = l.disponibleTela !== null && parseFloat(l.mtsPedidos || '0') > l.disponibleTela;
                     return (
                       <tr key={idx}>
+                        <td style={{ ...td, textTransform: 'uppercase' }}>{l.equipo || '—'}</td>
                         <td style={td}>{l.diseno}</td>
-                        <td style={td}>{l.tela || '—'}</td>
                         <td style={{ ...td, color: excede ? '#c00' : undefined, fontWeight: excede ? 700 : undefined }}>
                           {l.mtsPedidos}{excede ? ` ⚠ supera stock disponible (${l.disponibleTela?.toLocaleString()} mts)` : ''}
                         </td>
+                        <td style={td}>{l.perfil || '—'}</td>
+                        <td style={td}>{l.tela || '—'}</td>
                         <td style={td}>{l.post ? 'Sí' : 'No'}</td>
                       </tr>
                     );
@@ -978,16 +974,6 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12, marginBottom: 20 }}>
         <div><label style={lbl}>Fecha</label><input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={inp} disabled={modo === 'existente'} /></div>
-        <div><label style={lbl}>Equipo</label>
-          <select value={equipo} onChange={(e) => setEquipo(e.target.value)} style={{ ...inp, textTransform: 'uppercase' }} disabled={modo === 'existente'}>
-            <option value="">Seleccionar</option>{EQUIPOS.map((e) => <option key={e} value={e} style={{ textTransform: 'uppercase' }}>{e}</option>)}
-          </select>
-        </div>
-        <div><label style={lbl}>Perfil</label>
-          <select value={perfil} onChange={(e) => setPerfil(e.target.value)} style={inp} disabled={modo === 'existente'}>
-            <option value="">Seleccionar</option>{PERFILES.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </div>
         <div><label style={lbl}>Tipo OT</label>
           <select value={tipoOt} onChange={(e) => setTipoOt(e.target.value)} style={inp} disabled={modo === 'existente'}>
             <option value="">Seleccionar</option>{TIPOS_OT.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -1046,6 +1032,11 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
               </div>
               <div style={{ fontSize: 11, color: '#aaa', marginBottom: 6 }}>Diseño {idx + 1}</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12 }}>
+                <div><label style={lbl}>Equipo</label>
+                  <select value={l.equipo} onChange={(e) => actualizarLinea(idx, { equipo: e.target.value })} style={{ ...inp, textTransform: 'uppercase' }}>
+                    <option value="">Seleccionar</option>{EQUIPOS.map((e) => <option key={e} value={e} style={{ textTransform: 'uppercase' }}>{e}</option>)}
+                  </select>
+                </div>
                 <div><label style={lbl}>Diseño</label><input value={l.diseno} onChange={(e) => actualizarLinea(idx, { diseno: e.target.value })} style={inp} /></div>
                 <div>
                   <label style={lbl}>Mts pedidos</label>
@@ -1055,6 +1046,11 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
                     onChange={(e) => actualizarLinea(idx, { mtsPedidos: e.target.value })}
                     style={{ ...inp, borderColor: excedeStock ? '#c00' : '#ddd', color: excedeStock ? '#c00' : undefined }}
                   />
+                </div>
+                <div><label style={lbl}>Perfil</label>
+                  <select value={l.perfil} onChange={(e) => actualizarLinea(idx, { perfil: e.target.value })} style={inp}>
+                    <option value="">Seleccionar</option>{PERFILES.map((p) => <option key={p} value={p}>{p}</option>)}
+                  </select>
                 </div>
 
                 <div style={{ gridColumn: '1/-1' }}>
