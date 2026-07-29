@@ -1433,6 +1433,11 @@ const CAMPOS_ROL: Record<string, string[]> = {
 
 function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onCambio: () => void; rol: string }) {
   const [search, setSearch] = useState('');
+  const FILTROS_ESTADO = ['FICHAR CN', 'FICHAR CR', 'EN PROCESO'] as const;
+  const [filtrosEstado, setFiltrosEstado] = useState<string[]>([]);
+  const toggleFiltroEstado = (valor: string) => {
+    setFiltrosEstado((actual) => (actual.includes(valor) ? actual.filter((v) => v !== valor) : [...actual, valor]));
+  };
   const prioridad = calcularPrioridad(ordenes);
   const esAdmin = rol.trim() === 'admin';
   // Campos que son "producir" propiamente dicho: no se pueden tocar si
@@ -1635,21 +1640,52 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
 
   const filtradas = ordenes
     .filter((o) => {
+      if (filtrosEstado.length > 0 && !filtrosEstado.includes(o.aprob)) return false;
       if (!search) return true;
       const q = search.toLowerCase();
-      return o.nro_ot.toLowerCase().includes(q) || o.cliente.toLowerCase().includes(q) || o.diseno.toLowerCase().includes(q);
+      return (
+        o.nro_ot.toLowerCase().includes(q) ||
+        o.cliente.toLowerCase().includes(q) ||
+        o.diseno.toLowerCase().includes(q) ||
+        (o.tela || '').toLowerCase().includes(q)
+      );
     })
     // Pedido más viejo (N 1) arriba, más nuevo abajo — mismo orden que la columna N.
     .sort((a, b) => (prioridad.get(a.id) || 0) - (prioridad.get(b.id) || 0));
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 700, textTransform: 'uppercase' }}>Producción</div>
           <div style={{ fontSize: 13, color: '#888' }}>Todos los pedidos y todos los campos, editable por cualquiera</div>
         </div>
-        <input placeholder="Buscar por OT, cliente o diseño..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...inp, maxWidth: 280 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {FILTROS_ESTADO.map((f) => {
+            const activo = filtrosEstado.includes(f);
+            return (
+              <div
+                key={f}
+                onClick={() => toggleFiltroEstado(f)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 16,
+                  border: activo ? '1px solid #e85d2f' : '1px solid #ccc',
+                  background: activo ? '#e85d2f' : '#fff',
+                  color: activo ? '#fff' : '#555',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {f}
+              </div>
+            );
+          })}
+          <input placeholder="Buscar por OT, cliente, diseño o tela..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...inp, maxWidth: 280 }} />
+        </div>
       </div>
       <style>{`
         .vg-grid th, .vg-grid td { border: 1px solid #ddd !important; text-align: center !important; }
