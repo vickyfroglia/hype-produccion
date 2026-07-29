@@ -543,98 +543,16 @@ function Dashboard({
 // Panel Diseño: alta de pedidos + edición de aprob/post
 // ---------------------------------------------------------------------------
 function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirecta[]; nombreUsuario: string; onCambio: () => void }) {
-  const [mostrarForm, setMostrarForm] = useState(false);
-  const prioridad = calcularPrioridad(ordenes);
-  // Mismo orden que la columna N: el más viejo (1) arriba, el más nuevo abajo.
-  const ordenadas = [...ordenes].sort((a, b) => (prioridad.get(a.id) || 0) - (prioridad.get(b.id) || 0));
-
-  async function actualizar(id: number, campo: string, valor: any) {
-    const { error } = await supabase.from('ordenes_directa').update({ [campo]: valor }).eq('id', id);
-    if (error) alert('Error: ' + error.message);
-    else onCambio();
-  }
-
-  // Igual que en Producción: al corregir la tela acá, busca en Stock el
-  // id_hype que corresponde a ese cliente + tela y lo completa solo en
-  // cod_tela (columna "ID"). Sin esto, cambiar la tela no actualizaba el ID.
-  async function buscarCodTela(o: OrdenDirecta, telaTexto?: string) {
-    const tela = (telaTexto ?? o.tela) || '';
-    if (!o.cliente || !tela) return;
-    const disponibles = await stockPorCliente(o.cliente);
-    const coincidencias = disponibles.filter((s) => s.tela.trim().toLowerCase() === tela.trim().toLowerCase());
-    if (coincidencias.length === 0) return;
-    const mejor = coincidencias.sort((a, b) => b.disponible - a.disponible)[0];
-    await actualizar(o.id, 'cod_tela', mejor.id_hype);
-  }
-
+  // Esta pantalla es solo para cargar un pedido nuevo: la cola completa de
+  // pedidos ya se ve en la solapa Producción, no hace falta duplicarla acá.
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 700, textTransform: 'uppercase' }}>Ingreso Pedido</div>
-          <div style={{ fontSize: 13, color: '#888' }}>Alta de pedidos, ficha y aprobación</div>
-        </div>
-        <button onClick={() => setMostrarForm((v) => !v)} style={{ ...btn, background: '#1a1a2e', color: '#fff', border: 'none' }}>
-          {mostrarForm ? 'Cerrar' : '+ Nuevo pedido'}
-        </button>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, textTransform: 'uppercase' }}>Ingreso Pedido</div>
+        <div style={{ fontSize: 13, color: '#888' }}>Cargá el pedido, revisalo completo y confirmalo para sumarlo a Producción</div>
       </div>
 
-      {mostrarForm && (
-        <FormAltaDiseno
-          ordenes={ordenes}
-          nombreUsuario={nombreUsuario}
-          onGuardado={() => {
-            setMostrarForm(false);
-            onCambio();
-          }}
-        />
-      )}
-
-      <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>{['N', 'OT', 'Fecha', 'Cliente', 'Diseño', 'Tela', 'Mts', 'Aprob', 'Post'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
-            </thead>
-            <tbody>
-              {ordenadas.map((o) => (
-                <tr key={o.id}>
-                  <td style={{ ...td, color: '#888' }}>{prioridad.get(o.id)}</td>
-                  <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
-                  <td style={{ ...td, minWidth: 130 }}>
-                    <input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 120 }} />
-                  </td>
-                  <td style={{ ...td, minWidth: 150 }}>
-                    <input defaultValue={o.cliente} onBlur={(e) => actualizar(o.id, 'cliente', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 140 }} />
-                  </td>
-                  <td style={{ ...td, minWidth: 150 }}>
-                    <input defaultValue={o.diseno} onBlur={(e) => actualizar(o.id, 'diseno', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 140 }} />
-                  </td>
-                  <td style={{ ...td, minWidth: 150 }}>
-                    <input
-                      defaultValue={o.tela || ''}
-                      onBlur={(e) => { actualizar(o.id, 'tela', e.target.value || null); buscarCodTela(o, e.target.value); }}
-                      style={{ ...selSm, width: '100%', minWidth: 140 }}
-                    />
-                  </td>
-                  <td style={td}>
-                    <input type="number" defaultValue={o.mts_pedidos} onBlur={(e) => actualizar(o.id, 'mts_pedidos', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 70 }} />
-                  </td>
-                  <td style={td}>
-                    <select value={o.aprob} onChange={(e) => actualizar(o.id, 'aprob', e.target.value)} style={selSm}>
-                      {APROB_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
-                    </select>
-                  </td>
-                  <td style={td}>
-                    <input type="checkbox" checked={o.post} onChange={(e) => actualizar(o.id, 'post', e.target.checked)} />
-                  </td>
-                </tr>
-              ))}
-              {ordenadas.length === 0 && <tr><td colSpan={9} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <FormAltaDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onGuardado={onCambio} />
     </div>
   );
 }
@@ -663,6 +581,10 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
   const [tipoOt, setTipoOt] = useState('');
   const [cliente, setCliente] = useState('');
   const [guardando, setGuardando] = useState(false);
+  // Antes de guardar de verdad, se muestra un resumen de todo el pedido
+  // para que se confirme con un "OK" — no se manda nada a Producción hasta
+  // que se confirma acá.
+  const [revisando, setRevisando] = useState(false);
 
   // Un pedido puede traer varios diseños, cada uno con su propia tela y
   // metraje — cada línea de esta lista se guarda como un renglón propio
@@ -770,21 +692,31 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
     setLineaConSugerenciasTH(null);
   }
 
-  async function guardar() {
+  // Chequeo liviano antes de mostrar la revisión — no guarda nada todavía,
+  // solo confirma que hay lo mínimo para poder ver un resumen con sentido.
+  function validar(): boolean {
     const nroOt = modo === 'nuevo' ? nroOtGenerado : nroOtExistente;
     if (!nroOt || !cliente) {
       alert('Completá OT y cliente.');
-      return;
+      return false;
     }
     const lineasValidas = lineas.filter((l) => l.diseno && parseFloat(l.mtsPedidos));
     if (lineasValidas.length === 0) {
       alert('Cargá al menos un diseño con sus metros pedidos.');
-      return;
+      return false;
     }
-    const conExceso = lineasValidas.filter((l) => l.disponibleTela !== null && parseFloat(l.mtsPedidos) > l.disponibleTela);
-    if (conExceso.length > 0) {
-      const detalle = conExceso.map((l) => `${l.diseno} (${l.mtsPedidos} mts pedidos vs ${l.disponibleTela} disponibles)`).join(', ');
-      if (!confirm(`Estos diseños superan el stock disponible de su tela: ${detalle}. ¿Guardar igual?`)) return;
+    return true;
+  }
+
+  // Esto solo se llama desde la pantalla de revisión, después de que ya se
+  // vio el resumen completo y se tocó "Confirmar" — acá recién se guarda de
+  // verdad en Producción.
+  async function guardar() {
+    const nroOt = modo === 'nuevo' ? nroOtGenerado : nroOtExistente;
+    const lineasValidas = lineas.filter((l) => l.diseno && parseFloat(l.mtsPedidos));
+    if (!nroOt || !cliente || lineasValidas.length === 0) {
+      setRevisando(false);
+      return;
     }
     setGuardando(true);
 
@@ -848,11 +780,77 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
     }
 
     setGuardando(false);
+    setRevisando(false);
+
+    // Como ahora el formulario queda siempre visible (ya no se cierra
+    // solo), lo reseteamos acá para que quede listo para cargar el próximo
+    // pedido en blanco.
+    setLineas([lineaVacia()]);
+    setCliente('');
+    setStockCliente([]);
+    setFecha(new Date().toISOString().split('T')[0]);
+    setEquipo('');
+    setPerfil('');
+    setTipoOt('');
+    setNroOtExistente('');
+    if (modo === 'nuevo') generarNuevoOt();
+
     onGuardado();
   }
 
+  const lineasParaRevisar = lineas.filter((l) => l.diseno && parseFloat(l.mtsPedidos));
+
   return (
     <div style={{ ...card, marginBottom: 20 }}>
+      {revisando && (
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Revisá el pedido antes de confirmarlo</div>
+          <div style={{ fontSize: 13, color: '#888', marginBottom: 20 }}>Todavía no se guardó nada — recién se suma a Producción cuando confirmes.</div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12, marginBottom: 20 }}>
+            <div><div style={lbl}>Nro. OT</div><div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#e85d2f' }}>{modo === 'nuevo' ? nroOtGenerado : nroOtExistente}</div></div>
+            <div><div style={lbl}>Cliente</div><div style={{ fontWeight: 600 }}>{cliente}</div></div>
+            <div><div style={lbl}>Fecha</div><div>{formatFecha(fecha)}</div></div>
+            <div><div style={lbl}>Equipo</div><div style={{ textTransform: 'uppercase' }}>{equipo || '—'}</div></div>
+            <div><div style={lbl}>Perfil</div><div>{perfil || '—'}</div></div>
+            <div><div style={lbl}>Tipo OT</div><div>{tipoOt || '—'}</div></div>
+          </div>
+
+          <div style={{ ...card, padding: 0, overflow: 'hidden', marginBottom: 20 }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>{['Diseño', 'Tela', 'Mts pedidos', 'Postratado'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {lineasParaRevisar.map((l, idx) => {
+                    const excede = l.disponibleTela !== null && parseFloat(l.mtsPedidos || '0') > l.disponibleTela;
+                    return (
+                      <tr key={idx}>
+                        <td style={td}>{l.diseno}</td>
+                        <td style={td}>{l.tela || '—'}</td>
+                        <td style={{ ...td, color: excede ? '#c00' : undefined, fontWeight: excede ? 700 : undefined }}>
+                          {l.mtsPedidos}{excede ? ` ⚠ supera stock disponible (${l.disponibleTela?.toLocaleString()} mts)` : ''}
+                        </td>
+                        <td style={td}>{l.post ? 'Sí' : 'No'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <button onClick={() => setRevisando(false)} disabled={guardando} style={btn}>← Volver a editar</button>
+            <button onClick={guardar} disabled={guardando} style={{ ...btn, background: '#e85d2f', color: '#fff', border: '1px solid #e85d2f' }}>
+              {guardando ? 'Guardando...' : 'Confirmar y agregar a Producción'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: revisando ? 'none' : 'block' }}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         <button onClick={() => setModo('nuevo')} style={{ ...btn, background: modo === 'nuevo' ? '#e85d2f' : '#fff', color: modo === 'nuevo' ? '#fff' : '#333' }}>Nuevo pedido</button>
         <button onClick={() => setModo('existente')} style={{ ...btn, background: modo === 'existente' ? '#e85d2f' : '#fff', color: modo === 'existente' ? '#fff' : '#333' }}>Agregar diseño a un pedido existente</button>
@@ -1040,9 +1038,10 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-        <button onClick={guardar} disabled={guardando} style={{ ...btn, background: '#e85d2f', color: '#fff', border: '1px solid #e85d2f' }}>
-          {guardando ? 'Guardando...' : `Guardar ${lineas.length > 1 ? `${lineas.length} diseños` : 'diseño'}`}
+        <button onClick={() => { if (validar()) setRevisando(true); }} style={{ ...btn, background: '#e85d2f', color: '#fff', border: '1px solid #e85d2f' }}>
+          Revisar {lineas.length > 1 ? `${lineas.length} diseños` : 'diseño'}
         </button>
+      </div>
       </div>
     </div>
   );
