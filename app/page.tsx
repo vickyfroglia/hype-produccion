@@ -1923,6 +1923,8 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     fontSize: 12,
+                    whiteSpace: 'normal',
+                    lineHeight: 1.3,
                     ...(columnasImpresion.includes(h) ? { background: '#fbe0c8', color: '#000' } : {}),
                   }}
                 >
@@ -1934,15 +1936,15 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
           <tbody>
             {rollosFiltrados.map((r) => (
               <tr key={r.id}>
-                <td style={{ ...td, minWidth: 120 }}>
-                  <input type="date" defaultValue={r.fecha} onBlur={(e) => actualizar(r.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 110 }} />
+                <td style={{ ...td, minWidth: 100 }}>
+                  <input type="date" defaultValue={r.fecha} onBlur={(e) => actualizar(r.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 95 }} />
                 </td>
                 <td style={td}>
                   <select defaultValue={r.turno} onChange={(e) => actualizar(r.id, 'turno', e.target.value)} style={selSm}>
                     {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </td>
-                <td style={{ ...td, minWidth: 100 }}>
+                <td style={{ ...td, minWidth: 70 }}>
                   <input
                     list={listaNrosOt}
                     defaultValue={(r.nro_ot || '').slice(-6)}
@@ -1954,7 +1956,7 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                       const disenosOt = disenosPorNroOt(valor);
                       if (disenosOt.length === 1) actualizar(r.id, 'diseno', disenosOt[0]);
                     }}
-                    style={{ ...selSm, width: '100%', minWidth: 90 }}
+                    style={{ ...selSm, width: '100%', minWidth: 62 }}
                   />
                 </td>
                 <td style={{ ...td, minWidth: 130 }}>
@@ -1975,11 +1977,11 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                 <td style={td}>
                   <input defaultValue={r.rollo_nro || ''} onBlur={(e) => actualizar(r.id, 'rollo_nro', e.target.value || null)} style={{ ...selSm, width: 80 }} />
                 </td>
-                <td style={{ ...td, minWidth: 130 }}>
+                <td style={{ ...td, minWidth: 220 }}>
                   <select
                     defaultValue={r.tela || ''}
                     onChange={(e) => { actualizar(r.id, 'tela', e.target.value || null); buscarCodTela(r, e.target.value); }}
-                    style={{ ...selSm, width: '100%', minWidth: 120 }}
+                    style={{ ...selSm, width: '100%', minWidth: 210 }}
                   >
                     <option value="">—</option>
                     {telasPorNroOt((r.nro_ot || '').slice(-6), r.diseno || undefined).map((t) => <option key={t} value={t}>{t}</option>)}
@@ -2015,8 +2017,8 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                 if (!e.currentTarget.contains(e.relatedTarget as Node)) guardarNuevaFila();
               }}
             >
-              <td style={{ ...td, minWidth: 120 }}>
-                <input type="date" value={nuevo.fecha} onChange={(e) => setNuevo({ ...nuevo, fecha: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 110 }} />
+              <td style={{ ...td, minWidth: 100 }}>
+                <input type="date" value={nuevo.fecha} onChange={(e) => setNuevo({ ...nuevo, fecha: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 95 }} />
               </td>
               <td style={td}>
                 <select value={nuevo.turno} onChange={(e) => setNuevo({ ...nuevo, turno: e.target.value })} style={selSm}>
@@ -2024,7 +2026,7 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                   {TURNOS_REPORTE.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
               </td>
-              <td style={{ ...td, minWidth: 100 }}>
+              <td style={{ ...td, minWidth: 70 }}>
                 <input
                   list={listaNrosOt}
                   placeholder="Nro OT"
@@ -2042,7 +2044,7 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                       tela: telasOt.length === 1 ? telasOt[0] : '',
                     });
                   }}
-                  style={{ ...selSm, width: '100%', minWidth: 90 }}
+                  style={{ ...selSm, width: '100%', minWidth: 62 }}
                 />
               </td>
               <td style={{ ...td, minWidth: 130 }}>
@@ -2069,11 +2071,11 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
               <td style={td}>
                 <input placeholder="Rollo" value={nuevo.rollo_nro} onChange={(e) => setNuevo({ ...nuevo, rollo_nro: e.target.value })} style={{ ...selSm, width: 80 }} />
               </td>
-              <td style={{ ...td, minWidth: 130 }}>
+              <td style={{ ...td, minWidth: 220 }}>
                 <select
                   value={nuevo.tela}
                   onChange={(e) => setNuevo({ ...nuevo, tela: e.target.value })}
-                  style={{ ...selSm, width: '100%', minWidth: 120 }}
+                  style={{ ...selSm, width: '100%', minWidth: 210 }}
                   disabled={!nuevo.nro_ot}
                 >
                   <option value="">{nuevo.nro_ot ? '— (elegir tela)' : '— (elegir Nro OT primero)'}</option>
@@ -2267,6 +2269,8 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     fontSize: 12,
+                    whiteSpace: 'normal',
+                    lineHeight: 1.3,
                     ...(h !== 'Borrar' ? { background: '#e6dcf7', color: '#000' } : {}),
                   }}
                 >
@@ -2300,7 +2304,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                     {TIPOS_PROCESO_CIBITEX.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </td>
-                <td style={{ ...td, minWidth: 100 }}>
+                <td style={{ ...td, minWidth: 70 }}>
                   <input
                     list={listaNrosOt}
                     defaultValue={(r.nro_ot || '').slice(-6)}
@@ -2314,7 +2318,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                         if (disenosOt.length === 1) actualizar(r.id, 'diseno', disenosOt[0]);
                       }
                     }}
-                    style={{ ...selSm, width: '100%', minWidth: 90 }}
+                    style={{ ...selSm, width: '100%', minWidth: 62 }}
                   />
                 </td>
                 <td style={{ ...td, minWidth: 130 }}>
@@ -2334,11 +2338,11 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                     )}
                   </select>
                 </td>
-                <td style={{ ...td, minWidth: 130 }}>
+                <td style={{ ...td, minWidth: 220 }}>
                   <select
                     defaultValue={r.tela || ''}
                     onChange={(e) => { actualizar(r.id, 'tela', e.target.value || null); buscarCodTela(r, e.target.value); }}
-                    style={{ ...selSm, width: '100%', minWidth: 120 }}
+                    style={{ ...selSm, width: '100%', minWidth: 210 }}
                   >
                     <option value="">—</option>
                     {telasPorNroOt((r.nro_ot || '').slice(-6), esTipoPrep(r.tipo_proceso || '') ? undefined : (r.diseno || undefined)).map((t) => <option key={t} value={t}>{t}</option>)}
@@ -2401,7 +2405,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                   {TIPOS_PROCESO_CIBITEX.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
               </td>
-              <td style={{ ...td, minWidth: 100 }}>
+              <td style={{ ...td, minWidth: 70 }}>
                 <input
                   list={listaNrosOt}
                   placeholder="Nro OT"
@@ -2419,7 +2423,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                       tela: telasOt.length === 1 ? telasOt[0] : '',
                     });
                   }}
-                  style={{ ...selSm, width: '100%', minWidth: 90 }}
+                  style={{ ...selSm, width: '100%', minWidth: 62 }}
                 />
               </td>
               <td style={{ ...td, minWidth: 130 }}>
@@ -2442,11 +2446,11 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                   {!esTipoPrep(nuevo.tipo_proceso) && disenosPorNroOt(nuevo.nro_ot).map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
               </td>
-              <td style={{ ...td, minWidth: 130 }}>
+              <td style={{ ...td, minWidth: 220 }}>
                 <select
                   value={nuevo.tela}
                   onChange={(e) => setNuevo({ ...nuevo, tela: e.target.value })}
-                  style={{ ...selSm, width: '100%', minWidth: 120 }}
+                  style={{ ...selSm, width: '100%', minWidth: 210 }}
                   disabled={!nuevo.nro_ot}
                 >
                   <option value="">{nuevo.nro_ot ? '— (elegir tela)' : '— (elegir Nro OT primero)'}</option>
