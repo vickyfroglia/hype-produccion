@@ -367,19 +367,37 @@ function Dashboard({
   const incompletos = ordenes.filter((o) => motivoBloqueo(o, stockMapas) !== null);
   const otsIncompletas = new Set(incompletos.map((o) => o.nro_ot)).size;
   const ordenesAtrasadas = ordenesAtrasadasPorPlazo(ordenes);
-  const mtsPed = ordenes.reduce((s, o) => s + Number(o.mts_pedidos || 0), 0);
-  const mtsImp = ordenes.reduce((s, o) => s + Number(o.mts_impresos || 0), 0);
+  const anioActual = new Date().toISOString().slice(0, 4);
+  const mesActual = new Date().toISOString().slice(0, 7);
+  const ordenesAnio = ordenes.filter((o) => o.fecha && o.fecha.slice(0, 4) === anioActual);
+  const ordenesMes = ordenes.filter((o) => o.fecha && o.fecha.slice(0, 7) === mesActual);
+  const mtsImpAnio = ordenesAnio.reduce((s, o) => s + Number(o.mts_impresos || 0), 0);
+  const mtsPedAnio = ordenesAnio.reduce((s, o) => s + Number(o.mts_pedidos || 0), 0);
+  const mtsImpMes = ordenesMes.reduce((s, o) => s + Number(o.mts_impresos || 0), 0);
+  const mtsPedMes = ordenesMes.reduce((s, o) => s + Number(o.mts_pedidos || 0), 0);
   const impresionPorOperario = mtsImpresionMensualPorOperario(rollosReporte);
   const terminacionPorOperario = mtsTerminacionMensualPorOperario(rollosReporte);
 
   return (
     <div style={{ textTransform: 'uppercase' }}>
-      <div style={{ ...card, marginBottom: 20, background: '#eeeef4', color: '#000', textAlign: 'center' }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#000', letterSpacing: 1, marginBottom: 8 }}>
-          Mts totales impresos / Mts totales pedidos
-        </div>
-        <div style={{ fontSize: 40, fontWeight: 700, color: '#000' }}>
-          {mtsImp.toLocaleString()} / {mtsPed.toLocaleString()}
+      <div style={{ ...card, marginBottom: 20, background: '#1a1a2e', color: '#fff' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', letterSpacing: 1, marginBottom: 8 }}>
+              Mts impresos / pedidos — en el año
+            </div>
+            <div style={{ fontSize: 34, fontWeight: 700, color: '#fff' }}>
+              {mtsImpAnio.toLocaleString()} / {mtsPedAnio.toLocaleString()}
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', letterSpacing: 1, marginBottom: 8 }}>
+              Mts impresos / pedidos — en el mes
+            </div>
+            <div style={{ fontSize: 34, fontWeight: 700, color: '#fff' }}>
+              {mtsImpMes.toLocaleString()} / {mtsPedMes.toLocaleString()}
+            </div>
+          </div>
         </div>
       </div>
 
