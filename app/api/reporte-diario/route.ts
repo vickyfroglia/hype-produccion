@@ -163,8 +163,8 @@ function armarHtml(fechaIso: string, mona32: { operario: string; mts: number }[]
           </td>
           <td style="width:50%;padding-left:6px;">
             <div style="background:#1a1a2e;color:#fff;border-radius:8px;padding:14px;text-align:center;">
-              <div style="font-size:11px;letter-spacing:0.5px;text-transform:uppercase;">Mts totales terminación</div>
-              <div style="font-size:26px;font-weight:700;margin-top:4px;">${(totalFijado + totalPrep).toLocaleString('es-AR')}</div>
+              <div style="font-size:11px;letter-spacing:0.5px;text-transform:uppercase;">Mts totales fijados</div>
+              <div style="font-size:26px;font-weight:700;margin-top:4px;">${totalFijado.toLocaleString('es-AR')}</div>
             </div>
           </td>
         </tr></table>
