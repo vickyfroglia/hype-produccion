@@ -411,7 +411,7 @@ function Dashboard({
         <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b', letterSpacing: 1, marginBottom: 12 }}>
           Órdenes atrasadas ({ordenesAtrasadas.length}) — superaron el plazo de entrega de {PLAZO_ENTREGA_DIAS} días
         </div>
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflowX: 'auto', marginBottom: 24 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>{['OT', 'Cliente', 'Fecha pedido', 'Días transcurridos'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
@@ -429,9 +429,7 @@ function Dashboard({
             </tbody>
           </table>
         </div>
-      </div>
 
-      <div style={{ ...card, marginBottom: 20, background: '#fdfbf5', color: '#000' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b', letterSpacing: 1, marginBottom: 12 }}>
           Órdenes incompletas ({incompletos.length} ítems en {otsIncompletas} OT) — marcadas NO en Op Imp o sin tela suficiente
         </div>
