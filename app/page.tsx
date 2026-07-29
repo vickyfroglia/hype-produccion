@@ -121,9 +121,9 @@ export default function Home() {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '▦', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
     { id: 'diseno', label: 'Ingreso y Modif Pedidos', icon: '✎', roles: ['admin', 'diseno'] },
-    { id: 'general', label: 'Producción', icon: '☷', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
-    { id: 'reporte', label: 'Reporte diario', icon: '▤', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
     { id: 'administracion', label: 'Administración', icon: '$', roles: ['admin', 'administrativo'] },
+    { id: 'reporte', label: 'Reporte diario', icon: '▤', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
+    { id: 'general', label: 'Producción', icon: '☷', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
     { id: 'historial', label: 'Historial', icon: '☰', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
   ].filter((n) => n.roles.includes(rol.trim()) || rol.trim() === 'admin');
 
