@@ -367,11 +367,22 @@ function Dashboard({
   const incompletos = ordenes.filter((o) => motivoBloqueo(o, stockMapas) !== null);
   const otsIncompletas = new Set(incompletos.map((o) => o.nro_ot)).size;
   const ordenesAtrasadas = ordenesAtrasadasPorPlazo(ordenes);
+  const mtsPed = ordenes.reduce((s, o) => s + Number(o.mts_pedidos || 0), 0);
+  const mtsImp = ordenes.reduce((s, o) => s + Number(o.mts_impresos || 0), 0);
   const impresionPorOperario = mtsImpresionMensualPorOperario(rollosReporte);
   const terminacionPorOperario = mtsTerminacionMensualPorOperario(rollosReporte);
 
   return (
     <div style={{ textTransform: 'uppercase' }}>
+      <div style={{ ...card, marginBottom: 20, background: '#eeeef4', color: '#000', textAlign: 'center' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#000', letterSpacing: 1, marginBottom: 8 }}>
+          Mts totales impresos / Mts totales pedidos
+        </div>
+        <div style={{ fontSize: 40, fontWeight: 700, color: '#000' }}>
+          {mtsImp.toLocaleString()} / {mtsPed.toLocaleString()}
+        </div>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 20 }}>
         {EQUIPOS.map((eq) => {
           const { impresos, pendientes } = totalesPorEquipo(ordenes, eq);
