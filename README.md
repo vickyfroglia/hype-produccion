@@ -90,10 +90,57 @@ npm run dev
 2. En Vercel → **Add New Project** → importar el repo.
 3. Agregar `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` en Environment Variables.
 4. Deploy.
+5. (Opcional) Para activar el reporte diario por mail, ver la sección "Reporte diario por mail" más abajo — hay 4 variables de entorno más para cargar.
 
 ## Roles esperados en `usuarios.rol`
 
 `admin` (ve todo), `diseno`, `administrativo`, `operario`, `encargado` (Preparación/Terminación), más `logistica` y `comercial` que por ahora solo ven Dashboard e Historial.
+
+## Reporte diario por mail
+
+Todos los días a las 8:00 AM (hora Argentina) la app manda automáticamente un
+mail con la productividad de ayer: mts impresos por operario en Monalisa 32 y
+Monalisa 8, y mts de terminación (Cibitex) por operario, separados en Fijado
+y Preparación. Lo dispara un Cron Job de Vercel que llama a
+`/api/reporte-diario`, y el mail se manda con nodemailer usando una cuenta de
+Gmail/Google Workspace.
+
+Para activarlo hay que configurar 4 variables de entorno en Vercel (Project
+Settings → Environment Variables), además de las de Supabase:
+
+1. **`SUPABASE_SERVICE_ROLE_KEY`**: en el panel de Supabase, Project Settings
+   → API → copiá la clave `service_role` (la secreta, no la `anon`). Se
+   necesita porque el mail se genera sin que haya nadie logueado en la app.
+   **Importante**: esta clave nunca debe llevar el prefijo `NEXT_PUBLIC_` —
+   si lo llevara quedaría visible desde el navegador de cualquiera.
+
+2. **`GMAIL_USER`** y **`GMAIL_APP_PASSWORD`**: la cuenta de Gmail/Google
+   Workspace desde la que se manda (por ejemplo `ventas@hypearg.com`), y una
+   "contraseña de aplicación" generada para esa cuenta (no la contraseña
+   normal). Para generarla:
+   - Entrá a [myaccount.google.com/security](https://myaccount.google.com/security).
+   - Activá la verificación en dos pasos si todavía no la tenés activada
+     (es un requisito de Google para poder generar contraseñas de aplicación).
+   - Buscá "Contraseñas de aplicaciones" (o entrá directo a
+     [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)),
+     creá una nueva (podés llamarla "Reporte HYPE") y copiá el código de 16
+     letras que te da — eso va en `GMAIL_APP_PASSWORD`.
+
+3. **`REPORTE_DESTINATARIOS`**: el o los mails que reciben el reporte,
+   separados por coma si son varios (por ejemplo `matias@hypearg.com`).
+
+4. **`CRON_SECRET`**: una clave inventada para que nadie más pueda disparar
+   el envío del mail llamando a la URL directamente. Tiene que ser
+   **exactamente la misma** que la que aparece en `vercel.json`, en
+   `crons > path > ?secret=...`. Ya viene precargada con un valor generado
+   al azar — se puede dejar así o cambiarla (cambiándola en los dos lugares).
+
+Después de cargar las 4 variables, hacé un redeploy en Vercel (o esperá al
+próximo push) para que el Cron Job quede activo. Para probarlo sin esperar a
+las 8 AM, se puede visitar manualmente
+`https://tu-app.vercel.app/api/reporte-diario?secret=EL_MISMO_SECRETO_DE_VERCEL_JSON`
+desde el navegador — si todo está bien configurado, llega el mail al toque y
+la página muestra `{"ok":true,...}`.
 
 ## Próximos pasos
 

@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/reporte-diario?secret=b54d327bfbebc09ea8c2b8511a00f3fc95638a5e3154e91c",
+      "schedule": "0 11 * * *"
+    }
+  ]
+}
