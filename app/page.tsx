@@ -553,6 +553,106 @@ function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirec
       </div>
 
       <FormAltaDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onGuardado={onCambio} />
+
+      <BuscarPedido ordenes={ordenes} onCambio={onCambio} />
+    </div>
+  );
+}
+
+// Buscador de pedidos ya cargados, para poder corregirlos o anularlos sin
+// tener que ir a la solapa Producción. No muestra nada hasta que se escribe
+// algo — así no duplicamos la cola completa acá.
+function BuscarPedido({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio: () => void }) {
+  const [busqueda, setBusqueda] = useState('');
+
+  const termino = busqueda.trim().toLowerCase();
+  const resultados = termino
+    ? ordenes.filter((o) =>
+        [o.nro_ot, o.cliente, o.diseno, o.tela || ''].some((campo) => (campo || '').toLowerCase().includes(termino))
+      )
+    : [];
+
+  async function actualizar(id: number, campo: string, valor: any) {
+    const { error } = await supabase.from('ordenes_directa').update({ [campo]: valor }).eq('id', id);
+    if (error) alert('Error: ' + error.message);
+    else onCambio();
+  }
+
+  // Igual que en Producción: al corregir la tela acá, busca en Stock el
+  // id_hype que corresponde a ese cliente + tela y lo completa solo.
+  async function buscarCodTela(o: OrdenDirecta, telaTexto?: string) {
+    const tela = (telaTexto ?? o.tela) || '';
+    if (!o.cliente || !tela) return;
+    const disponibles = await stockPorCliente(o.cliente);
+    const coincidencias = disponibles.filter((s) => s.tela.trim().toLowerCase() === tela.trim().toLowerCase());
+    if (coincidencias.length === 0) return;
+    const mejor = coincidencias.sort((a, b) => b.disponible - a.disponible)[0];
+    await actualizar(o.id, 'cod_tela', mejor.id_hype);
+  }
+
+  // Anula (borra) un pedido, y libera el stock reservado que se le haya
+  // generado (por ejemplo, la reserva de tela HYPE cargada al ingresarlo).
+  async function anular(o: OrdenDirecta) {
+    if (!confirm(`¿Anular el pedido ${o.nro_ot} — ${o.cliente} — ${o.diseno}?\n\nEsto también libera el stock reservado para este pedido (si lo hay). No se puede deshacer.`)) return;
+    const { error: errorEgresos } = await supabase.from('egresos').delete().eq('orden_id', o.id);
+    if (errorEgresos) console.error('No se pudo liberar el stock reservado de este pedido:', errorEgresos);
+    const { error } = await supabase.from('ordenes_directa').delete().eq('id', o.id);
+    if (error) { alert('Error al anular: ' + error.message); return; }
+    onCambio();
+  }
+
+  return (
+    <div style={{ ...card, marginTop: 20 }}>
+      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Buscar y modificar un pedido</div>
+      <div style={{ fontSize: 13, color: '#888', marginBottom: 12 }}>Buscá por Nro OT, Cliente, Diseño o Tela para corregirlo o anularlo.</div>
+      <input
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        placeholder="Buscar por Nro OT, Cliente, Diseño o Tela..."
+        style={{ ...inp, maxWidth: 360, marginBottom: termino ? 16 : 0 }}
+      />
+
+      {termino && (
+        <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>{['Nro OT', 'Fecha', 'Cliente', 'Diseño', 'Tela', 'Mts Ped', 'Anular'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {resultados.length === 0 && <tr><td colSpan={7} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin resultados</td></tr>}
+                {resultados.map((o) => (
+                  <tr key={o.id}>
+                    <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
+                    <td style={{ ...td, minWidth: 120 }}>
+                      <input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 110 }} />
+                    </td>
+                    <td style={{ ...td, minWidth: 140 }}>
+                      <input defaultValue={o.cliente} onBlur={(e) => actualizar(o.id, 'cliente', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 130 }} />
+                    </td>
+                    <td style={{ ...td, minWidth: 140 }}>
+                      <input defaultValue={o.diseno} onBlur={(e) => actualizar(o.id, 'diseno', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 130 }} />
+                    </td>
+                    <td style={{ ...td, minWidth: 150 }}>
+                      <input
+                        defaultValue={o.tela || ''}
+                        onBlur={(e) => { actualizar(o.id, 'tela', e.target.value || null); buscarCodTela(o, e.target.value); }}
+                        style={{ ...selSm, width: '100%', minWidth: 140 }}
+                      />
+                    </td>
+                    <td style={td}>
+                      <input type="number" defaultValue={o.mts_pedidos} onBlur={(e) => actualizar(o.id, 'mts_pedidos', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 70 }} />
+                    </td>
+                    <td style={td}>
+                      <button onClick={() => anular(o)} style={{ ...btn, padding: '4px 8px', fontSize: 11, color: '#c00', borderColor: '#c00' }}>✕ Anular</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
