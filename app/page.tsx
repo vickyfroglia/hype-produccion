@@ -604,7 +604,7 @@ function BuscarPedido({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
 
   return (
     <div style={{ ...card, marginTop: 20 }}>
-      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Buscar y modificar un pedido</div>
+      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4, textTransform: 'uppercase' }}>Buscar y modificar un pedido</div>
       <div style={{ fontSize: 13, color: '#888', marginBottom: 12 }}>Buscá por Nro OT, Cliente, Diseño o Tela para corregirlo o anularlo.</div>
       <input
         value={busqueda}
