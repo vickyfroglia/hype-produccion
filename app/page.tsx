@@ -120,7 +120,7 @@ export default function Home() {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '▦', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
-    { id: 'diseno', label: 'Ingreso Pedido', icon: '✎', roles: ['admin', 'diseno'] },
+    { id: 'diseno', label: 'Ingreso y Modificación de Pedidos', icon: '✎', roles: ['admin', 'diseno'] },
     { id: 'general', label: 'Producción', icon: '☷', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
     { id: 'reporte', label: 'Reporte diario', icon: '▤', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
     { id: 'administracion', label: 'Administración', icon: '$', roles: ['admin', 'administrativo'] },
@@ -548,7 +548,7 @@ function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirec
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, textTransform: 'uppercase' }}>Ingreso Pedido</div>
+        <div style={{ fontSize: 18, fontWeight: 700, textTransform: 'uppercase' }}>Ingreso y Modificación de Pedidos</div>
         <div style={{ fontSize: 13, color: '#888' }}>Cargá el pedido, revisalo completo y confirmalo para sumarlo a Producción</div>
       </div>
 
