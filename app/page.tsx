@@ -1758,10 +1758,22 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
   const [cargando, setCargando] = useState(true);
   const [nuevo, setNuevo] = useState(filaRolloVacia());
   const [guardando, setGuardando] = useState(false);
+  const [filtro, setFiltro] = useState('');
 
   // Solo los últimos 6 dígitos del nro_ot (más fácil de leer y escribir
   // que el correlativo completo de 12 dígitos).
   const nrosOt = Array.from(new Set(ordenes.map((o) => o.nro_ot.slice(-6)))).sort();
+
+  // Filtro de búsqueda por Cliente, Nro OT, Diseño u Op Imp (coincidencia
+  // parcial, sin importar mayúsculas/minúsculas). La fila en blanco de
+  // carga siempre se ve, filtro aparte.
+  const filtroNorm = filtro.trim().toLowerCase();
+  const rollosFiltrados = filtroNorm
+    ? rollos.filter((r) =>
+        [(r.nro_ot || '').slice(-6), r.cliente, r.diseno, r.op_imp]
+          .some((campo) => (campo || '').toLowerCase().includes(filtroNorm))
+      )
+    : rollos;
 
   async function cargar() {
     const { data, error } = await supabase
@@ -1873,6 +1885,14 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
 
   return (
     <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+        <input
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          placeholder="Buscar por Cliente, Nro OT, Diseño u Op Imp..."
+          style={{ ...inp, maxWidth: 360, textTransform: 'none' }}
+        />
+      </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -1894,7 +1914,7 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
             </tr>
           </thead>
           <tbody>
-            {rollos.map((r) => (
+            {rollosFiltrados.map((r) => (
               <tr key={r.id}>
                 <td style={{ ...td, minWidth: 120 }}>
                   <input type="date" defaultValue={r.fecha} onBlur={(e) => actualizar(r.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 110 }} />
@@ -2096,9 +2116,21 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
   const [cargando, setCargando] = useState(true);
   const [nuevo, setNuevo] = useState(filaCibitexVacia());
   const [guardando, setGuardando] = useState(false);
+  const [filtro, setFiltro] = useState('');
   const esAdmin = rol.trim() === 'admin';
 
   const nrosOt = Array.from(new Set(ordenes.map((o) => o.nro_ot.slice(-6)))).sort();
+
+  // Filtro de búsqueda por Cliente, Nro OT, Diseño u Op Fij (coincidencia
+  // parcial, sin importar mayúsculas/minúsculas). La fila en blanco de
+  // carga siempre se ve, filtro aparte.
+  const filtroNorm = filtro.trim().toLowerCase();
+  const rollosFiltrados = filtroNorm
+    ? rollos.filter((r) =>
+        [(r.nro_ot || '').slice(-6), r.cliente, r.diseno, r.op_fij]
+          .some((campo) => (campo || '').toLowerCase().includes(filtroNorm))
+      )
+    : rollos;
 
   // Los tipos "PREP Y ..." y "PLANCHADO" son a nivel OT, antes/sin
   // depender de un diseño en particular — para esos no aplica elegir
@@ -2197,6 +2229,14 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
 
   return (
     <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid #eee' }}>
+        <input
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          placeholder="Buscar por Cliente, Nro OT, Diseño u Op Fij..."
+          style={{ ...inp, maxWidth: 360, textTransform: 'none' }}
+        />
+      </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -2218,7 +2258,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
             </tr>
           </thead>
           <tbody>
-            {rollos.map((r) => (
+            {rollosFiltrados.map((r) => (
               <tr key={r.id}>
                 <td style={{ ...td, minWidth: 100 }}>
                   <input type="date" defaultValue={r.fecha} onBlur={(e) => actualizar(r.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 95 }} />
