@@ -1866,6 +1866,26 @@ function VistaMuestras({ rol }: { rol: string }) {
   const [guardando, setGuardando] = useState(false);
   const esAdmin = rol.trim() === 'admin';
 
+  // Stock disponible por cliente, para ofrecer un desplegable de telas ya
+  // cargadas (además de poder escribir la tela a mano, como hasta ahora).
+  // Se cachea por nombre de cliente para no repetir la consulta en cada
+  // fila que comparte el mismo cliente.
+  const [stockPorClienteCache, setStockPorClienteCache] = useState<Record<string, StockDisponible[]>>({});
+
+  useEffect(() => {
+    const clientesUnicos = Array.from(new Set([...muestras.map((m) => m.cliente || ''), nuevo.cliente].filter(Boolean)));
+    const faltantes = clientesUnicos.filter((c) => !(c in stockPorClienteCache));
+    if (faltantes.length === 0) return;
+    (async () => {
+      const entradas = await Promise.all(faltantes.map(async (c) => [c, await stockPorCliente(c)] as const));
+      setStockPorClienteCache((prev) => {
+        const copia = { ...prev };
+        entradas.forEach(([c, disp]) => { copia[c] = disp; });
+        return copia;
+      });
+    })();
+  }, [muestras, nuevo.cliente]);
+
   // Autocompletar Cliente desde la base de Stock (misma tabla `clientes`
   // que usa Ingreso y Modif Pedidos: columnas cod — código secuencial tipo
   // "00001" — y nombre).
@@ -1940,6 +1960,14 @@ function VistaMuestras({ rol }: { rol: string }) {
     if (coincidencias.length === 0) return;
     const mejor = coincidencias.sort((a, b) => b.disponible - a.disponible)[0];
     await actualizar(m.id, 'cod_tela', mejor.id_hype);
+  }
+
+  // Elegir una tela directamente del desplegable de stock del cliente:
+  // completa Tela e ID juntos en un solo guardado.
+  async function seleccionarTelaStock(m: Muestra, item: StockDisponible) {
+    const { error } = await supabase.from('muestras').update({ tela: item.tela, cod_tela: item.id_hype }).eq('id', m.id);
+    if (error) { alert('Error: ' + error.message); return; }
+    cargar();
   }
 
   // Al cambiar los Mts Imp, además de guardar en la muestra, descuenta ese
@@ -2118,9 +2146,25 @@ function VistaMuestras({ rol }: { rol: string }) {
                       />
                     </td>
                     <td style={{ ...td, minWidth: 190, ...bgCelda }}>
+                      {(stockPorClienteCache[m.cliente || ''] || []).length > 0 && (
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            const item = (stockPorClienteCache[m.cliente || ''] || []).find((s) => s.id_hype === e.target.value);
+                            if (item) seleccionarTelaStock(m, item);
+                          }}
+                          style={{ ...selSm, width: '100%', minWidth: 180, marginBottom: 4, fontSize: 10 }}
+                        >
+                          <option value="">Elegir del stock…</option>
+                          {(stockPorClienteCache[m.cliente || ''] || []).map((s) => (
+                            <option key={s.id_hype} value={s.id_hype}>{s.tela}{s.color ? ` · ${s.color}` : ''} ({s.disponible.toLocaleString()} mts)</option>
+                          ))}
+                        </select>
+                      )}
                       <input
                         defaultValue={m.tela || ''}
                         onBlur={(e) => { actualizar(m.id, 'tela', e.target.value || null); buscarCodTela(m, e.target.value); }}
+                        placeholder="O escribí la tela"
                         style={{ ...selSm, width: '100%', minWidth: 180 }}
                       />
                     </td>
@@ -2196,7 +2240,19 @@ function VistaMuestras({ rol }: { rol: string }) {
                   />
                 </td>
                 <td style={{ ...td, minWidth: 190 }}>
-                  <input placeholder="Tela" value={nuevo.tela} onChange={(e) => setNuevo({ ...nuevo, tela: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 180 }} />
+                  {(stockPorClienteCache[nuevo.cliente] || []).length > 0 && (
+                    <select
+                      value=""
+                      onChange={(e) => setNuevo({ ...nuevo, tela: e.target.value })}
+                      style={{ ...selSm, width: '100%', minWidth: 180, marginBottom: 4, fontSize: 10 }}
+                    >
+                      <option value="">Elegir del stock…</option>
+                      {(stockPorClienteCache[nuevo.cliente] || []).map((s) => (
+                        <option key={s.id_hype} value={s.tela}>{s.tela}{s.color ? ` · ${s.color}` : ''} ({s.disponible.toLocaleString()} mts)</option>
+                      ))}
+                    </select>
+                  )}
+                  <input placeholder="O escribí la tela" value={nuevo.tela} onChange={(e) => setNuevo({ ...nuevo, tela: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 180 }} />
                 </td>
                 <td style={td}>—</td>
                 <td style={{ ...td, width: 90 }}>
