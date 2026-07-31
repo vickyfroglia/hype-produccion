@@ -1957,18 +1957,25 @@ function VistaMuestras({ rol }: { rol: string }) {
     else cargar();
   }
 
-  // Busca en Stock el id_hype que corresponde a cliente + tela, y lo
-  // completa solo en la columna ID (misma lógica que en Producción). El
-  // texto de tela puede venir como descripción completa "FRISA AVENA"
-  // (nombre + color), así que compara contra esa misma descripción.
+  // Busca en Stock la tela que corresponde a cliente + lo que se escribió
+  // (matchea tanto contra el nombre solo, ej. "JERSEY 24/1", como contra
+  // la descripción completa, ej. "JERSEY 24/1 BLANCO"), y si encuentra,
+  // corrige el campo Tela a la descripción completa (nombre + color) y
+  // completa la columna ID — así aunque se haya escrito solo el nombre,
+  // queda guardado con el color.
   async function buscarCodTela(m: Muestra, telaTexto?: string) {
     const tela = (telaTexto ?? m.tela) || '';
     if (!m.cliente || !tela) return;
     const disponibles = await stockPorCliente(m.cliente);
-    const coincidencias = disponibles.filter((s) => descripcionTela(s).trim().toLowerCase() === tela.trim().toLowerCase());
+    const telaNorm = tela.trim().toLowerCase();
+    const coincidencias = disponibles.filter(
+      (s) => descripcionTela(s).trim().toLowerCase() === telaNorm || s.tela.trim().toLowerCase() === telaNorm
+    );
     if (coincidencias.length === 0) return;
     const mejor = coincidencias.sort((a, b) => b.disponible - a.disponible)[0];
-    await actualizar(m.id, 'cod_tela', mejor.id_hype);
+    const { error } = await supabase.from('muestras').update({ tela: descripcionTela(mejor), cod_tela: mejor.id_hype }).eq('id', m.id);
+    if (error) { console.error('No se pudo actualizar la tela:', error); return; }
+    cargar();
   }
 
   // Al cambiar los Mts Imp, además de guardar en la muestra, descuenta ese
@@ -2049,24 +2056,29 @@ function VistaMuestras({ rol }: { rol: string }) {
       .single();
     setGuardando(false);
     if (error) { alert('Error: ' + error.message); return; }
-    if (data && nuevo.cliente && nuevo.tela && mtsImpresos > 0) {
+    if (data && nuevo.cliente && nuevo.tela) {
       const disponibles = await stockPorCliente(nuevo.cliente);
-      const coincidencias = disponibles.filter((s) => descripcionTela(s).trim().toLowerCase() === nuevo.tela.trim().toLowerCase());
+      const telaNorm = nuevo.tela.trim().toLowerCase();
+      const coincidencias = disponibles.filter(
+        (s) => descripcionTela(s).trim().toLowerCase() === telaNorm || s.tela.trim().toLowerCase() === telaNorm
+      );
       if (coincidencias.length > 0) {
         const mejor = coincidencias.sort((a, b) => b.disponible - a.disponible)[0];
-        await supabase.from('muestras').update({ cod_tela: mejor.id_hype }).eq('id', data.id);
-        const { error: errorEgreso } = await supabase.from('egresos').insert([
-          {
-            fecha: new Date().toISOString().split('T')[0],
-            cliente: nuevo.cliente,
-            tela: nuevo.tela,
-            id_hype: mejor.id_hype,
-            mts: mtsImpresos,
-            estado: 'A producción',
-            observaciones: `Muestra · ${nuevo.diseno || 'sin diseño'} · cargado desde Muestras`,
-          },
-        ]);
-        if (errorEgreso) console.error('No se pudo descontar stock automáticamente:', errorEgreso);
+        await supabase.from('muestras').update({ tela: descripcionTela(mejor), cod_tela: mejor.id_hype }).eq('id', data.id);
+        if (mtsImpresos > 0) {
+          const { error: errorEgreso } = await supabase.from('egresos').insert([
+            {
+              fecha: new Date().toISOString().split('T')[0],
+              cliente: nuevo.cliente,
+              tela: descripcionTela(mejor),
+              id_hype: mejor.id_hype,
+              mts: mtsImpresos,
+              estado: 'A producción',
+              observaciones: `Muestra · ${nuevo.diseno || 'sin diseño'} · cargado desde Muestras`,
+            },
+          ]);
+          if (errorEgreso) console.error('No se pudo descontar stock automáticamente:', errorEgreso);
+        }
       }
     }
     if (nuevo.cliente) await asegurarCliente(nuevo.cliente);
