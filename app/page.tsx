@@ -1965,7 +1965,17 @@ function VistaMuestras({ rol }: { rol: string }) {
   // escrito solo el nombre, queda guardado con el color y la ubicación.
   async function buscarCodTela(m: Muestra, telaTexto?: string) {
     const tela = (telaTexto ?? m.tela) || '';
-    if (!m.cliente || !tela) return;
+    if (!tela) return;
+    // Las telas que vienen en paquete (nombre con "TCL PAQ") no están en
+    // el stock por cliente — no se contabilizan ahí — así que van siempre
+    // ubicadas en el carro, sin buscar coincidencia en Stock.
+    if (tela.trim().toUpperCase().includes('TCL PAQ')) {
+      const { error } = await supabase.from('muestras').update({ ubicacion: 'CARRO' }).eq('id', m.id);
+      if (error) console.error('No se pudo actualizar la ubicación:', error);
+      else cargar();
+      return;
+    }
+    if (!m.cliente) return;
     const disponibles = await stockPorCliente(m.cliente);
     const telaNorm = tela.trim().toLowerCase();
     const coincidencias = disponibles.filter(
@@ -2056,7 +2066,10 @@ function VistaMuestras({ rol }: { rol: string }) {
       .single();
     setGuardando(false);
     if (error) { alert('Error: ' + error.message); return; }
-    if (data && nuevo.cliente && nuevo.tela) {
+    if (data && nuevo.tela && nuevo.tela.trim().toUpperCase().includes('TCL PAQ')) {
+      // Telas en paquete: no se buscan en Stock, van directo al carro.
+      await supabase.from('muestras').update({ ubicacion: 'CARRO' }).eq('id', data.id);
+    } else if (data && nuevo.cliente && nuevo.tela) {
       const disponibles = await stockPorCliente(nuevo.cliente);
       const telaNorm = nuevo.tela.trim().toLowerCase();
       const coincidencias = disponibles.filter(
