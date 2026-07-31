@@ -1852,6 +1852,7 @@ function muestraVacia() {
     diseno: '',
     mts_pedidos: '',
     tela: '',
+    mts_impresos: '',
     observaciones: '',
     imp_operario: '',
     fija_operario: '',
@@ -1962,23 +1963,51 @@ function VistaMuestras({ rol }: { rol: string }) {
   }
 
   // Se guarda solo desde la fila en blanco de abajo, al salir de la fila,
-  // igual que en Reporte diario: no hay botón de "Agregar".
+  // igual que en Reporte diario: no hay botón de "Agregar". Si ya se cargó
+  // Mts Imp junto con Cliente + Tela en esa misma fila, descuenta el stock
+  // de una: busca el id_hype (cod_tela) recién ahí y genera el egreso.
   async function guardarNuevaFila() {
     if (!nuevo.cliente && !nuevo.diseno) return;
     setGuardando(true);
-    const { error } = await supabase.from('muestras').insert({
-      fecha: nuevo.fecha,
-      equipo: nuevo.equipo || null,
-      cliente: nuevo.cliente || null,
-      diseno: nuevo.diseno || null,
-      mts_pedidos: parseFloat(nuevo.mts_pedidos) || 0,
-      tela: nuevo.tela || null,
-      observaciones: nuevo.observaciones || null,
-      imp_operario: nuevo.imp_operario || null,
-      fija_operario: nuevo.fija_operario || null,
-    });
+    const mtsImpresos = parseFloat(nuevo.mts_impresos) || 0;
+    const { data, error } = await supabase
+      .from('muestras')
+      .insert({
+        fecha: nuevo.fecha,
+        equipo: nuevo.equipo || null,
+        cliente: nuevo.cliente || null,
+        diseno: nuevo.diseno || null,
+        mts_pedidos: parseFloat(nuevo.mts_pedidos) || 0,
+        tela: nuevo.tela || null,
+        mts_impresos: mtsImpresos,
+        observaciones: nuevo.observaciones || null,
+        imp_operario: nuevo.imp_operario || null,
+        fija_operario: nuevo.fija_operario || null,
+      })
+      .select()
+      .single();
     setGuardando(false);
     if (error) { alert('Error: ' + error.message); return; }
+    if (data && nuevo.cliente && nuevo.tela && mtsImpresos > 0) {
+      const disponibles = await stockPorCliente(nuevo.cliente);
+      const coincidencias = disponibles.filter((s) => s.tela.trim().toLowerCase() === nuevo.tela.trim().toLowerCase());
+      if (coincidencias.length > 0) {
+        const mejor = coincidencias.sort((a, b) => b.disponible - a.disponible)[0];
+        await supabase.from('muestras').update({ cod_tela: mejor.id_hype }).eq('id', data.id);
+        const { error: errorEgreso } = await supabase.from('egresos').insert([
+          {
+            fecha: new Date().toISOString().split('T')[0],
+            cliente: nuevo.cliente,
+            tela: nuevo.tela,
+            id_hype: mejor.id_hype,
+            mts: mtsImpresos,
+            estado: 'A producción',
+            observaciones: `Muestra · ${nuevo.diseno || 'sin diseño'} · cargado desde Muestras`,
+          },
+        ]);
+        if (errorEgreso) console.error('No se pudo descontar stock automáticamente:', errorEgreso);
+      }
+    }
     setNuevo(muestraVacia());
     cargar();
   }
@@ -2113,7 +2142,9 @@ function VistaMuestras({ rol }: { rol: string }) {
                 <td style={td}>
                   <input type="number" placeholder="Mts" value={nuevo.mts_pedidos} onChange={(e) => setNuevo({ ...nuevo, mts_pedidos: e.target.value })} style={{ ...selSm, width: 60 }} />
                 </td>
-                <td style={td}>—</td>
+                <td style={td}>
+                  <input type="number" placeholder="Mts" value={nuevo.mts_impresos} onChange={(e) => setNuevo({ ...nuevo, mts_impresos: e.target.value })} style={{ ...selSm, width: 60 }} />
+                </td>
                 <td style={{ ...td, minWidth: 260 }}>
                   <textarea
                     placeholder="Observaciones"
