@@ -1852,8 +1852,6 @@ function muestraVacia() {
     diseno: '',
     mts_pedidos: '',
     tela: '',
-    aprob: 'FICHAR CN',
-    post: false,
     imp_operario: '',
     fija_operario: '',
   };
@@ -1979,8 +1977,6 @@ function VistaMuestras({ rol }: { rol: string }) {
       diseno: nuevo.diseno || null,
       mts_pedidos: parseFloat(nuevo.mts_pedidos) || 0,
       tela: nuevo.tela || null,
-      aprob: nuevo.aprob || 'FICHAR CN',
-      post: nuevo.post,
       imp_operario: nuevo.imp_operario || null,
       fija_operario: nuevo.fija_operario || null,
     });
@@ -1992,7 +1988,7 @@ function VistaMuestras({ rol }: { rol: string }) {
 
   if (cargando) return <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando...</div>;
 
-  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', ...(esAdmin ? ['Borrar'] : [])];
+  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'ID', 'Op Imp', 'Op Fij', 'Fecha fin', ...(esAdmin ? ['Borrar'] : [])];
 
   return (
     <div>
