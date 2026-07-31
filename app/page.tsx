@@ -2174,10 +2174,14 @@ function VistaMuestras({ rol }: { rol: string }) {
                 const terminado = !!m.fecha_fin;
                 const noImprimio = m.imp_operario === 'NO';
                 const impresoCompleto = !noImprimio && !!m.imp_operario && Number(m.mts_impresos) > 0;
+                // Cuando además ya se fijó (Op Fij cargado), el verde pasa a
+                // un tono más oscuro — se ve de un vistazo qué muestras ya
+                // pasaron por fijación, no sólo por impresión.
+                const fijadoCompleto = impresoCompleto && !!m.fija_operario;
                 // Si no se pudo imprimir, el rojo pinta toda la fila (no solo
                 // hasta Op Imp como en Producción) — acá no hay columnas de
                 // entrega después que necesiten quedar sin pintar.
-                const bgCelda = !terminado && !noImprimio && impresoCompleto ? { background: '#e6f4e1' } : {};
+                const bgCelda = terminado || noImprimio ? {} : fijadoCompleto ? { background: '#bfe0b3' } : impresoCompleto ? { background: '#e6f4e1' } : {};
                 return (
                   <tr key={m.id} style={terminado ? { background: '#8fce8a' } : noImprimio ? { background: '#fde8e8' } : undefined}>
                     <td style={{ ...td, color: '#888', ...bgCelda }}>{idx + 1}</td>
@@ -2255,7 +2259,7 @@ function VistaMuestras({ rol }: { rol: string }) {
                         </select>
                       )}
                     </td>
-                    <td style={td} title={m.imp_operario === 'NO' ? 'No se puede fijar: no se imprimió' : undefined}>
+                    <td style={{ ...td, ...bgCelda }} title={m.imp_operario === 'NO' ? 'No se puede fijar: no se imprimió' : undefined}>
                       {m.imp_operario === 'NO' ? (
                         <span style={{ fontSize: 11, color: '#c00' }}>—</span>
                       ) : (
@@ -2264,7 +2268,7 @@ function VistaMuestras({ rol }: { rol: string }) {
                         </select>
                       )}
                     </td>
-                    <td style={td}>
+                    <td style={{ ...td, ...bgCelda }}>
                       {m.fecha_fin ? (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                           <span>{formatFecha(m.fecha_fin)}</span>
