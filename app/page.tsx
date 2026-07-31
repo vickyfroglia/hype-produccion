@@ -1844,6 +1844,13 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
 // diario). Mismas columnas y mismo estilo que Producción, pero solo hasta
 // Fecha fin: sin columna Prod, sin el condicional de anticipo/tela
 // preparada, y sin las columnas de entrega (no aplican a una muestra).
+// Descripción completa de una tela de Stock: nombre + color, ej. "FRISA
+// AVENA". Se usa tanto para mostrar/completar el campo Tela como para
+// volver a matchear esa descripción contra Stock (buscar el ID).
+function descripcionTela(s: StockDisponible): string {
+  return s.color ? `${s.tela} ${s.color}`.trim() : s.tela;
+}
+
 function muestraVacia() {
   return {
     fecha: new Date().toISOString().split('T')[0],
@@ -1951,12 +1958,14 @@ function VistaMuestras({ rol }: { rol: string }) {
   }
 
   // Busca en Stock el id_hype que corresponde a cliente + tela, y lo
-  // completa solo en la columna ID (misma lógica que en Producción).
+  // completa solo en la columna ID (misma lógica que en Producción). El
+  // texto de tela puede venir como descripción completa "FRISA AVENA"
+  // (nombre + color), así que compara contra esa misma descripción.
   async function buscarCodTela(m: Muestra, telaTexto?: string) {
     const tela = (telaTexto ?? m.tela) || '';
     if (!m.cliente || !tela) return;
     const disponibles = await stockPorCliente(m.cliente);
-    const coincidencias = disponibles.filter((s) => s.tela.trim().toLowerCase() === tela.trim().toLowerCase());
+    const coincidencias = disponibles.filter((s) => descripcionTela(s).trim().toLowerCase() === tela.trim().toLowerCase());
     if (coincidencias.length === 0) return;
     const mejor = coincidencias.sort((a, b) => b.disponible - a.disponible)[0];
     await actualizar(m.id, 'cod_tela', mejor.id_hype);
@@ -2042,7 +2051,7 @@ function VistaMuestras({ rol }: { rol: string }) {
     if (error) { alert('Error: ' + error.message); return; }
     if (data && nuevo.cliente && nuevo.tela && mtsImpresos > 0) {
       const disponibles = await stockPorCliente(nuevo.cliente);
-      const coincidencias = disponibles.filter((s) => s.tela.trim().toLowerCase() === nuevo.tela.trim().toLowerCase());
+      const coincidencias = disponibles.filter((s) => descripcionTela(s).trim().toLowerCase() === nuevo.tela.trim().toLowerCase());
       if (coincidencias.length > 0) {
         const mejor = coincidencias.sort((a, b) => b.disponible - a.disponible)[0];
         await supabase.from('muestras').update({ cod_tela: mejor.id_hype }).eq('id', data.id);
@@ -2147,7 +2156,7 @@ function VistaMuestras({ rol }: { rol: string }) {
                       />
                       <datalist id={`telas-stock-${m.id}`}>
                         {(stockPorClienteCache[m.cliente || ''] || []).map((s) => (
-                          <option key={s.id_hype} value={s.tela}>{s.color ? `Color: ${s.color}` : ''}</option>
+                          <option key={s.id_hype} value={descripcionTela(s)} />
                         ))}
                       </datalist>
                     </td>
@@ -2232,7 +2241,7 @@ function VistaMuestras({ rol }: { rol: string }) {
                   />
                   <datalist id="telas-stock-nueva">
                     {(stockPorClienteCache[nuevo.cliente] || []).map((s) => (
-                      <option key={s.id_hype} value={s.tela}>{s.color ? `Color: ${s.color}` : ''}</option>
+                      <option key={s.id_hype} value={descripcionTela(s)} />
                     ))}
                   </datalist>
                 </td>
