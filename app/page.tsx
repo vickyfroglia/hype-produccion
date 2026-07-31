@@ -2088,7 +2088,7 @@ function VistaMuestras({ rol }: { rol: string }) {
 
   if (cargando) return <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando...</div>;
 
-  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'ID', 'Op Imp', 'Op Fij', 'Fecha fin', ...(esAdmin ? ['Borrar'] : [])];
+  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'Op Imp', 'Op Fij', 'Fecha fin', ...(esAdmin ? ['Borrar'] : [])];
 
   return (
     <div>
@@ -2172,7 +2172,6 @@ function VistaMuestras({ rol }: { rol: string }) {
                         ))}
                       </datalist>
                     </td>
-                    <td style={{ ...td, width: 70, fontFamily: 'monospace', color: '#000', fontWeight: 700, fontSize: 12, ...bgCelda }}>{m.cod_tela || '—'}</td>
                     <td style={{ ...td, width: 90, ...bgCelda }} title={m.motivo_no_impreso || undefined}>
                       <select value={m.imp_operario || ''} onChange={(e) => actualizarImpOperario(m, e.target.value)} style={{ ...selSm, width: 85 }}>
                         <option value="">—</option>
@@ -2257,7 +2256,6 @@ function VistaMuestras({ rol }: { rol: string }) {
                     ))}
                   </datalist>
                 </td>
-                <td style={td}>—</td>
                 <td style={{ ...td, width: 90 }}>
                   <select value={nuevo.imp_operario} onChange={(e) => setNuevo({ ...nuevo, imp_operario: e.target.value })} style={{ ...selSm, width: 85 }}>
                     <option value="">—</option>{OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
