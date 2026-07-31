@@ -1866,6 +1866,38 @@ function VistaMuestras({ rol }: { rol: string }) {
   const [guardando, setGuardando] = useState(false);
   const esAdmin = rol.trim() === 'admin';
 
+  // Autocompletar Cliente desde la base de Stock (misma tabla `clientes`
+  // que usa Ingreso y Modif Pedidos: columnas cod — código secuencial tipo
+  // "00001" — y nombre).
+  const [clientesStock, setClientesStock] = useState<{ cod: string; nombre: string }[]>([]);
+
+  async function cargarClientes() {
+    const data = await fetchAll('clientes', 'nombre', true);
+    setClientesStock(data.map((c: any) => ({ cod: c.cod, nombre: c.nombre })));
+  }
+
+  useEffect(() => {
+    cargarClientes();
+  }, []);
+
+  // Si el cliente que se escribió no existe todavía en Stock, lo da de
+  // alta ahí mismo con el código siguiente al último (mismo formato de 5
+  // dígitos con ceros adelante que usa esa tabla, ej: "00001", "00002"...).
+  async function asegurarCliente(nombreCliente: string) {
+    const nombre = (nombreCliente || '').trim();
+    if (!nombre) return;
+    const yaExiste = clientesStock.some((c) => (c.nombre || '').trim().toLowerCase() === nombre.toLowerCase());
+    if (yaExiste) return;
+    const maxCod = clientesStock.reduce((max, c) => {
+      const n = parseInt(c.cod, 10);
+      return isNaN(n) ? max : Math.max(max, n);
+    }, 0);
+    const nuevoCod = String(maxCod + 1).padStart(5, '0');
+    const { error } = await supabase.from('clientes').insert({ cod: nuevoCod, nombre });
+    if (error) { console.error('No se pudo agregar el cliente nuevo a Stock:', error); return; }
+    cargarClientes();
+  }
+
   async function cargar() {
     const { data, error } = await supabase.from('muestras').select('*').order('id', { ascending: true });
     if (!error) setMuestras(data || []);
@@ -2008,6 +2040,7 @@ function VistaMuestras({ rol }: { rol: string }) {
         if (errorEgreso) console.error('No se pudo descontar stock automáticamente:', errorEgreso);
       }
     }
+    if (nuevo.cliente) await asegurarCliente(nuevo.cliente);
     setNuevo(muestraVacia());
     cargar();
   }
@@ -2025,6 +2058,9 @@ function VistaMuestras({ rol }: { rol: string }) {
       <style>{`
         .vm-grid th, .vm-grid td { border: 1px solid #ddd !important; text-align: center !important; }
       `}</style>
+      <datalist id="clientes-muestras">
+        {clientesStock.map((c) => <option key={c.cod} value={c.nombre} />)}
+      </datalist>
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table className="vm-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -2057,7 +2093,12 @@ function VistaMuestras({ rol }: { rol: string }) {
                       </select>
                     </td>
                     <td style={{ ...td, minWidth: 170, ...bgCelda }}>
-                      <input defaultValue={m.cliente || ''} onBlur={(e) => actualizar(m.id, 'cliente', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 160 }} />
+                      <input
+                        defaultValue={m.cliente || ''}
+                        onBlur={(e) => { actualizar(m.id, 'cliente', e.target.value || null); asegurarCliente(e.target.value); }}
+                        list="clientes-muestras"
+                        style={{ ...selSm, width: '100%', minWidth: 160 }}
+                      />
                     </td>
                     <td style={{ ...td, minWidth: 170, ...bgCelda }}>
                       <input defaultValue={m.diseno || ''} onBlur={(e) => actualizar(m.id, 'diseno', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 160 }} />
@@ -2134,7 +2175,7 @@ function VistaMuestras({ rol }: { rol: string }) {
                   </select>
                 </td>
                 <td style={{ ...td, minWidth: 170 }}>
-                  <input placeholder="Cliente" value={nuevo.cliente} onChange={(e) => setNuevo({ ...nuevo, cliente: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 160 }} />
+                  <input placeholder="Cliente" value={nuevo.cliente} onChange={(e) => setNuevo({ ...nuevo, cliente: e.target.value })} list="clientes-muestras" style={{ ...selSm, width: '100%', minWidth: 160 }} />
                 </td>
                 <td style={{ ...td, minWidth: 170 }}>
                   <input placeholder="Diseño" value={nuevo.diseno} onChange={(e) => setNuevo({ ...nuevo, diseno: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 160 }} />
