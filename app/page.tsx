@@ -19,6 +19,7 @@ import {
   TURNOS_REPORTE,
   TIPOS_PROCESO_CIBITEX,
   RolloReporte,
+  Muestra,
   faltaParaProducir,
   calcularPrioridad,
   formatFecha,
@@ -124,6 +125,7 @@ export default function Home() {
     { id: 'administracion', label: 'Administración', icon: '$', roles: ['admin', 'administrativo'] },
     { id: 'reporte', label: 'Reporte diario', icon: '▤', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
     { id: 'general', label: 'Producción', icon: '☷', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
+    { id: 'muestras', label: 'Muestras', icon: '◈', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
     { id: 'historial', label: 'Historial', icon: '☰', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
   ].filter((n) => n.roles.includes(rol.trim()) || rol.trim() === 'admin');
 
@@ -177,6 +179,7 @@ export default function Home() {
           <>
             {pagina === 'dashboard' && <Dashboard ordenes={ordenes} rollosReporte={rollosReporte} ingresosStock={ingresosStock} egresosStock={egresosStock} />}
             {pagina === 'general' && <VistaGeneral ordenes={ordenes} onCambio={cargarTodo} rol={rol} />}
+            {pagina === 'muestras' && <VistaMuestras rol={rol} />}
             {pagina === 'reporte' && <PanelReporteDiario ordenes={ordenes} rol={rol} />}
             {pagina === 'diseno' && <PanelDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
             {pagina === 'administracion' && <PanelAdministracion ordenes={ordenes} onCambio={cargarTodo} />}
@@ -1826,6 +1829,301 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                 </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Muestras: tabla independiente de Producción (tabla propia `muestras` en
+// Supabase). No se cargan pedidos acá — se agrega cada muestra a mano,
+// directamente en la fila en blanco del final (mismo patrón que Reporte
+// diario). Mismas columnas y mismo estilo que Producción, pero solo hasta
+// Fecha fin: sin columna Prod, sin el condicional de anticipo/tela
+// preparada, y sin las columnas de entrega (no aplican a una muestra).
+function muestraVacia() {
+  return {
+    fecha: new Date().toISOString().split('T')[0],
+    equipo: '',
+    nro_ot: '',
+    cliente: '',
+    diseno: '',
+    mts_pedidos: '',
+    tela: '',
+    aprob: 'FICHAR CN',
+    post: false,
+    imp_operario: '',
+    fija_operario: '',
+  };
+}
+
+function VistaMuestras({ rol }: { rol: string }) {
+  const [muestras, setMuestras] = useState<Muestra[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [nuevo, setNuevo] = useState(muestraVacia());
+  const [guardando, setGuardando] = useState(false);
+  const esAdmin = rol.trim() === 'admin';
+
+  async function cargar() {
+    const { data, error } = await supabase.from('muestras').select('*').order('id', { ascending: true });
+    if (!error) setMuestras(data || []);
+    setCargando(false);
+  }
+
+  useEffect(() => {
+    cargar();
+  }, []);
+
+  async function actualizar(id: number, campo: string, valor: any) {
+    const { error } = await supabase.from('muestras').update({ [campo]: valor }).eq('id', id);
+    if (error) alert('Error: ' + error.message);
+    else cargar();
+  }
+
+  // Igual que en Producción: al elegir "NO" en Op Imp pide el motivo por
+  // el que no se pudo imprimir la muestra.
+  async function actualizarImpOperario(m: Muestra, valor: string) {
+    if (valor === 'NO') {
+      const motivo = window.prompt('¿Por qué no se pudo imprimir esta muestra?', m.motivo_no_impreso || '');
+      if (motivo === null) return;
+      const { error } = await supabase.from('muestras').update({ imp_operario: 'NO', motivo_no_impreso: motivo }).eq('id', m.id);
+      if (error) alert('Error: ' + error.message);
+      else cargar();
+      return;
+    }
+    const { error } = await supabase.from('muestras').update({ imp_operario: valor || null, motivo_no_impreso: null }).eq('id', m.id);
+    if (error) alert('Error: ' + error.message);
+    else cargar();
+  }
+
+  // Busca en Stock el id_hype que corresponde a cliente + tela, y lo
+  // completa solo en la columna ID (misma lógica que en Producción; no
+  // descuenta stock — una muestra no factura consumo real de tela).
+  async function buscarCodTela(m: Muestra, telaTexto?: string) {
+    const tela = (telaTexto ?? m.tela) || '';
+    if (!m.cliente || !tela) return;
+    const disponibles = await stockPorCliente(m.cliente);
+    const coincidencias = disponibles.filter((s) => s.tela.trim().toLowerCase() === tela.trim().toLowerCase());
+    if (coincidencias.length === 0) return;
+    const mejor = coincidencias.sort((a, b) => b.disponible - a.disponible)[0];
+    await actualizar(m.id, 'cod_tela', mejor.id_hype);
+  }
+
+  async function marcarTerminado(m: Muestra) {
+    const hoy = new Date().toISOString().split('T')[0];
+    const { error } = await supabase.from('muestras').update({ fecha_fin: hoy }).eq('id', m.id);
+    if (error) { alert('Error: ' + error.message); return; }
+    cargar();
+  }
+
+  async function revertirTerminado(m: Muestra) {
+    if (!confirm('¿Revertir "terminado"? La muestra vuelve a quedar abierta y editable.')) return;
+    const { error } = await supabase.from('muestras').update({ fecha_fin: null }).eq('id', m.id);
+    if (error) { alert('Error: ' + error.message); return; }
+    cargar();
+  }
+
+  async function borrar(id: number) {
+    if (!confirm('¿Borrar esta muestra? No se puede deshacer.')) return;
+    const { error } = await supabase.from('muestras').delete().eq('id', id);
+    if (error) alert('Error: ' + error.message);
+    else cargar();
+  }
+
+  // Se guarda solo desde la fila en blanco de abajo, al salir de la fila,
+  // igual que en Reporte diario: no hay botón de "Agregar".
+  async function guardarNuevaFila() {
+    if (!nuevo.cliente && !nuevo.diseno && !nuevo.nro_ot) return;
+    setGuardando(true);
+    const { error } = await supabase.from('muestras').insert({
+      fecha: nuevo.fecha,
+      equipo: nuevo.equipo || null,
+      nro_ot: nuevo.nro_ot || null,
+      cliente: nuevo.cliente || null,
+      diseno: nuevo.diseno || null,
+      mts_pedidos: parseFloat(nuevo.mts_pedidos) || 0,
+      tela: nuevo.tela || null,
+      aprob: nuevo.aprob || 'FICHAR CN',
+      post: nuevo.post,
+      imp_operario: nuevo.imp_operario || null,
+      fija_operario: nuevo.fija_operario || null,
+    });
+    setGuardando(false);
+    if (error) { alert('Error: ' + error.message); return; }
+    setNuevo(muestraVacia());
+    cargar();
+  }
+
+  if (cargando) return <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando...</div>;
+
+  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', ...(esAdmin ? ['Borrar'] : [])];
+
+  return (
+    <div>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, textTransform: 'uppercase' }}>Muestras</div>
+        <div style={{ fontSize: 13, color: '#888' }}>Carga manual, independiente de Producción. Agregá una fila nueva completando la última línea de la tabla.</div>
+      </div>
+      <style>{`
+        .vm-grid th, .vm-grid td { border: 1px solid #ddd !important; text-align: center !important; }
+      `}</style>
+      <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="vm-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {columnas.map((h) => (
+                  <th key={h} style={{ ...th, textTransform: 'uppercase', background: '#e85d2f', color: '#fff', fontWeight: 700 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {muestras.length === 0 && (
+                <tr><td colSpan={columnas.length} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin muestras cargadas</td></tr>
+              )}
+              {muestras.map((m, idx) => {
+                const terminado = !!m.fecha_fin;
+                const noImprimio = m.imp_operario === 'NO';
+                const impresoCompleto = !noImprimio && !!m.imp_operario && Number(m.mts_impresos) > 0;
+                const colorHastaOpImp = noImprimio ? '#fde8e8' : impresoCompleto ? '#e6f4e1' : undefined;
+                const bgCelda = !terminado && colorHastaOpImp ? { background: colorHastaOpImp } : {};
+                return (
+                  <tr key={m.id} style={terminado ? { background: '#8fce8a' } : undefined}>
+                    <td style={{ ...td, color: '#888', ...bgCelda }}>{idx + 1}</td>
+                    <td style={{ ...td, minWidth: 140, ...bgCelda }}>
+                      <input type="date" defaultValue={m.fecha} onBlur={(e) => actualizar(m.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 130 }} />
+                    </td>
+                    <td style={{ ...td, width: 100, ...bgCelda }}>
+                      <select value={m.equipo || ''} onChange={(e) => actualizar(m.id, 'equipo', e.target.value || null)} style={{ ...selSm, textTransform: 'uppercase' }}>
+                        <option value="">—</option>{EQUIPOS.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
+                      </select>
+                    </td>
+                    <td style={{ ...td, minWidth: 90, ...bgCelda }}>
+                      <input defaultValue={m.nro_ot || ''} onBlur={(e) => actualizar(m.id, 'nro_ot', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 80 }} />
+                    </td>
+                    <td style={{ ...td, minWidth: 170, ...bgCelda }}>
+                      <input defaultValue={m.cliente || ''} onBlur={(e) => actualizar(m.id, 'cliente', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 160 }} />
+                    </td>
+                    <td style={{ ...td, minWidth: 170, ...bgCelda }}>
+                      <input defaultValue={m.diseno || ''} onBlur={(e) => actualizar(m.id, 'diseno', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 160 }} />
+                    </td>
+                    <td style={{ ...td, ...bgCelda }}>
+                      <input type="number" defaultValue={m.mts_pedidos ?? ''} onBlur={(e) => actualizar(m.id, 'mts_pedidos', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 60 }} />
+                    </td>
+                    <td style={{ ...td, ...bgCelda }}>
+                      <input type="number" defaultValue={m.mts_impresos} onBlur={(e) => actualizar(m.id, 'mts_impresos', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 60 }} />
+                    </td>
+                    <td style={{ ...td, minWidth: 260, whiteSpace: 'normal', ...bgCelda }}>
+                      <textarea
+                        defaultValue={m.observaciones || ''}
+                        onBlur={(e) => actualizar(m.id, 'observaciones', e.target.value || null)}
+                        rows={2}
+                        style={{ ...selSm, width: '100%', minWidth: 250, resize: 'vertical', fontFamily: 'inherit' }}
+                      />
+                    </td>
+                    <td style={{ ...td, minWidth: 190, ...bgCelda }}>
+                      <input
+                        defaultValue={m.tela || ''}
+                        onBlur={(e) => { actualizar(m.id, 'tela', e.target.value || null); buscarCodTela(m, e.target.value); }}
+                        style={{ ...selSm, width: '100%', minWidth: 180 }}
+                      />
+                    </td>
+                    <td style={{ ...td, width: 70, fontFamily: 'monospace', color: '#000', fontWeight: 700, fontSize: 12, ...bgCelda }}>{m.cod_tela || '—'}</td>
+                    <td style={{ ...td, width: 95, ...bgCelda }}>
+                      <select value={m.aprob} onChange={(e) => actualizar(m.id, 'aprob', e.target.value)} style={{ ...selSm, width: 90, fontSize: 10, padding: '3px 2px' }}>
+                        {APROB_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
+                      </select>
+                    </td>
+                    <td style={{ ...td, width: 90, ...bgCelda }} title={m.motivo_no_impreso || undefined}>
+                      <select value={m.imp_operario || ''} onChange={(e) => actualizarImpOperario(m, e.target.value)} style={{ ...selSm, width: 85 }}>
+                        <option value="">—</option>
+                        <option value="NO">NO</option>
+                        {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
+                      </select>
+                    </td>
+                    <td style={td}><input type="checkbox" checked={m.post} onChange={(e) => actualizar(m.id, 'post', e.target.checked)} /></td>
+                    <td style={td} title={m.imp_operario === 'NO' ? 'No se puede fijar: no se imprimió' : undefined}>
+                      {m.imp_operario === 'NO' ? (
+                        <span style={{ fontSize: 11, color: '#c00' }}>—</span>
+                      ) : (
+                        <select value={m.fija_operario || ''} onChange={(e) => actualizar(m.id, 'fija_operario', e.target.value || null)} disabled={!m.imp_operario} style={selSm}>
+                          <option value="">—</option>{OPERARIOS_FIJACION.map((op) => <option key={op} value={op}>{op}</option>)}
+                        </select>
+                      )}
+                    </td>
+                    <td style={td}>
+                      {m.fecha_fin ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                          <span>{formatFecha(m.fecha_fin)}</span>
+                          <button onClick={() => revertirTerminado(m)} style={{ ...btn, padding: '1px 6px', fontSize: 9, color: '#c00', borderColor: '#c00' }}>revertir</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => marcarTerminado(m)} disabled={!m.fija_operario} title={!m.fija_operario ? 'Primero hay que cargar Op Fij' : 'Marcar como terminado hoy'} style={{ ...btn, padding: '2px 6px', fontSize: 10 }}>
+                          ✓ Marcar
+                        </button>
+                      )}
+                    </td>
+                    {esAdmin && (
+                      <td style={td}>
+                        <button onClick={() => borrar(m.id)} style={{ ...btn, padding: '4px 8px', fontSize: 11, color: '#c00', borderColor: '#c00' }}>✕ Borrar</button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+              <tr
+                style={{ background: '#fff8ec' }}
+                onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) guardarNuevaFila(); }}
+              >
+                <td style={{ ...td, color: '#bbb', fontSize: 11 }}>{guardando ? '…' : 'Nueva'}</td>
+                <td style={{ ...td, minWidth: 140 }}>
+                  <input type="date" value={nuevo.fecha} onChange={(e) => setNuevo({ ...nuevo, fecha: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 130 }} />
+                </td>
+                <td style={{ ...td, width: 100 }}>
+                  <select value={nuevo.equipo} onChange={(e) => setNuevo({ ...nuevo, equipo: e.target.value })} style={{ ...selSm, textTransform: 'uppercase' }}>
+                    <option value="">—</option>{EQUIPOS.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
+                  </select>
+                </td>
+                <td style={{ ...td, minWidth: 90 }}>
+                  <input placeholder="Nro OT" value={nuevo.nro_ot} onChange={(e) => setNuevo({ ...nuevo, nro_ot: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 80 }} />
+                </td>
+                <td style={{ ...td, minWidth: 170 }}>
+                  <input placeholder="Cliente" value={nuevo.cliente} onChange={(e) => setNuevo({ ...nuevo, cliente: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 160 }} />
+                </td>
+                <td style={{ ...td, minWidth: 170 }}>
+                  <input placeholder="Diseño" value={nuevo.diseno} onChange={(e) => setNuevo({ ...nuevo, diseno: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 160 }} />
+                </td>
+                <td style={td}>
+                  <input type="number" placeholder="Mts" value={nuevo.mts_pedidos} onChange={(e) => setNuevo({ ...nuevo, mts_pedidos: e.target.value })} style={{ ...selSm, width: 60 }} />
+                </td>
+                <td style={td}>—</td>
+                <td style={{ ...td, minWidth: 260 }}>—</td>
+                <td style={{ ...td, minWidth: 190 }}>
+                  <input placeholder="Tela" value={nuevo.tela} onChange={(e) => setNuevo({ ...nuevo, tela: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 180 }} />
+                </td>
+                <td style={td}>—</td>
+                <td style={{ ...td, width: 95 }}>
+                  <select value={nuevo.aprob} onChange={(e) => setNuevo({ ...nuevo, aprob: e.target.value })} style={{ ...selSm, width: 90, fontSize: 10, padding: '3px 2px' }}>
+                    {APROB_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </td>
+                <td style={{ ...td, width: 90 }}>
+                  <select value={nuevo.imp_operario} onChange={(e) => setNuevo({ ...nuevo, imp_operario: e.target.value })} style={{ ...selSm, width: 85 }}>
+                    <option value="">—</option>{OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
+                  </select>
+                </td>
+                <td style={td}><input type="checkbox" checked={nuevo.post} onChange={(e) => setNuevo({ ...nuevo, post: e.target.checked })} /></td>
+                <td style={td}>
+                  <select value={nuevo.fija_operario} onChange={(e) => setNuevo({ ...nuevo, fija_operario: e.target.value })} style={selSm}>
+                    <option value="">—</option>{OPERARIOS_FIJACION.map((op) => <option key={op} value={op}>{op}</option>)}
+                  </select>
+                </td>
+                <td style={td}>—</td>
+                {esAdmin && <td style={td}></td>}
+              </tr>
             </tbody>
           </table>
         </div>

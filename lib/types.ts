@@ -88,6 +88,38 @@ export interface OrdenDirecta {
   updated_at: string;
 }
 
+// Muestras: tabla independiente de ordenes_directa. No se cargan desde
+// Ingreso y Modif Pedidos — se agregan directamente en la solapa Muestras,
+// fila por fila (mismo patrón manual que Reporte diario). Mismas columnas
+// que Producción hasta Fecha fin, sin Prod ni los campos de entrega/anticipo.
+export interface Muestra {
+  id: number;
+  fecha: string;
+  equipo: string | null;
+  nro_ot: string | null;
+  cliente: string | null;
+  diseno: string | null;
+  mts_pedidos: number | null;
+  tela: string | null;
+  cod_tela: string | null;
+  aprob: string;
+  post: boolean;
+
+  imp_operario: string | null;
+  motivo_no_impreso: string | null;
+  mts_impresos: number;
+  fecha_impresion: string | null;
+
+  fija_operario: string | null;
+  fecha_fin: string | null;
+
+  observaciones: string | null;
+  orden_manual: number | null;
+
+  created_at: string;
+  updated_at: string;
+}
+
 export interface EventoDirecta {
   id: number;
   orden_id: number;
