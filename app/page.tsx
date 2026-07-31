@@ -438,7 +438,7 @@ function Dashboard({
 
       <div style={{ ...card, marginBottom: 20, border: '1px solid #000', background: '#fdfbf5', color: '#000' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b', letterSpacing: 1, marginBottom: 12 }}>
-          Muestras no impresas ({muestrasNoHechas.length}) — marcadas NO en Muestras
+          Muestras en stand by ({muestrasNoHechas.length}) — marcadas NO en Muestras
         </div>
         <div style={{ overflowX: 'auto', marginBottom: 24 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
