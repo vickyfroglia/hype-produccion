@@ -33,6 +33,7 @@ export interface StockDisponible {
   id_hype: string;
   tela: string;
   color: string | null;
+  ubicacion: string | null;
   disponible: number;
   remitos: string[];
   observaciones: string[];
@@ -46,7 +47,7 @@ export interface StockDisponible {
 // Requiere que esta app esté conectada al mismo proyecto Supabase que Stock.
 export async function stockPorCliente(cliente: string): Promise<StockDisponible[]> {
   const [{ data: ingresos, error: e1 }, { data: egresos, error: e2 }] = await Promise.all([
-    supabase.from('ingresos').select('id_hype, tela, color, mts, remito, observaciones').ilike('cliente', cliente),
+    supabase.from('ingresos').select('id_hype, tela, color, ubicacion, mts, remito, observaciones').ilike('cliente', cliente),
     supabase.from('egresos').select('id_hype, mts').ilike('cliente', cliente),
   ]);
   if (e1 || e2) {
@@ -55,7 +56,7 @@ export async function stockPorCliente(cliente: string): Promise<StockDisponible[
   }
   const mapa = new Map<string, StockDisponible>();
   (ingresos || []).forEach((i: any) => {
-    const actual = mapa.get(i.id_hype) || { id_hype: i.id_hype, tela: i.tela, color: i.color, disponible: 0, remitos: [], observaciones: [] };
+    const actual = mapa.get(i.id_hype) || { id_hype: i.id_hype, tela: i.tela, color: i.color, ubicacion: i.ubicacion, disponible: 0, remitos: [], observaciones: [] };
     actual.disponible += Number(i.mts || 0);
     if (i.remito && !actual.remitos.includes(String(i.remito))) actual.remitos.push(String(i.remito));
     if (i.observaciones && !actual.observaciones.includes(i.observaciones)) actual.observaciones.push(i.observaciones);
@@ -74,7 +75,7 @@ export async function stockPorCliente(cliente: string): Promise<StockDisponible[
 // así que se buscan por id_hype en vez de por cliente.
 export async function stockTH(): Promise<StockDisponible[]> {
   const [{ data: ingresos, error: e1 }, { data: egresos, error: e2 }] = await Promise.all([
-    supabase.from('ingresos').select('id_hype, tela, color, mts, remito, observaciones').ilike('id_hype', 'TH%'),
+    supabase.from('ingresos').select('id_hype, tela, color, ubicacion, mts, remito, observaciones').ilike('id_hype', 'TH%'),
     supabase.from('egresos').select('id_hype, mts').ilike('id_hype', 'TH%'),
   ]);
   if (e1 || e2) {
@@ -83,7 +84,7 @@ export async function stockTH(): Promise<StockDisponible[]> {
   }
   const mapa = new Map<string, StockDisponible>();
   (ingresos || []).forEach((i: any) => {
-    const actual = mapa.get(i.id_hype) || { id_hype: i.id_hype, tela: i.tela, color: i.color, disponible: 0, remitos: [], observaciones: [] };
+    const actual = mapa.get(i.id_hype) || { id_hype: i.id_hype, tela: i.tela, color: i.color, ubicacion: i.ubicacion, disponible: 0, remitos: [], observaciones: [] };
     actual.disponible += Number(i.mts || 0);
     if (i.remito && !actual.remitos.includes(String(i.remito))) actual.remitos.push(String(i.remito));
     if (i.observaciones && !actual.observaciones.includes(i.observaciones)) actual.observaciones.push(i.observaciones);

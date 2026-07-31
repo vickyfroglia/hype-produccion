@@ -1961,8 +1961,8 @@ function VistaMuestras({ rol }: { rol: string }) {
   // (matchea tanto contra el nombre solo, ej. "JERSEY 24/1", como contra
   // la descripción completa, ej. "JERSEY 24/1 BLANCO"), y si encuentra,
   // corrige el campo Tela a la descripción completa (nombre + color) y
-  // completa la columna ID — así aunque se haya escrito solo el nombre,
-  // queda guardado con el color.
+  // completa Ubic (ubicación en el depósito) — así aunque se haya
+  // escrito solo el nombre, queda guardado con el color y la ubicación.
   async function buscarCodTela(m: Muestra, telaTexto?: string) {
     const tela = (telaTexto ?? m.tela) || '';
     if (!m.cliente || !tela) return;
@@ -1973,7 +1973,7 @@ function VistaMuestras({ rol }: { rol: string }) {
     );
     if (coincidencias.length === 0) return;
     const mejor = coincidencias.sort((a, b) => b.disponible - a.disponible)[0];
-    const { error } = await supabase.from('muestras').update({ tela: descripcionTela(mejor), cod_tela: mejor.id_hype }).eq('id', m.id);
+    const { error } = await supabase.from('muestras').update({ tela: descripcionTela(mejor), cod_tela: mejor.id_hype, ubicacion: mejor.ubicacion }).eq('id', m.id);
     if (error) { console.error('No se pudo actualizar la tela:', error); return; }
     cargar();
   }
@@ -2064,7 +2064,7 @@ function VistaMuestras({ rol }: { rol: string }) {
       );
       if (coincidencias.length > 0) {
         const mejor = coincidencias.sort((a, b) => b.disponible - a.disponible)[0];
-        await supabase.from('muestras').update({ tela: descripcionTela(mejor), cod_tela: mejor.id_hype }).eq('id', data.id);
+        await supabase.from('muestras').update({ tela: descripcionTela(mejor), cod_tela: mejor.id_hype, ubicacion: mejor.ubicacion }).eq('id', data.id);
         if (mtsImpresos > 0) {
           const { error: errorEgreso } = await supabase.from('egresos').insert([
             {
@@ -2088,7 +2088,7 @@ function VistaMuestras({ rol }: { rol: string }) {
 
   if (cargando) return <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando...</div>;
 
-  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'Op Imp', 'Op Fij', 'Fecha fin', ...(esAdmin ? ['Borrar'] : [])];
+  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'Ubic', 'Op Imp', 'Op Fij', 'Fecha fin', ...(esAdmin ? ['Borrar'] : [])];
 
   return (
     <div>
@@ -2172,6 +2172,7 @@ function VistaMuestras({ rol }: { rol: string }) {
                         ))}
                       </datalist>
                     </td>
+                    <td style={{ ...td, width: 70, fontFamily: 'monospace', color: '#000', fontWeight: 700, fontSize: 12, ...bgCelda }}>{m.ubicacion || '—'}</td>
                     <td style={{ ...td, width: 90, ...bgCelda }} title={m.motivo_no_impreso || undefined}>
                       <select value={m.imp_operario || ''} onChange={(e) => actualizarImpOperario(m, e.target.value)} style={{ ...selSm, width: 85 }}>
                         <option value="">—</option>
@@ -2256,6 +2257,7 @@ function VistaMuestras({ rol }: { rol: string }) {
                     ))}
                   </datalist>
                 </td>
+                <td style={td}>—</td>
                 <td style={{ ...td, width: 90 }}>
                   <select value={nuevo.imp_operario} onChange={(e) => setNuevo({ ...nuevo, imp_operario: e.target.value })} style={{ ...selSm, width: 85 }}>
                     <option value="">—</option>{OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}

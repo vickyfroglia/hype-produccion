@@ -102,6 +102,7 @@ export interface Muestra {
   mts_pedidos: number | null;
   tela: string | null;
   cod_tela: string | null;
+  ubicacion: string | null;
   aprob: string;
   post: boolean;
 
