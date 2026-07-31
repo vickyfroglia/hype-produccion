@@ -1848,7 +1848,6 @@ function muestraVacia() {
   return {
     fecha: new Date().toISOString().split('T')[0],
     equipo: '',
-    nro_ot: '',
     cliente: '',
     diseno: '',
     mts_pedidos: '',
@@ -1934,7 +1933,7 @@ function VistaMuestras({ rol }: { rol: string }) {
           id_hype: m.cod_tela,
           mts: delta,
           estado: 'A producción',
-          observaciones: `Muestra${m.nro_ot ? ' · OT ' + m.nro_ot : ''} · ${m.diseno || 'sin diseño'} · cargado desde Muestras`,
+          observaciones: `Muestra · ${m.diseno || 'sin diseño'} · cargado desde Muestras`,
         },
       ]);
       if (errorEgreso) console.error('No se pudo descontar stock automáticamente:', errorEgreso);
@@ -1966,12 +1965,11 @@ function VistaMuestras({ rol }: { rol: string }) {
   // Se guarda solo desde la fila en blanco de abajo, al salir de la fila,
   // igual que en Reporte diario: no hay botón de "Agregar".
   async function guardarNuevaFila() {
-    if (!nuevo.cliente && !nuevo.diseno && !nuevo.nro_ot) return;
+    if (!nuevo.cliente && !nuevo.diseno) return;
     setGuardando(true);
     const { error } = await supabase.from('muestras').insert({
       fecha: nuevo.fecha,
       equipo: nuevo.equipo || null,
-      nro_ot: nuevo.nro_ot || null,
       cliente: nuevo.cliente || null,
       diseno: nuevo.diseno || null,
       mts_pedidos: parseFloat(nuevo.mts_pedidos) || 0,
@@ -1989,7 +1987,7 @@ function VistaMuestras({ rol }: { rol: string }) {
 
   if (cargando) return <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando...</div>;
 
-  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', ...(esAdmin ? ['Borrar'] : [])];
+  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', ...(esAdmin ? ['Borrar'] : [])];
 
   return (
     <div>
@@ -2030,9 +2028,6 @@ function VistaMuestras({ rol }: { rol: string }) {
                       <select value={m.equipo || ''} onChange={(e) => actualizar(m.id, 'equipo', e.target.value || null)} style={{ ...selSm, textTransform: 'uppercase' }}>
                         <option value="">—</option>{EQUIPOS.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
                       </select>
-                    </td>
-                    <td style={{ ...td, minWidth: 90, ...bgCelda }}>
-                      <input defaultValue={m.nro_ot || ''} onBlur={(e) => actualizar(m.id, 'nro_ot', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 80 }} />
                     </td>
                     <td style={{ ...td, minWidth: 170, ...bgCelda }}>
                       <input defaultValue={m.cliente || ''} onBlur={(e) => actualizar(m.id, 'cliente', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 160 }} />
@@ -2116,9 +2111,6 @@ function VistaMuestras({ rol }: { rol: string }) {
                   <select value={nuevo.equipo} onChange={(e) => setNuevo({ ...nuevo, equipo: e.target.value })} style={{ ...selSm, textTransform: 'uppercase' }}>
                     <option value="">—</option>{EQUIPOS.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
                   </select>
-                </td>
-                <td style={{ ...td, minWidth: 90 }}>
-                  <input placeholder="Nro OT" value={nuevo.nro_ot} onChange={(e) => setNuevo({ ...nuevo, nro_ot: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 80 }} />
                 </td>
                 <td style={{ ...td, minWidth: 170 }}>
                   <input placeholder="Cliente" value={nuevo.cliente} onChange={(e) => setNuevo({ ...nuevo, cliente: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 160 }} />
