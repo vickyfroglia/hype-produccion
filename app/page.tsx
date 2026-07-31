@@ -1865,6 +1865,11 @@ function VistaMuestras({ rol }: { rol: string }) {
   const [nuevo, setNuevo] = useState(muestraVacia());
   const [guardando, setGuardando] = useState(false);
   const esAdmin = rol.trim() === 'admin';
+  // Mts Imp (y Op Imp, que va de la mano) los completan los operarios de
+  // impresión — es lo que dispara el descuento real de stock, así que no
+  // puede quedar abierto a cualquiera. Mismo criterio que en Producción
+  // (donde esos dos campos también son de "operario"/"encargado").
+  const puedeImprimir = ['admin', 'operario', 'encargado'].includes(rol.trim());
 
   async function cargar() {
     const { data, error } = await supabase.from('muestras').select('*').order('id', { ascending: true });
@@ -2039,7 +2044,7 @@ function VistaMuestras({ rol }: { rol: string }) {
                       <input type="number" defaultValue={m.mts_pedidos ?? ''} onBlur={(e) => actualizar(m.id, 'mts_pedidos', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 60 }} />
                     </td>
                     <td style={{ ...td, ...bgCelda }}>
-                      <input type="number" defaultValue={m.mts_impresos} onBlur={(e) => actualizarMtsImpresos(m, e.target.value)} style={{ ...selSm, width: 60 }} />
+                      <input type="number" defaultValue={m.mts_impresos} onBlur={(e) => actualizarMtsImpresos(m, e.target.value)} disabled={!puedeImprimir} style={{ ...selSm, width: 60 }} />
                     </td>
                     <td style={{ ...td, minWidth: 260, whiteSpace: 'normal', ...bgCelda }}>
                       <textarea
@@ -2063,7 +2068,7 @@ function VistaMuestras({ rol }: { rol: string }) {
                       </select>
                     </td>
                     <td style={{ ...td, width: 90, ...bgCelda }} title={m.motivo_no_impreso || undefined}>
-                      <select value={m.imp_operario || ''} onChange={(e) => actualizarImpOperario(m, e.target.value)} style={{ ...selSm, width: 85 }}>
+                      <select value={m.imp_operario || ''} onChange={(e) => actualizarImpOperario(m, e.target.value)} disabled={!puedeImprimir} style={{ ...selSm, width: 85 }}>
                         <option value="">—</option>
                         <option value="NO">NO</option>
                         {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
@@ -2133,7 +2138,7 @@ function VistaMuestras({ rol }: { rol: string }) {
                   </select>
                 </td>
                 <td style={{ ...td, width: 90 }}>
-                  <select value={nuevo.imp_operario} onChange={(e) => setNuevo({ ...nuevo, imp_operario: e.target.value })} style={{ ...selSm, width: 85 }}>
+                  <select value={nuevo.imp_operario} onChange={(e) => setNuevo({ ...nuevo, imp_operario: e.target.value })} disabled={!puedeImprimir} style={{ ...selSm, width: 85 }}>
                     <option value="">—</option>{OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
                   </select>
                 </td>
