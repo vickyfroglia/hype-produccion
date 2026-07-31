@@ -1852,6 +1852,7 @@ function muestraVacia() {
     diseno: '',
     mts_pedidos: '',
     tela: '',
+    observaciones: '',
     imp_operario: '',
     fija_operario: '',
   };
@@ -1972,6 +1973,7 @@ function VistaMuestras({ rol }: { rol: string }) {
       diseno: nuevo.diseno || null,
       mts_pedidos: parseFloat(nuevo.mts_pedidos) || 0,
       tela: nuevo.tela || null,
+      observaciones: nuevo.observaciones || null,
       imp_operario: nuevo.imp_operario || null,
       fija_operario: nuevo.fija_operario || null,
     });
@@ -2112,7 +2114,15 @@ function VistaMuestras({ rol }: { rol: string }) {
                   <input type="number" placeholder="Mts" value={nuevo.mts_pedidos} onChange={(e) => setNuevo({ ...nuevo, mts_pedidos: e.target.value })} style={{ ...selSm, width: 60 }} />
                 </td>
                 <td style={td}>—</td>
-                <td style={{ ...td, minWidth: 260 }}>—</td>
+                <td style={{ ...td, minWidth: 260 }}>
+                  <textarea
+                    placeholder="Observaciones"
+                    rows={2}
+                    value={nuevo.observaciones}
+                    onChange={(e) => setNuevo({ ...nuevo, observaciones: e.target.value })}
+                    style={{ ...selSm, width: '100%', minWidth: 250, resize: 'vertical', fontFamily: 'inherit' }}
+                  />
+                </td>
                 <td style={{ ...td, minWidth: 190 }}>
                   <input placeholder="Tela" value={nuevo.tela} onChange={(e) => setNuevo({ ...nuevo, tela: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 180 }} />
                 </td>
