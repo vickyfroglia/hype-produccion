@@ -2058,11 +2058,6 @@ function VistaMuestras({ rol }: { rol: string }) {
                       />
                     </td>
                     <td style={{ ...td, width: 70, fontFamily: 'monospace', color: '#000', fontWeight: 700, fontSize: 12, ...bgCelda }}>{m.cod_tela || '—'}</td>
-                    <td style={{ ...td, width: 95, ...bgCelda }}>
-                      <select value={m.aprob} onChange={(e) => actualizar(m.id, 'aprob', e.target.value)} style={{ ...selSm, width: 90, fontSize: 10, padding: '3px 2px' }}>
-                        {APROB_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
-                      </select>
-                    </td>
                     <td style={{ ...td, width: 90, ...bgCelda }} title={m.motivo_no_impreso || undefined}>
                       <select value={m.imp_operario || ''} onChange={(e) => actualizarImpOperario(m, e.target.value)} disabled={!puedeImprimir} style={{ ...selSm, width: 85 }}>
                         <option value="">—</option>
@@ -2070,7 +2065,6 @@ function VistaMuestras({ rol }: { rol: string }) {
                         {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
                       </select>
                     </td>
-                    <td style={td}><input type="checkbox" checked={m.post} onChange={(e) => actualizar(m.id, 'post', e.target.checked)} /></td>
                     <td style={td} title={m.imp_operario === 'NO' ? 'No se puede fijar: no se imprimió' : undefined}>
                       {m.imp_operario === 'NO' ? (
                         <span style={{ fontSize: 11, color: '#c00' }}>—</span>
@@ -2128,17 +2122,11 @@ function VistaMuestras({ rol }: { rol: string }) {
                   <input placeholder="Tela" value={nuevo.tela} onChange={(e) => setNuevo({ ...nuevo, tela: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 180 }} />
                 </td>
                 <td style={td}>—</td>
-                <td style={{ ...td, width: 95 }}>
-                  <select value={nuevo.aprob} onChange={(e) => setNuevo({ ...nuevo, aprob: e.target.value })} style={{ ...selSm, width: 90, fontSize: 10, padding: '3px 2px' }}>
-                    {APROB_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
-                  </select>
-                </td>
                 <td style={{ ...td, width: 90 }}>
                   <select value={nuevo.imp_operario} onChange={(e) => setNuevo({ ...nuevo, imp_operario: e.target.value })} disabled={!puedeImprimir} style={{ ...selSm, width: 85 }}>
                     <option value="">—</option>{OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
                   </select>
                 </td>
-                <td style={td}><input type="checkbox" checked={nuevo.post} onChange={(e) => setNuevo({ ...nuevo, post: e.target.checked })} /></td>
                 <td style={td}>
                   <select value={nuevo.fija_operario} onChange={(e) => setNuevo({ ...nuevo, fija_operario: e.target.value })} style={selSm}>
                     <option value="">—</option>{OPERARIOS_FIJACION.map((op) => <option key={op} value={op}>{op}</option>)}
