@@ -1900,8 +1900,7 @@ function VistaMuestras({ rol }: { rol: string }) {
   }
 
   // Busca en Stock el id_hype que corresponde a cliente + tela, y lo
-  // completa solo en la columna ID (misma lógica que en Producción; no
-  // descuenta stock — una muestra no factura consumo real de tela).
+  // completa solo en la columna ID (misma lógica que en Producción).
   async function buscarCodTela(m: Muestra, telaTexto?: string) {
     const tela = (telaTexto ?? m.tela) || '';
     if (!m.cliente || !tela) return;
@@ -1910,6 +1909,37 @@ function VistaMuestras({ rol }: { rol: string }) {
     if (coincidencias.length === 0) return;
     const mejor = coincidencias.sort((a, b) => b.disponible - a.disponible)[0];
     await actualizar(m.id, 'cod_tela', mejor.id_hype);
+  }
+
+  // Al cambiar los Mts Imp, además de guardar en la muestra, descuenta ese
+  // consumo como egreso real en Stock (si esta muestra tiene una tela con
+  // ID cargado). A diferencia de Producción, acá SIEMPRE se descuenta al
+  // cargar Mts Imp (incluidas las telas HYPE "TH"): como Muestras no tiene
+  // un paso de "ingreso" que reserve la tela de antemano, este es el único
+  // momento en que se registra el consumo real. No se vincula a ninguna OT
+  // (orden_id queda vacío) porque esa tabla es de ordenes_directa, no de
+  // muestras.
+  async function actualizarMtsImpresos(m: Muestra, valor: string) {
+    const mtsNuevos = parseFloat(valor);
+    if (isNaN(mtsNuevos)) return;
+    const { error } = await supabase.from('muestras').update({ mts_impresos: mtsNuevos }).eq('id', m.id);
+    if (error) { alert('Error: ' + error.message); return; }
+    const delta = mtsNuevos - Number(m.mts_impresos || 0);
+    if (m.cod_tela && m.cliente && m.tela && delta > 0) {
+      const { error: errorEgreso } = await supabase.from('egresos').insert([
+        {
+          fecha: new Date().toISOString().split('T')[0],
+          cliente: m.cliente,
+          tela: m.tela,
+          id_hype: m.cod_tela,
+          mts: delta,
+          estado: 'A producción',
+          observaciones: `Muestra${m.nro_ot ? ' · OT ' + m.nro_ot : ''} · ${m.diseno || 'sin diseño'} · cargado desde Muestras`,
+        },
+      ]);
+      if (errorEgreso) console.error('No se pudo descontar stock automáticamente:', errorEgreso);
+    }
+    cargar();
   }
 
   async function marcarTerminado(m: Muestra) {
@@ -2014,7 +2044,7 @@ function VistaMuestras({ rol }: { rol: string }) {
                       <input type="number" defaultValue={m.mts_pedidos ?? ''} onBlur={(e) => actualizar(m.id, 'mts_pedidos', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 60 }} />
                     </td>
                     <td style={{ ...td, ...bgCelda }}>
-                      <input type="number" defaultValue={m.mts_impresos} onBlur={(e) => actualizar(m.id, 'mts_impresos', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 60 }} />
+                      <input type="number" defaultValue={m.mts_impresos} onBlur={(e) => actualizarMtsImpresos(m, e.target.value)} style={{ ...selSm, width: 60 }} />
                     </td>
                     <td style={{ ...td, minWidth: 260, whiteSpace: 'normal', ...bgCelda }}>
                       <textarea
