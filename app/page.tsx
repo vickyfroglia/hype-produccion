@@ -2147,7 +2147,7 @@ function VistaMuestras({ rol }: { rol: string }) {
                       />
                       <datalist id={`telas-stock-${m.id}`}>
                         {(stockPorClienteCache[m.cliente || ''] || []).map((s) => (
-                          <option key={s.id_hype} value={s.tela} />
+                          <option key={s.id_hype} value={s.tela}>{s.color ? `Color: ${s.color}` : ''}</option>
                         ))}
                       </datalist>
                     </td>
@@ -2232,7 +2232,7 @@ function VistaMuestras({ rol }: { rol: string }) {
                   />
                   <datalist id="telas-stock-nueva">
                     {(stockPorClienteCache[nuevo.cliente] || []).map((s) => (
-                      <option key={s.id_hype} value={s.tela} />
+                      <option key={s.id_hype} value={s.tela}>{s.color ? `Color: ${s.color}` : ''}</option>
                     ))}
                   </datalist>
                 </td>
