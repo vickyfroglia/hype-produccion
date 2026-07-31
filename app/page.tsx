@@ -51,6 +51,7 @@ export default function Home() {
   const [pagina, setPagina] = useState('dashboard');
   const [ordenes, setOrdenes] = useState<OrdenDirecta[]>([]);
   const [eventos, setEventos] = useState<EventoDirecta[]>([]);
+  const [muestras, setMuestras] = useState<Muestra[]>([]);
   const [rollosReporte, setRollosReporte] = useState<RolloReporte[]>([]);
   const [ingresosStock, setIngresosStock] = useState<any[]>([]);
   const [egresosStock, setEgresosStock] = useState<any[]>([]);
@@ -82,15 +83,17 @@ export default function Home() {
   // hacía que el scroll volviera arriba de todo cada vez que se tocaba algo.
   async function cargarTodo(mostrarLoading = false) {
     if (mostrarLoading) setLoading(true);
-    const [ords, evts, rollos, ingresos, egresos] = await Promise.all([
+    const [ords, evts, muestrasData, rollos, ingresos, egresos] = await Promise.all([
       fetchAll('ordenes_directa', 'created_at'),
       fetchAll('ordenes_directa_eventos', 'created_at'),
+      fetchAll('muestras', 'created_at'),
       fetchAll('reporte_rollos', 'created_at'),
       fetchStockTabla('ingresos'),
       fetchStockTabla('egresos'),
     ]);
     setOrdenes(ords);
     setEventos(evts);
+    setMuestras(muestrasData);
     setRollosReporte(rollos);
     setIngresosStock(ingresos);
     setEgresosStock(egresos);
@@ -177,7 +180,7 @@ export default function Home() {
         {loading && <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando...</div>}
         {!loading && (
           <>
-            {pagina === 'dashboard' && <Dashboard ordenes={ordenes} rollosReporte={rollosReporte} ingresosStock={ingresosStock} egresosStock={egresosStock} />}
+            {pagina === 'dashboard' && <Dashboard ordenes={ordenes} muestras={muestras} rollosReporte={rollosReporte} ingresosStock={ingresosStock} egresosStock={egresosStock} />}
             {pagina === 'general' && <VistaGeneral ordenes={ordenes} onCambio={cargarTodo} rol={rol} />}
             {pagina === 'muestras' && <VistaMuestras rol={rol} />}
             {pagina === 'reporte' && <PanelReporteDiario ordenes={ordenes} rol={rol} />}
@@ -359,11 +362,13 @@ function mtsTerminacionMensualPorOperario(rollosReporte: RolloReporte[]): Agrega
 
 function Dashboard({
   ordenes,
+  muestras,
   rollosReporte,
   ingresosStock,
   egresosStock,
 }: {
   ordenes: OrdenDirecta[];
+  muestras: Muestra[];
   rollosReporte: RolloReporte[];
   ingresosStock: any[];
   egresosStock: any[];
@@ -372,6 +377,7 @@ function Dashboard({
   const incompletos = ordenes.filter((o) => motivoBloqueo(o, stockMapas) !== null);
   const otsIncompletas = new Set(incompletos.map((o) => o.nro_ot)).size;
   const ordenesAtrasadas = ordenesAtrasadasPorPlazo(ordenes);
+  const muestrasNoHechas = muestras.filter((m) => m.imp_operario === 'NO');
   const anioActual = new Date().toISOString().slice(0, 4);
   const mesActual = new Date().toISOString().slice(0, 7);
   const ordenesAnio = ordenes.filter((o) => o.fecha && o.fecha.slice(0, 4) === anioActual);
@@ -428,6 +434,30 @@ function Dashboard({
             </div>
           );
         })}
+      </div>
+
+      <div style={{ ...card, marginBottom: 20, border: '1px solid #000', background: '#fdfbf5', color: '#000' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b', letterSpacing: 1, marginBottom: 12 }}>
+          Muestras no impresas ({muestrasNoHechas.length}) — marcadas NO en Muestras
+        </div>
+        <div style={{ overflowX: 'auto', marginBottom: 24 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>{['Fecha', 'Cliente', 'Diseño', 'Motivo'].map((h) => <th key={h} style={{ ...th, color: '#000' }}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {muestrasNoHechas.length === 0 && <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#000' }}>Ninguna muestra quedó sin imprimir 🎉</td></tr>}
+              {muestrasNoHechas.map((m) => (
+                <tr key={m.id}>
+                  <td style={{ ...td, color: '#000' }}>{formatFecha(m.fecha)}</td>
+                  <td style={{ ...td, color: '#000' }}>{m.cliente || '—'}</td>
+                  <td style={{ ...td, color: '#000' }}>{m.diseno || '—'}</td>
+                  <td style={{ ...td, color: '#000', textTransform: 'none' }}>{m.motivo_no_impreso || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div style={{ ...card, marginBottom: 20, border: '1px solid #000', background: '#fdfbf5', color: '#000' }}>
@@ -1964,6 +1994,25 @@ function VistaMuestras({ rol }: { rol: string }) {
     setCargando(false);
   }
 
+  // Orden de la columna N: por orden_manual (se puede alterar con las
+  // flechas ▲▼), y si una fila todavía no tiene orden_manual asignado
+  // (filas viejas, antes de este cambio) se usa su id como respaldo para
+  // que no salten al principio de la lista.
+  const filasOrdenadas = [...muestras].sort((a, b) => (a.orden_manual ?? a.id) - (b.orden_manual ?? b.id));
+
+  async function moverFila(id: number, direccion: -1 | 1) {
+    const idx = filasOrdenadas.findIndex((m) => m.id === id);
+    const destino = idx + direccion;
+    if (destino < 0 || destino >= filasOrdenadas.length) return;
+    const lista = [...filasOrdenadas];
+    [lista[idx], lista[destino]] = [lista[destino], lista[idx]];
+    for (const [i, fila] of lista.entries()) {
+      const { error } = await supabase.from('muestras').update({ orden_manual: i + 1 }).eq('id', fila.id);
+      if (error) { alert('Error al reordenar: ' + error.message); return; }
+    }
+    cargar();
+  }
+
   useEffect(() => {
     cargar();
   }, []);
@@ -2170,7 +2219,7 @@ function VistaMuestras({ rol }: { rol: string }) {
               {muestras.length === 0 && (
                 <tr><td colSpan={columnas.length} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin muestras cargadas</td></tr>
               )}
-              {muestras.map((m, idx) => {
+              {filasOrdenadas.map((m, idx) => {
                 const terminado = !!m.fecha_fin;
                 const noImprimio = m.imp_operario === 'NO';
                 const impresoCompleto = !noImprimio && !!m.imp_operario && Number(m.mts_impresos) > 0;
@@ -2184,7 +2233,15 @@ function VistaMuestras({ rol }: { rol: string }) {
                 const bgCelda = terminado || noImprimio ? {} : fijadoCompleto ? { background: '#bfe0b3' } : impresoCompleto ? { background: '#e6f4e1' } : {};
                 return (
                   <tr key={m.id} style={terminado ? { background: '#8fce8a' } : noImprimio ? { background: '#fde8e8' } : undefined}>
-                    <td style={{ ...td, color: '#888', ...bgCelda }}>{idx + 1}</td>
+                    <td style={{ ...td, color: '#888', ...bgCelda }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        {idx + 1}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <button onClick={() => moverFila(m.id, -1)} title="Subir" style={{ border: 'none', background: '#eee', borderRadius: 3, cursor: 'pointer', fontSize: 8, lineHeight: '10px', padding: '1px 3px' }}>▲</button>
+                          <button onClick={() => moverFila(m.id, 1)} title="Bajar" style={{ border: 'none', background: '#eee', borderRadius: 3, cursor: 'pointer', fontSize: 8, lineHeight: '10px', padding: '1px 3px' }}>▼</button>
+                        </div>
+                      </div>
+                    </td>
                     <td style={{ ...td, minWidth: 140, ...bgCelda }}>
                       <input type="date" defaultValue={m.fecha} onBlur={(e) => actualizar(m.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 130 }} />
                     </td>
