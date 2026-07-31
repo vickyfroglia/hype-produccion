@@ -1540,18 +1540,28 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
     await actualizar(o.id, 'cod_tela', mejor.id_hype);
   }
 
-  // Al elegir un operario en "Op Imp" se pinta la fila de verde. Al elegir
-  // "NO" se pinta de rojo y pide el motivo por el que no se pudo imprimir.
+  // Al elegir un operario en "Op Imp" se pinta la fila de verde. El "no
+  // se pudo imprimir" ahora se marca desde la columna Mts Imp (ver
+  // marcarNoImpreso/revertirNoImpreso), no acá.
   async function actualizarImpOperario(o: OrdenDirecta, valor: string) {
-    if (valor === 'NO') {
-      const motivo = window.prompt('¿Por qué no se pudo imprimir este pedido?', o.motivo_no_impreso || '');
-      if (motivo === null) return; // canceló, no guarda nada
-      const { error } = await supabase.from('ordenes_directa').update({ imp_operario: 'NO', motivo_no_impreso: motivo }).eq('id', o.id);
-      if (error) alert('Error: ' + error.message);
-      else onCambio();
-      return;
-    }
     const { error } = await supabase.from('ordenes_directa').update({ imp_operario: valor || null, motivo_no_impreso: null }).eq('id', o.id);
+    if (error) alert('Error: ' + error.message);
+    else onCambio();
+  }
+
+  // Se dispara desde un botón en la columna Mts Imp: pide el motivo por
+  // el que no se pudo imprimir y pinta la fila de rojo. Reemplaza a la
+  // vieja opción "NO" del desplegable de Op Imp.
+  async function marcarNoImpreso(o: OrdenDirecta) {
+    const motivo = window.prompt('¿Por qué no se pudo imprimir este pedido?', o.motivo_no_impreso || '');
+    if (motivo === null) return; // canceló, no guarda nada
+    const { error } = await supabase.from('ordenes_directa').update({ imp_operario: 'NO', motivo_no_impreso: motivo }).eq('id', o.id);
+    if (error) alert('Error: ' + error.message);
+    else onCambio();
+  }
+
+  async function revertirNoImpreso(o: OrdenDirecta) {
+    const { error } = await supabase.from('ordenes_directa').update({ imp_operario: null, motivo_no_impreso: null }).eq('id', o.id);
     if (error) alert('Error: ' + error.message);
     else onCambio();
   }
@@ -1728,8 +1738,22 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                   <td style={{ ...td, ...bgCelda }}>
                     <input type="number" defaultValue={o.mts_pedidos} onBlur={(e) => actualizar(o.id, 'mts_pedidos', parseFloat(e.target.value) || 0)} disabled={!puede(o, 'mts_pedidos')} style={{ ...selSm, width: 60 }} />
                   </td>
-                  <td style={{ ...td, ...bgCelda }}>
-                    <input type="number" defaultValue={o.mts_impresos} onBlur={(e) => actualizarMtsImpresos(o, e.target.value)} disabled={!puede(o, 'mts_impresos')} style={{ ...selSm, width: 60 }} />
+                  <td style={{ ...td, ...bgCelda }} title={o.motivo_no_impreso || undefined}>
+                    {o.imp_operario === 'NO' ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                        <span style={{ fontSize: 10, color: '#c00', fontWeight: 700 }}>NO IMPRESO</span>
+                        {puede(o, 'imp_operario') && (
+                          <button onClick={() => revertirNoImpreso(o)} style={{ ...btn, padding: '1px 6px', fontSize: 9, color: '#c00', borderColor: '#c00' }}>revertir</button>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        <input type="number" defaultValue={o.mts_impresos} onBlur={(e) => actualizarMtsImpresos(o, e.target.value)} disabled={!puede(o, 'mts_impresos')} style={{ ...selSm, width: 50 }} />
+                        {puede(o, 'imp_operario') && (
+                          <button onClick={() => marcarNoImpreso(o)} title="No se pudo imprimir" style={{ ...btn, padding: '2px 5px', fontSize: 9, color: '#c00', borderColor: '#c00' }}>NO</button>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td style={{ ...td, minWidth: 260, whiteSpace: 'normal', ...bgCelda }}>
                     <textarea
@@ -1754,12 +1778,21 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                       {APROB_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
                     </select>
                   </td>
-                  <td style={{ ...td, width: 90, ...bgCelda }} title={o.motivo_no_impreso || undefined}>
-                    <select value={o.imp_operario || ''} onChange={(e) => actualizarImpOperario(o, e.target.value)} disabled={!puede(o, 'imp_operario')} style={{ ...selSm, width: 85 }}>
-                      <option value="">—</option>
-                      <option value="NO">NO</option>
-                      {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
-                    </select>
+                  <td style={{ ...td, width: 90, ...bgCelda }}>
+                    {o.imp_operario === 'NO' ? (
+                      <span style={{ fontSize: 11, color: '#c00' }}>—</span>
+                    ) : (
+                      <select
+                        value={o.imp_operario || ''}
+                        onChange={(e) => actualizarImpOperario(o, e.target.value)}
+                        disabled={!puede(o, 'imp_operario') || Number(o.mts_impresos || 0) <= 0}
+                        title={Number(o.mts_impresos || 0) <= 0 ? 'Primero hay que cargar Mts Imp' : undefined}
+                        style={{ ...selSm, width: 85 }}
+                      >
+                        <option value="">—</option>
+                        {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
+                      </select>
+                    )}
                   </td>
                   <td style={td}><input type="checkbox" checked={o.post} onChange={(e) => actualizar(o.id, 'post', e.target.checked)} disabled={!puede(o, 'post')} /></td>
                   <td style={td} title={o.imp_operario === 'NO' ? 'No se puede fijar: no se imprimió' : undefined}>
@@ -1941,18 +1974,26 @@ function VistaMuestras({ rol }: { rol: string }) {
     else cargar();
   }
 
-  // Igual que en Producción: al elegir "NO" en Op Imp pide el motivo por
-  // el que no se pudo imprimir la muestra.
+  // El "no se pudo imprimir" se marca desde la columna Mts Imp (ver
+  // marcarNoImpreso/revertirNoImpreso), no desde acá.
   async function actualizarImpOperario(m: Muestra, valor: string) {
-    if (valor === 'NO') {
-      const motivo = window.prompt('¿Por qué no se pudo imprimir esta muestra?', m.motivo_no_impreso || '');
-      if (motivo === null) return;
-      const { error } = await supabase.from('muestras').update({ imp_operario: 'NO', motivo_no_impreso: motivo }).eq('id', m.id);
-      if (error) alert('Error: ' + error.message);
-      else cargar();
-      return;
-    }
     const { error } = await supabase.from('muestras').update({ imp_operario: valor || null, motivo_no_impreso: null }).eq('id', m.id);
+    if (error) alert('Error: ' + error.message);
+    else cargar();
+  }
+
+  // Se dispara desde un botón en la columna Mts Imp, igual que en
+  // Producción: pide el motivo por el que no se pudo imprimir.
+  async function marcarNoImpreso(m: Muestra) {
+    const motivo = window.prompt('¿Por qué no se pudo imprimir esta muestra?', m.motivo_no_impreso || '');
+    if (motivo === null) return;
+    const { error } = await supabase.from('muestras').update({ imp_operario: 'NO', motivo_no_impreso: motivo }).eq('id', m.id);
+    if (error) alert('Error: ' + error.message);
+    else cargar();
+  }
+
+  async function revertirNoImpreso(m: Muestra) {
+    const { error } = await supabase.from('muestras').update({ imp_operario: null, motivo_no_impreso: null }).eq('id', m.id);
     if (error) alert('Error: ' + error.message);
     else cargar();
   }
@@ -2160,8 +2201,18 @@ function VistaMuestras({ rol }: { rol: string }) {
                     <td style={{ ...td, ...bgCelda }}>
                       <input type="number" defaultValue={m.mts_pedidos ?? ''} onBlur={(e) => actualizar(m.id, 'mts_pedidos', parseFloat(e.target.value) || 0)} style={{ ...selSm, width: 60 }} />
                     </td>
-                    <td style={{ ...td, ...bgCelda }}>
-                      <input type="number" defaultValue={m.mts_impresos} onBlur={(e) => actualizarMtsImpresos(m, e.target.value)} style={{ ...selSm, width: 60 }} />
+                    <td style={{ ...td, ...bgCelda }} title={m.motivo_no_impreso || undefined}>
+                      {m.imp_operario === 'NO' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                          <span style={{ fontSize: 10, color: '#c00', fontWeight: 700 }}>NO IMPRESO</span>
+                          <button onClick={() => revertirNoImpreso(m)} style={{ ...btn, padding: '1px 6px', fontSize: 9, color: '#c00', borderColor: '#c00' }}>revertir</button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                          <input type="number" defaultValue={m.mts_impresos} onBlur={(e) => actualizarMtsImpresos(m, e.target.value)} style={{ ...selSm, width: 50 }} />
+                          <button onClick={() => marcarNoImpreso(m)} title="No se pudo imprimir" style={{ ...btn, padding: '2px 5px', fontSize: 9, color: '#c00', borderColor: '#c00' }}>NO</button>
+                        </div>
+                      )}
                     </td>
                     <td style={{ ...td, minWidth: 260, whiteSpace: 'normal', ...bgCelda }}>
                       <textarea
@@ -2186,12 +2237,21 @@ function VistaMuestras({ rol }: { rol: string }) {
                       </datalist>
                     </td>
                     <td style={{ ...td, width: 70, fontFamily: 'monospace', color: '#000', fontWeight: 700, fontSize: 12, ...bgCelda }}>{m.ubicacion || '—'}</td>
-                    <td style={{ ...td, width: 90, ...bgCelda }} title={m.motivo_no_impreso || undefined}>
-                      <select value={m.imp_operario || ''} onChange={(e) => actualizarImpOperario(m, e.target.value)} style={{ ...selSm, width: 85 }}>
-                        <option value="">—</option>
-                        <option value="NO">NO</option>
-                        {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
-                      </select>
+                    <td style={{ ...td, width: 90, ...bgCelda }}>
+                      {m.imp_operario === 'NO' ? (
+                        <span style={{ fontSize: 11, color: '#c00' }}>—</span>
+                      ) : (
+                        <select
+                          value={m.imp_operario || ''}
+                          onChange={(e) => actualizarImpOperario(m, e.target.value)}
+                          disabled={Number(m.mts_impresos || 0) <= 0}
+                          title={Number(m.mts_impresos || 0) <= 0 ? 'Primero hay que cargar Mts Imp' : undefined}
+                          style={{ ...selSm, width: 85 }}
+                        >
+                          <option value="">—</option>
+                          {OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
+                        </select>
+                      )}
                     </td>
                     <td style={td} title={m.imp_operario === 'NO' ? 'No se puede fijar: no se imprimió' : undefined}>
                       {m.imp_operario === 'NO' ? (
@@ -2272,7 +2332,13 @@ function VistaMuestras({ rol }: { rol: string }) {
                 </td>
                 <td style={td}>—</td>
                 <td style={{ ...td, width: 90 }}>
-                  <select value={nuevo.imp_operario} onChange={(e) => setNuevo({ ...nuevo, imp_operario: e.target.value })} style={{ ...selSm, width: 85 }}>
+                  <select
+                    value={nuevo.imp_operario}
+                    onChange={(e) => setNuevo({ ...nuevo, imp_operario: e.target.value })}
+                    disabled={!(parseFloat(nuevo.mts_impresos) > 0)}
+                    title={!(parseFloat(nuevo.mts_impresos) > 0) ? 'Primero hay que cargar Mts Imp' : undefined}
+                    style={{ ...selSm, width: 85 }}
+                  >
                     <option value="">—</option>{OPERARIOS_IMPRESION.map((op) => <option key={op} value={op}>{op}</option>)}
                   </select>
                 </td>
