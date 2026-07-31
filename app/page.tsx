@@ -2174,10 +2174,12 @@ function VistaMuestras({ rol }: { rol: string }) {
                 const terminado = !!m.fecha_fin;
                 const noImprimio = m.imp_operario === 'NO';
                 const impresoCompleto = !noImprimio && !!m.imp_operario && Number(m.mts_impresos) > 0;
-                const colorHastaOpImp = noImprimio ? '#fde8e8' : impresoCompleto ? '#e6f4e1' : undefined;
-                const bgCelda = !terminado && colorHastaOpImp ? { background: colorHastaOpImp } : {};
+                // Si no se pudo imprimir, el rojo pinta toda la fila (no solo
+                // hasta Op Imp como en Producción) — acá no hay columnas de
+                // entrega después que necesiten quedar sin pintar.
+                const bgCelda = !terminado && !noImprimio && impresoCompleto ? { background: '#e6f4e1' } : {};
                 return (
-                  <tr key={m.id} style={terminado ? { background: '#8fce8a' } : undefined}>
+                  <tr key={m.id} style={terminado ? { background: '#8fce8a' } : noImprimio ? { background: '#fde8e8' } : undefined}>
                     <td style={{ ...td, color: '#888', ...bgCelda }}>{idx + 1}</td>
                     <td style={{ ...td, minWidth: 140, ...bgCelda }}>
                       <input type="date" defaultValue={m.fecha} onBlur={(e) => actualizar(m.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 130 }} />
