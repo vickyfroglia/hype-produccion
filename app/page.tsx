@@ -49,6 +49,14 @@ function colorEquipo(equipo: string | null | undefined): string | undefined {
   return undefined;
 }
 
+// Fondo pastel de las tarjetas de equipo en el Dashboard: lila para
+// Monalisa 32, naranja para Monalisa 8.
+function fondoEquipo(equipo: string): string {
+  if (equipo === 'Monalisa 32') return '#e6d9f5';
+  if (equipo === 'Monalisa 8') return '#ffdcb3';
+  return '#fbe0c8';
+}
+
 const inp: React.CSSProperties = { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13 };
 const lbl: React.CSSProperties = { fontSize: 11, color: '#888', display: 'block', marginBottom: 4 };
 const btn: React.CSSProperties = { padding: '8px 14px', borderRadius: 8, border: '1px solid #ddd', background: '#fff', fontSize: 13, cursor: 'pointer' };
@@ -426,7 +434,7 @@ function Dashboard({
         {EQUIPOS.map((eq) => {
           const { impresos, pendientes } = totalesPorEquipo(ordenes, eq);
           return (
-            <div key={eq} style={{ ...card, background: '#fbe0c8', color: '#000' }}>
+            <div key={eq} style={{ ...card, background: fondoEquipo(eq), color: '#000' }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#000', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
                 Mts — {eq}
               </div>
