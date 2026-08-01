@@ -287,6 +287,8 @@ export default function PedidoCliente() {
               El plazo para enviar la tela, en caso de ser tuya, es de <b>72 hs</b>. Es importante que nos envíes el remito con nombre de marca/razón social y descripción, mts y cantidad de rollos por tipo de tela.
               <br /><br />
               <b>Si envías kg, obligatoriamente necesitamos el rinde.</b>
+              <br /><br />
+              <b style={{ textTransform: 'uppercase' }}>Aguardá la confirmación del mismo por mail!! :)</b>
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button onClick={() => setMostrarAviso(false)} style={btn}>Cancelar</button>
