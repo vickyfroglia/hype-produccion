@@ -40,6 +40,15 @@ async function fetchStockTabla(tabla: 'ingresos' | 'egresos'): Promise<any[]> {
   return data || [];
 }
 
+// Color especial para la palabra del equipo cuando está seleccionada:
+// Monalisa 32 en lila pastel, Monalisa 8 en naranja pastel. Se usa en la
+// columna Equipo de Producción, Muestras y en las pestañas de Reporte diario.
+function colorEquipo(equipo: string | null | undefined): string | undefined {
+  if (equipo === 'Monalisa 32') return '#b19cd9';
+  if (equipo === 'Monalisa 8') return '#ffab73';
+  return undefined;
+}
+
 const inp: React.CSSProperties = { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13 };
 const lbl: React.CSSProperties = { fontSize: 11, color: '#888', display: 'block', marginBottom: 4 };
 const btn: React.CSSProperties = { padding: '8px 14px', borderRadius: 8, border: '1px solid #ddd', background: '#fff', fontSize: 13, cursor: 'pointer' };
@@ -1759,7 +1768,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                   </td>
                   <td style={{ ...td, minWidth: 140, ...bgCelda }}><input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} disabled={!puede(o, 'fecha')} style={{ ...selSm, width: '100%', minWidth: 130 }} /></td>
                   <td style={{ ...td, width: 100, ...bgCelda }}>
-                    <select value={o.equipo || ''} onChange={(e) => actualizar(o.id, 'equipo', e.target.value || null)} disabled={!puede(o, 'equipo')} style={{ ...selSm, textTransform: 'uppercase' }}>
+                    <select value={o.equipo || ''} onChange={(e) => actualizar(o.id, 'equipo', e.target.value || null)} disabled={!puede(o, 'equipo')} style={{ ...selSm, textTransform: 'uppercase', color: colorEquipo(o.equipo), fontWeight: colorEquipo(o.equipo) ? 700 : undefined }}>
                       <option value="">—</option>{EQUIPOS.map((eq) => <option key={eq} value={eq} style={{ textTransform: 'uppercase' }}>{eq}</option>)}
                     </select>
                   </td>
@@ -2263,7 +2272,7 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
                       <input type="date" defaultValue={m.fecha} onBlur={(e) => actualizar(m.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 130 }} />
                     </td>
                     <td style={{ ...td, width: 100, ...bgCelda }}>
-                      <select value={m.equipo || ''} onChange={(e) => actualizar(m.id, 'equipo', e.target.value || null)} style={{ ...selSm, textTransform: 'uppercase' }}>
+                      <select value={m.equipo || ''} onChange={(e) => actualizar(m.id, 'equipo', e.target.value || null)} style={{ ...selSm, textTransform: 'uppercase', color: colorEquipo(m.equipo), fontWeight: colorEquipo(m.equipo) ? 700 : undefined }}>
                         <option value="">—</option>{EQUIPOS.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
                       </select>
                     </td>
@@ -2394,7 +2403,7 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
                   <input type="date" value={nuevo.fecha} onChange={(e) => setNuevo({ ...nuevo, fecha: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 130 }} />
                 </td>
                 <td style={{ ...td, width: 100 }}>
-                  <select value={nuevo.equipo} onChange={(e) => setNuevo({ ...nuevo, equipo: e.target.value })} style={{ ...selSm, textTransform: 'uppercase' }}>
+                  <select value={nuevo.equipo} onChange={(e) => setNuevo({ ...nuevo, equipo: e.target.value })} style={{ ...selSm, textTransform: 'uppercase', color: colorEquipo(nuevo.equipo), fontWeight: colorEquipo(nuevo.equipo) ? 700 : undefined }}>
                     <option value="">—</option>{EQUIPOS.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
                   </select>
                 </td>
@@ -2512,7 +2521,7 @@ function PanelReporteDiario({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: st
             style={{
               ...btn,
               background: equipoActivo === eq ? '#1a1a2e' : '#fff',
-              color: equipoActivo === eq ? '#fff' : '#1a1a2e',
+              color: equipoActivo === eq ? (colorEquipo(eq) || '#fff') : '#1a1a2e',
               border: '1px solid #1a1a2e',
               fontWeight: 700,
               textTransform: 'uppercase',
