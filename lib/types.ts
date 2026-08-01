@@ -121,6 +121,7 @@ export interface Muestra {
   observaciones: string | null;
   orden_manual: number | null;
   comercial: string | null;
+  precio_mt: string | null;
 
   created_at: string;
   updated_at: string;

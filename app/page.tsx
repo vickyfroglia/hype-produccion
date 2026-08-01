@@ -1915,6 +1915,15 @@ function descripcionTela(s: StockDisponible): string {
   return s.color ? `${s.tela} ${s.color}`.trim() : s.tela;
 }
 
+// Formatea el precio por metro con el formato pedido: "$" + al menos 5
+// dígitos, completando con ceros a la izquierda (ej. escribe "150" y
+// queda "$00150"). Si no hay ningún dígito cargado, devuelve null.
+function formatearPrecioMt(valor: string): string | null {
+  const soloDigitos = (valor || '').replace(/\D/g, '');
+  if (!soloDigitos) return null;
+  return '$' + soloDigitos.padStart(5, '0');
+}
+
 function muestraVacia() {
   return {
     fecha: new Date().toISOString().split('T')[0],
@@ -1928,6 +1937,7 @@ function muestraVacia() {
     imp_operario: '',
     fija_operario: '',
     comercial: '',
+    precio_mt: '',
   };
 }
 
@@ -2160,6 +2170,7 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
         imp_operario: nuevo.imp_operario || null,
         fija_operario: nuevo.fija_operario || null,
         comercial: nuevo.comercial || null,
+        precio_mt: formatearPrecioMt(nuevo.precio_mt),
       })
       .select()
       .single();
@@ -2200,7 +2211,7 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
 
   if (cargando) return <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando...</div>;
 
-  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'Ubic', 'Op Imp', 'Op Fij', 'Fecha fin', 'Comercial', ...(esAdmin ? ['Borrar'] : [])];
+  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'Ubic', 'Op Imp', 'Op Fij', 'Fecha fin', 'Comercial', '$ x Mt', ...(esAdmin ? ['Borrar'] : [])];
 
   return (
     <div>
@@ -2358,6 +2369,14 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
                         {RESPONSABLES_COMERCIAL.map((c) => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </td>
+                    <td style={td}>
+                      <input
+                        defaultValue={m.precio_mt || ''}
+                        onBlur={(e) => actualizar(m.id, 'precio_mt', formatearPrecioMt(e.target.value))}
+                        placeholder="$00000"
+                        style={{ ...selSm, width: 70 }}
+                      />
+                    </td>
                     {esAdmin && (
                       <td style={td}>
                         <button onClick={() => borrar(m.id)} style={{ ...btn, padding: '4px 8px', fontSize: 11, color: '#c00', borderColor: '#c00' }}>✕ Borrar</button>
@@ -2443,6 +2462,14 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
                     <option value="">—</option>
                     {RESPONSABLES_COMERCIAL.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
+                </td>
+                <td style={td}>
+                  <input
+                    value={nuevo.precio_mt}
+                    onChange={(e) => setNuevo({ ...nuevo, precio_mt: e.target.value })}
+                    placeholder="$00000"
+                    style={{ ...selSm, width: 70 }}
+                  />
                 </td>
                 {esAdmin && <td style={td}></td>}
               </tr>
