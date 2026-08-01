@@ -2564,7 +2564,7 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
 
   // Solo los últimos 6 dígitos del nro_ot (más fácil de leer y escribir
   // que el correlativo completo de 12 dígitos).
-  const nrosOt = Array.from(new Set(ordenes.map((o) => o.nro_ot.slice(-6)))).sort();
+  const nrosOt = Array.from(new Set(ordenes.map((o) => o.nro_ot.slice(-5)))).sort();
 
   // Filtro de búsqueda por Cliente, Nro OT, Diseño u Op Imp (coincidencia
   // parcial, sin importar mayúsculas/minúsculas). La fila en blanco de
@@ -2572,7 +2572,7 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
   const filtroNorm = filtro.trim().toLowerCase();
   const rollosFiltrados = filtroNorm
     ? rollos.filter((r) =>
-        [(r.nro_ot || '').slice(-6), r.cliente, r.diseno, r.op_imp]
+        [(r.nro_ot || '').slice(-5), r.cliente, r.diseno, r.op_imp]
           .some((campo) => (campo || '').toLowerCase().includes(filtroNorm))
       )
     : rollos;
@@ -2604,7 +2604,7 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
   // escribe acá) y se trae su cliente. No se escribe a mano.
   function buscarClientePorNroOt(nroOtCorto: string): string | null {
     if (!nroOtCorto) return null;
-    const orden = ordenes.find((o) => o.nro_ot.slice(-6) === nroOtCorto.trim());
+    const orden = ordenes.find((o) => o.nro_ot.slice(-5) === nroOtCorto.trim());
     return orden ? orden.cliente : null;
   }
 
@@ -2613,7 +2613,7 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
   // desplegable en vez de tipearlo a mano.
   function disenosPorNroOt(nroOtCorto: string): string[] {
     if (!nroOtCorto) return [];
-    return Array.from(new Set(ordenes.filter((o) => o.nro_ot.slice(-6) === nroOtCorto.trim()).map((o) => o.diseno)));
+    return Array.from(new Set(ordenes.filter((o) => o.nro_ot.slice(-5) === nroOtCorto.trim()).map((o) => o.diseno)));
   }
 
   // La Tela también viene de Producción: si ya se eligió un diseño se
@@ -2621,7 +2621,7 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
   // telas de esa OT.
   function telasPorNroOt(nroOtCorto: string, diseno?: string): string[] {
     if (!nroOtCorto) return [];
-    const candidatas = ordenes.filter((o) => o.nro_ot.slice(-6) === nroOtCorto.trim() && (!diseno || o.diseno === diseno));
+    const candidatas = ordenes.filter((o) => o.nro_ot.slice(-5) === nroOtCorto.trim() && (!diseno || o.diseno === diseno));
     return Array.from(new Set(candidatas.map((o) => o.tela).filter(Boolean) as string[]));
   }
 
@@ -2731,7 +2731,7 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                 <td style={{ ...td, minWidth: 70 }}>
                   <input
                     list={listaNrosOt}
-                    defaultValue={(r.nro_ot || '').slice(-6)}
+                    defaultValue={(r.nro_ot || '').slice(-5)}
                     onBlur={(e) => {
                       const valor = e.target.value;
                       actualizar(r.id, 'nro_ot', valor || null);
@@ -2749,8 +2749,8 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                 <td style={{ ...td, minWidth: 130 }}>
                   <select defaultValue={r.diseno || ''} onChange={(e) => actualizar(r.id, 'diseno', e.target.value || null)} style={{ ...selSm, width: '100%', minWidth: 120 }}>
                     <option value="">—</option>
-                    {disenosPorNroOt((r.nro_ot || '').slice(-6)).map((d) => <option key={d} value={d}>{d}</option>)}
-                    {r.diseno && !disenosPorNroOt((r.nro_ot || '').slice(-6)).includes(r.diseno) && (
+                    {disenosPorNroOt((r.nro_ot || '').slice(-5)).map((d) => <option key={d} value={d}>{d}</option>)}
+                    {r.diseno && !disenosPorNroOt((r.nro_ot || '').slice(-5)).includes(r.diseno) && (
                       <option value={r.diseno}>{r.diseno} (ya no está en esa OT)</option>
                     )}
                   </select>
@@ -2768,8 +2768,8 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                     style={{ ...selSm, width: '100%', minWidth: 210 }}
                   >
                     <option value="">—</option>
-                    {telasPorNroOt((r.nro_ot || '').slice(-6), r.diseno || undefined).map((t) => <option key={t} value={t}>{t}</option>)}
-                    {r.tela && !telasPorNroOt((r.nro_ot || '').slice(-6), r.diseno || undefined).includes(r.tela) && (
+                    {telasPorNroOt((r.nro_ot || '').slice(-5), r.diseno || undefined).map((t) => <option key={t} value={t}>{t}</option>)}
+                    {r.tela && !telasPorNroOt((r.nro_ot || '').slice(-5), r.diseno || undefined).includes(r.tela) && (
                       <option value={r.tela}>{r.tela} (ya no está en esa OT/diseño)</option>
                     )}
                   </select>
@@ -2923,7 +2923,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
   const [filtro, setFiltro] = useState('');
   const esAdmin = rol.trim() === 'admin';
 
-  const nrosOt = Array.from(new Set(ordenes.map((o) => o.nro_ot.slice(-6)))).sort();
+  const nrosOt = Array.from(new Set(ordenes.map((o) => o.nro_ot.slice(-5)))).sort();
 
   // Filtro de búsqueda por Cliente, Nro OT, Diseño u Op Fij (coincidencia
   // parcial, sin importar mayúsculas/minúsculas). La fila en blanco de
@@ -2931,7 +2931,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
   const filtroNorm = filtro.trim().toLowerCase();
   const rollosFiltrados = filtroNorm
     ? rollos.filter((r) =>
-        [(r.nro_ot || '').slice(-6), r.cliente, r.diseno, r.op_fij]
+        [(r.nro_ot || '').slice(-5), r.cliente, r.diseno, r.op_fij]
           .some((campo) => (campo || '').toLowerCase().includes(filtroNorm))
       )
     : rollos;
@@ -2945,18 +2945,18 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
 
   function buscarClientePorNroOt(nroOtCorto: string): string | null {
     if (!nroOtCorto) return null;
-    const orden = ordenes.find((o) => o.nro_ot.slice(-6) === nroOtCorto.trim());
+    const orden = ordenes.find((o) => o.nro_ot.slice(-5) === nroOtCorto.trim());
     return orden ? orden.cliente : null;
   }
 
   function disenosPorNroOt(nroOtCorto: string): string[] {
     if (!nroOtCorto) return [];
-    return Array.from(new Set(ordenes.filter((o) => o.nro_ot.slice(-6) === nroOtCorto.trim()).map((o) => o.diseno)));
+    return Array.from(new Set(ordenes.filter((o) => o.nro_ot.slice(-5) === nroOtCorto.trim()).map((o) => o.diseno)));
   }
 
   function telasPorNroOt(nroOtCorto: string, diseno?: string): string[] {
     if (!nroOtCorto) return [];
-    const candidatas = ordenes.filter((o) => o.nro_ot.slice(-6) === nroOtCorto.trim() && (!diseno || o.diseno === diseno));
+    const candidatas = ordenes.filter((o) => o.nro_ot.slice(-5) === nroOtCorto.trim() && (!diseno || o.diseno === diseno));
     return Array.from(new Set(candidatas.map((o) => o.tela).filter(Boolean) as string[]));
   }
 
@@ -3091,7 +3091,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                 <td style={{ ...td, minWidth: 70 }}>
                   <input
                     list={listaNrosOt}
-                    defaultValue={(r.nro_ot || '').slice(-6)}
+                    defaultValue={(r.nro_ot || '').slice(-5)}
                     onBlur={(e) => {
                       const valor = e.target.value;
                       actualizar(r.id, 'nro_ot', valor || null);
@@ -3116,8 +3116,8 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                     disabled={esTipoPrep(r.tipo_proceso || '')}
                   >
                     <option value="">{esTipoPrep(r.tipo_proceso || '') ? '— (no aplica)' : '—'}</option>
-                    {disenosPorNroOt((r.nro_ot || '').slice(-6)).map((d) => <option key={d} value={d}>{d}</option>)}
-                    {r.diseno && !disenosPorNroOt((r.nro_ot || '').slice(-6)).includes(r.diseno) && (
+                    {disenosPorNroOt((r.nro_ot || '').slice(-5)).map((d) => <option key={d} value={d}>{d}</option>)}
+                    {r.diseno && !disenosPorNroOt((r.nro_ot || '').slice(-5)).includes(r.diseno) && (
                       <option value={r.diseno}>{r.diseno} (ya no está en esa OT)</option>
                     )}
                   </select>
@@ -3129,8 +3129,8 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                     style={{ ...selSm, width: '100%', minWidth: 210 }}
                   >
                     <option value="">—</option>
-                    {telasPorNroOt((r.nro_ot || '').slice(-6), esTipoPrep(r.tipo_proceso || '') ? undefined : (r.diseno || undefined)).map((t) => <option key={t} value={t}>{t}</option>)}
-                    {r.tela && !telasPorNroOt((r.nro_ot || '').slice(-6), esTipoPrep(r.tipo_proceso || '') ? undefined : (r.diseno || undefined)).includes(r.tela) && (
+                    {telasPorNroOt((r.nro_ot || '').slice(-5), esTipoPrep(r.tipo_proceso || '') ? undefined : (r.diseno || undefined)).map((t) => <option key={t} value={t}>{t}</option>)}
+                    {r.tela && !telasPorNroOt((r.nro_ot || '').slice(-5), esTipoPrep(r.tipo_proceso || '') ? undefined : (r.diseno || undefined)).includes(r.tela) && (
                       <option value={r.tela}>{r.tela} (ya no está en esa OT/diseño)</option>
                     )}
                   </select>
