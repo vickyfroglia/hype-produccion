@@ -787,6 +787,32 @@ function SolicitudesPendientes({ nombreUsuario, onCambio }: { nombreUsuario: str
       console.error('El pedido ya se cargó en Producción, pero no se pudo actualizar el estado de la solicitud:', errorEstado);
     }
 
+    // Si el cliente ya existe en la base de Clientes del Stock (nombre
+    // idéntico), le completamos ahí el contacto/tel/mail que dejó en el
+    // form — pero solo los campos que en Stock todavía están vacíos, para
+    // no pisar datos que ya estén cargados y curados a mano. Si no existe
+    // ningún cliente con ese nombre, no creamos uno nuevo (eso requiere
+    // asignar un código de cliente, y eso lo sigue haciendo el staff a
+    // mano en Stock).
+    try {
+      const { data: clienteExistente } = await supabase
+        .from('clientes')
+        .select('id, contacto, tel, mail')
+        .ilike('nombre', s.empresa.trim())
+        .maybeSingle();
+      if (clienteExistente) {
+        const cambiosCliente: Record<string, string> = {};
+        if (!clienteExistente.contacto && s.contacto) cambiosCliente.contacto = s.contacto;
+        if (!clienteExistente.tel && s.telefono) cambiosCliente.tel = s.telefono;
+        if (!clienteExistente.mail && s.email) cambiosCliente.mail = s.email;
+        if (Object.keys(cambiosCliente).length > 0) {
+          await supabase.from('clientes').update(cambiosCliente).eq('id', clienteExistente.id);
+        }
+      }
+    } catch (err) {
+      console.error('No se pudo completar el contacto del cliente en Stock:', err);
+    }
+
     // Le mandamos al cliente el mail con el pedido consolidado (tela + diseño + mts).
     // Es "mejor esfuerzo": si falla, no bloqueamos el flujo de todos modos.
     if (s.email) {
