@@ -613,7 +613,7 @@ function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirec
         <div style={{ fontSize: 13, color: '#888' }}>Cargá el pedido, revisalo completo y confirmalo para sumarlo a Producción</div>
       </div>
 
-      <SolicitudesPendientes />
+      <SolicitudesPendientes nombreUsuario={nombreUsuario} onCambio={onCambio} />
 
       <FormAltaDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onGuardado={onCambio} />
 
@@ -624,10 +624,13 @@ function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirec
 
 // Solicitudes que llegaron desde el formulario público (/pedido), sin
 // login — todavía no son pedidos reales. Se muestran acá para que HYPE las
-// revise y las cargue a mano en "Nuevo pedido" (abajo). "Marcar cargado"
-// solo la saca de esta lista, no toca ordenes_directa: la carga real la
-// hace la persona usando el formulario de siempre, con estos datos como
-// referencia.
+// revise. Al tocar "Marcar cargado" se generan automáticamente las filas
+// en ordenes_directa (una por diseño), con un Nro OT nuevo asignado por
+// orden de ingreso — el mismo circuito que ya usa "Nuevo pedido" más abajo.
+// OJO: esto solo tiene sentido para pedidos DIRECTA (ALG/LINO), porque
+// todavía no existe un módulo de Producción para Sublimación — si llega
+// una solicitud de Sublimación, igual se carga en esta misma tabla
+// (ordenes_directa) porque no hay otro lugar donde ponerla.
 interface SolicitudPedido {
   id: number;
   tipo_trabajo: string | null;
@@ -653,10 +656,11 @@ interface LineaSolicitud {
   observaciones: string | null;
 }
 
-function SolicitudesPendientes() {
+function SolicitudesPendientes({ nombreUsuario, onCambio }: { nombreUsuario: string; onCambio: () => void }) {
   const [solicitudes, setSolicitudes] = useState<SolicitudPedido[]>([]);
   const [lineasPorSolicitud, setLineasPorSolicitud] = useState<Record<number, LineaSolicitud[]>>({});
   const [cargando, setCargando] = useState(true);
+  const [procesando, setProcesando] = useState<number | null>(null);
 
   async function cargar() {
     const { data: sols, error } = await supabase
@@ -690,10 +694,99 @@ function SolicitudesPendientes() {
     cargar();
   }, []);
 
+  // Carga automáticamente el pedido en Producción (una fila en
+  // ordenes_directa por diseño, todas con un Nro OT nuevo) y recién
+  // después manda el mail de confirmación y marca la solicitud como
+  // cargada. Si algo falla al crear las filas en Producción, no se marca
+  // nada como cargado — la solicitud queda pendiente para reintentar.
   async function marcarCargado(s: SolicitudPedido) {
-    if (!confirm('¿Ya cargaste este pedido en "Nuevo pedido" de abajo? Se va a sacar de esta lista.')) return;
-    const { error } = await supabase.from('solicitudes_pedido').update({ estado: 'cargado' }).eq('id', s.id);
-    if (error) { alert('Error: ' + error.message); return; }
+    const lineasSolicitud = lineasPorSolicitud[s.id] || [];
+    if (lineasSolicitud.length === 0) {
+      alert('Esta solicitud no tiene diseños cargados, no se puede pasar a Producción.');
+      return;
+    }
+    if (!confirm(`Se va a crear un Nro OT nuevo en Producción con los ${lineasSolicitud.length} diseño(s) de "${s.empresa}". ¿Confirmás?`)) return;
+
+    setProcesando(s.id);
+
+    const { data: nroOt, error: errorOt } = await supabase.rpc('nuevo_nro_ot_directa');
+    if (errorOt || !nroOt) {
+      setProcesando(null);
+      alert('No se pudo generar el Nro OT: ' + (errorOt?.message || 'error desconocido'));
+      return;
+    }
+
+    const { data: maxRow } = await supabase
+      .from('ordenes_directa')
+      .select('orden_manual')
+      .order('orden_manual', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const ordenManualParaGuardar = (maxRow?.orden_manual || 0) + 1;
+
+    const filasParaInsertar = lineasSolicitud.map((l) => {
+      // Tela HYPE: el cliente elige por nombre (ej. "HYPE TUSSOR") del
+      // catálogo fijo — le buscamos el código id_hype correspondiente para
+      // que la reserva de stock TH de más abajo funcione igual que en el
+      // alta manual. Tela cliente: todavía no hay stock cargado para esa
+      // tela (la va a mandar el cliente), así que va sin código.
+      const th = l.tela_origen === 'HYPE' ? TELAS_HYPE_TH.find((t) => t.descripcion === l.tela_detalle) : undefined;
+      return {
+        nro_ot: nroOt as string,
+        fecha: new Date().toISOString().split('T')[0],
+        equipo: null,
+        perfil: null,
+        tipo_ot: null,
+        cliente: s.empresa,
+        diseno: l.diseno || '',
+        mts_pedidos: Number(l.cantidad_mts) || 0,
+        tela: l.tela_detalle || null,
+        cod_tela: th?.id_hype || null,
+        post: false,
+        orden_manual: ordenManualParaGuardar,
+        creado_por: nombreUsuario ? `${nombreUsuario} (form web)` : 'Form web',
+      };
+    });
+
+    const { data: filasInsertadas, error: errorInsert } = await supabase
+      .from('ordenes_directa')
+      .insert(filasParaInsertar)
+      .select();
+    if (errorInsert) {
+      setProcesando(null);
+      alert('No se pudo cargar el pedido en Producción: ' + errorInsert.message);
+      return;
+    }
+
+    // Mismo criterio que en el alta manual: la tela HYPE (Stock TH) se
+    // reserva ya con los Mts Pedidos, apenas entra el pedido.
+    const egresosTH = (filasInsertadas || [])
+      .filter((fila: any) => (fila.cod_tela || '').toUpperCase().startsWith('TH') && Number(fila.mts_pedidos) > 0)
+      .map((fila: any) => ({
+        fecha: new Date().toISOString().split('T')[0],
+        cliente: fila.cliente,
+        tela: fila.tela,
+        id_hype: fila.cod_tela,
+        mts: Number(fila.mts_pedidos),
+        estado: 'A producción',
+        observaciones: `OT ${fila.nro_ot} · Directa · reservado al ingresar el pedido (Stock TH, vía form web)`,
+        orden_id: fila.id,
+      }));
+    if (egresosTH.length > 0) {
+      const { error: errorEgresoTH } = await supabase.from('egresos').insert(egresosTH);
+      if (errorEgresoTH) {
+        console.error('No se pudo reservar el stock TH automáticamente:', errorEgresoTH);
+      }
+    }
+
+    const { error: errorEstado } = await supabase
+      .from('solicitudes_pedido')
+      .update({ estado: 'cargado', nro_ot_asignado: nroOt })
+      .eq('id', s.id);
+    if (errorEstado) {
+      console.error('El pedido ya se cargó en Producción, pero no se pudo actualizar el estado de la solicitud:', errorEstado);
+    }
+
     // Le mandamos al cliente el mail con el pedido consolidado (tela + diseño + mts).
     // Es "mejor esfuerzo": si falla, no bloqueamos el flujo de todos modos.
     if (s.email) {
@@ -704,7 +797,7 @@ function SolicitudesPendientes() {
           body: JSON.stringify({
             email: s.email,
             empresa: s.empresa,
-            lineas: (lineasPorSolicitud[s.id] || []).map((l) => ({
+            lineas: lineasSolicitud.map((l) => ({
               telaOrigen: l.tela_origen,
               telaDetalle: l.tela_detalle,
               colorTela: l.color_tela,
@@ -717,7 +810,11 @@ function SolicitudesPendientes() {
         console.error('No se pudo mandar el mail del pedido consolidado:', err);
       }
     }
+
+    setProcesando(null);
+    alert(`Listo — se cargó en Producción con la OT ${nroOt}.`);
     cargar();
+    onCambio();
   }
 
   // Se llama desde "Error pedido": pide el motivo, lo manda por mail al
@@ -751,7 +848,7 @@ function SolicitudesPendientes() {
         Solicitudes de pedido recibidas ({solicitudes.length})
       </div>
       <div style={{ fontSize: 13, color: '#888', marginBottom: 16 }}>
-        Llegaron desde el formulario web del cliente. Revisalas y cargalas a mano en "Nuevo pedido" de abajo; después marcalas como cargadas.
+        Llegaron desde el formulario web del cliente. Revisalas y, si está todo bien, tocá "Marcar cargado" — se crea automáticamente el Nro OT y las filas en Producción.
       </div>
       {solicitudes.map((s) => (
         <div key={s.id} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 16, marginBottom: 12 }}>
@@ -761,8 +858,10 @@ function SolicitudesPendientes() {
               <div style={{ fontSize: 12, color: '#888' }}>{new Date(s.created_at).toLocaleString()}</div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => marcarCargado(s)} style={{ ...btn, fontSize: 12, padding: '4px 10px' }}>✓ Marcar cargado</button>
-              <button onClick={() => rechazarPedido(s)} style={{ ...btn, fontSize: 12, padding: '4px 10px', color: '#c00', borderColor: '#c00' }}>✕ Error pedido</button>
+              <button onClick={() => marcarCargado(s)} disabled={procesando === s.id} style={{ ...btn, fontSize: 12, padding: '4px 10px' }}>
+                {procesando === s.id ? 'Cargando...' : '✓ Marcar cargado'}
+              </button>
+              <button onClick={() => rechazarPedido(s)} disabled={procesando === s.id} style={{ ...btn, fontSize: 12, padding: '4px 10px', color: '#c00', borderColor: '#c00' }}>✕ Error pedido</button>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, fontSize: 13, marginBottom: 12 }}>
