@@ -2372,12 +2372,15 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
                       </select>
                     </td>
                     <td style={td}>
-                      <input
-                        defaultValue={m.precio_mt || ''}
-                        onBlur={(e) => actualizar(m.id, 'precio_mt', formatearPrecioMt(e.target.value))}
-                        placeholder="$00000"
-                        style={{ ...selSm, width: 70 }}
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                        <span style={{ fontWeight: 700 }}>$</span>
+                        <input
+                          defaultValue={(m.precio_mt || '').replace(/\D/g, '')}
+                          onBlur={(e) => actualizar(m.id, 'precio_mt', formatearPrecioMt(e.target.value))}
+                          placeholder="00000"
+                          style={{ ...selSm, width: 55 }}
+                        />
+                      </div>
                     </td>
                   </tr>
                 );
@@ -2462,12 +2465,15 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
                   </select>
                 </td>
                 <td style={td}>
-                  <input
-                    value={nuevo.precio_mt}
-                    onChange={(e) => setNuevo({ ...nuevo, precio_mt: e.target.value })}
-                    placeholder="$00000"
-                    style={{ ...selSm, width: 70 }}
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                    <span style={{ fontWeight: 700 }}>$</span>
+                    <input
+                      value={nuevo.precio_mt}
+                      onChange={(e) => setNuevo({ ...nuevo, precio_mt: e.target.value.replace(/\D/g, '') })}
+                      placeholder="00000"
+                      style={{ ...selSm, width: 55 }}
+                    />
+                  </div>
                 </td>
               </tr>
             </tbody>
