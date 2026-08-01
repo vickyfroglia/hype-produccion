@@ -1,6 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { TELAS_HYPE_TH } from '../../lib/types';
+import { supabase } from '../../lib/supabaseClient';
 
 // Formulario público de pedido (calcado del Excel "FORM DE PEDIDO" que hoy
 // se manda por mail a ventas@hypearg.com). No requiere login. Lo que se
@@ -49,6 +50,26 @@ export default function PedidoCliente() {
   // enviar la tela (si es tela cliente) — recién con el "Entendido" de ese
   // cartel se dispara el envío real.
   const [mostrarAviso, setMostrarAviso] = useState(false);
+
+  // Catálogo de colores del Stock (sigla + nombre) para que, si la tela es
+  // del cliente, elija el color por nombre y quede guardado con la misma
+  // sigla que usan en Stock. Si por algún motivo no carga (ej. falta la
+  // política de lectura pública en Supabase), se cae a un campo de texto
+  // libre más abajo.
+  const [colores, setColores] = useState<{ sigla: string; nombre: string }[]>([]);
+  useEffect(() => {
+    supabase
+      .from('colores')
+      .select('sigla, nombre')
+      .order('nombre')
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('No se pudo cargar el catálogo de colores (¿falta la política de lectura pública?):', error);
+          return;
+        }
+        setColores(data || []);
+      });
+  }, []);
 
   function actualizarLinea(idx: number, cambios: Partial<LineaPedido>) {
     setLineas((prev) => prev.map((l, i) => (i === idx ? { ...l, ...cambios } : l)));
@@ -250,13 +271,23 @@ export default function PedidoCliente() {
                     )}
                   </td>
                   <td style={tdTabla}>
-                    <input
-                      value={l.colorTela}
-                      onChange={(e) => actualizarLinea(idx, { colorTela: e.target.value })}
-                      placeholder={l.telaOrigen === 'CLIENTE' ? 'Ej: blanco' : '—'}
-                      disabled={l.telaOrigen !== 'CLIENTE'}
-                      style={l.telaOrigen !== 'CLIENTE' ? { ...inpCelda, background: '#f5f5f5', color: '#aaa' } : inpCelda}
-                    />
+                    {l.telaOrigen !== 'CLIENTE' ? (
+                      <input value="" disabled placeholder="—" style={{ ...inpCelda, background: '#f5f5f5', color: '#aaa' }} />
+                    ) : colores.length > 0 ? (
+                      <select value={l.colorTela} onChange={(e) => actualizarLinea(idx, { colorTela: e.target.value })} style={inpCelda}>
+                        <option value="">Elegir color...</option>
+                        {colores.map((c) => (
+                          <option key={c.sigla} value={c.sigla}>{c.nombre}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        value={l.colorTela}
+                        onChange={(e) => actualizarLinea(idx, { colorTela: e.target.value })}
+                        placeholder="Ej: blanco"
+                        style={inpCelda}
+                      />
+                    )}
                   </td>
                   <td style={tdTabla}>
                     <input value={l.diseno} onChange={(e) => actualizarLinea(idx, { diseno: e.target.value })} style={inpCelda} />
