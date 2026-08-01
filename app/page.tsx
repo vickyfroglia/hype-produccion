@@ -632,6 +632,7 @@ interface SolicitudPedido {
   id: number;
   tipo_trabajo: string | null;
   empresa: string;
+  cuit: string | null;
   contacto: string | null;
   telefono: string | null;
   email: string | null;
@@ -766,6 +767,7 @@ function SolicitudesPendientes() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, fontSize: 13, marginBottom: 12 }}>
             {s.tipo_trabajo && <div><b>Tipo:</b> {s.tipo_trabajo}</div>}
+            {s.cuit && <div><b>CUIT:</b> {s.cuit}</div>}
             {s.contacto && <div><b>Contacto:</b> {s.contacto}</div>}
             {s.telefono && <div><b>Tel:</b> {s.telefono}</div>}
             {s.email && <div><b>Mail:</b> {s.email}</div>}

@@ -36,6 +36,7 @@ function lineaVacia(): LineaPedido {
 export default function PedidoCliente() {
   const [tipoTrabajo, setTipoTrabajo] = useState('');
   const [empresa, setEmpresa] = useState('');
+  const [cuit, setCuit] = useState('');
   const [contacto, setContacto] = useState('');
   const [telefono, setTelefono] = useState('');
   const [email, setEmail] = useState('');
@@ -90,6 +91,17 @@ export default function PedidoCliente() {
       });
   }, []);
 
+  // Va formateando el CUIT a medida que lo escriben: se queda solo con los
+  // números que tipeen (hasta 11) y les pone los guiones en su lugar, para
+  // que termine como XX-XXXXXXXX-X sin que el cliente tenga que escribir
+  // los guiones a mano.
+  function formatearCuit(valor: string): string {
+    const digitos = valor.replace(/\D/g, '').slice(0, 11);
+    if (digitos.length <= 2) return digitos;
+    if (digitos.length <= 10) return `${digitos.slice(0, 2)}-${digitos.slice(2)}`;
+    return `${digitos.slice(0, 2)}-${digitos.slice(2, 10)}-${digitos.slice(10)}`;
+  }
+
   function actualizarLinea(idx: number, cambios: Partial<LineaPedido>) {
     setLineas((prev) => prev.map((l, i) => (i === idx ? { ...l, ...cambios } : l)));
   }
@@ -138,6 +150,7 @@ export default function PedidoCliente() {
         body: JSON.stringify({
           tipoTrabajo: tipoTrabajo || null,
           empresa: empresa.trim(),
+          cuit: cuit.trim() || null,
           contacto: contacto.trim() || null,
           telefono: telefono.trim() || null,
           email: email.trim(),
@@ -196,23 +209,35 @@ export default function PedidoCliente() {
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <label style={lbl}>Tipo de trabajo</label>
+          <label style={lbl}>Tipo de trabajo <span style={{ fontWeight: 400, color: '#888' }}>(depende si la tela es algodón/lino, fibra natural o poliéster)</span></label>
           <select value={tipoTrabajo} onChange={(e) => setTipoTrabajo(e.target.value)} style={inp}>
             <option value="">—</option>
             {TIPOS_TRABAJO.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
-        <div style={{ marginBottom: 16 }}>
-          <label style={lbl}>Empresa / Marca y Razón Social *</label>
-          <input value={empresa} onChange={(e) => setEmpresa(e.target.value)} style={inp} />
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div>
+            <label style={lbl}>Empresa / Marca y Razón Social * <span style={{ fontWeight: 400, color: '#888' }}>(a quién va facturado, quien abona)</span></label>
+            <input value={empresa} onChange={(e) => setEmpresa(e.target.value)} style={inp} />
+          </div>
+          <div>
+            <label style={lbl}>CUIT <span style={{ fontWeight: 400, color: '#888' }}>(si es necesario)</span></label>
+            <input
+              value={cuit}
+              onChange={(e) => setCuit(formatearCuit(e.target.value))}
+              placeholder="XX-XXXXXXXX-X"
+              inputMode="numeric"
+              style={inp}
+            />
+          </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
           <div>
-            <label style={lbl}>Contacto</label>
+            <label style={lbl}>Contacto <span style={{ fontWeight: 400, color: '#888' }}>(nombre de quien solicita)</span></label>
             <input value={contacto} onChange={(e) => setContacto(e.target.value)} style={inp} />
           </div>
           <div>
-            <label style={lbl}>Teléfono</label>
+            <label style={lbl}>Teléfono <span style={{ fontWeight: 400, color: '#888' }}>(así te contactamos de ser necesario)</span></label>
             <input value={telefono} onChange={(e) => setTelefono(e.target.value)} style={inp} />
           </div>
         </div>

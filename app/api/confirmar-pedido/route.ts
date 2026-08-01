@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Datos inválidos.' }, { status: 400 });
   }
 
-  const { tipoTrabajo, empresa, contacto, telefono, email, direccion, cp, provincia, lineas } = body || {};
+  const { tipoTrabajo, empresa, cuit, contacto, telefono, email, direccion, cp, provincia, lineas } = body || {};
 
   if (!empresa || !email || !Array.isArray(lineas) || lineas.length === 0) {
     return NextResponse.json({ error: 'Faltan datos obligatorios (empresa, mail y al menos un diseño).' }, { status: 400 });
@@ -55,6 +55,7 @@ export async function POST(req: Request) {
     .insert({
       tipo_trabajo: tipoTrabajo || null,
       empresa,
+      cuit: cuit || null,
       contacto: contacto || null,
       telefono: telefono || null,
       email,
@@ -109,6 +110,7 @@ export async function POST(req: Request) {
         html: `
           <div style="${MAIL_BODY_STYLE}">
             <h2 style="margin-bottom:4px;text-transform:uppercase;">¡Gracias, ${empresa}!</h2>
+            ${cuit ? `<p style="margin-top:0;">CUIT: ${cuit}</p>` : ''}
             <p>Recibimos tu pedido y lo vamos a revisar antes de confirmarlo.</p>
             <table style="border-collapse: collapse; margin: 16px 0;">
               <thead>
