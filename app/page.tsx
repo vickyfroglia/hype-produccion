@@ -15,6 +15,7 @@ import {
   OPERARIOS_IMPRESION,
   OPERARIOS_FIJACION,
   OPERARIOS_ENTREGA,
+  RESPONSABLES_COMERCIAL,
   TELAS_HYPE_TH,
   TURNOS_REPORTE,
   TIPOS_PROCESO_CIBITEX,
@@ -182,7 +183,7 @@ export default function Home() {
           <>
             {pagina === 'dashboard' && <Dashboard ordenes={ordenes} muestras={muestras} rollosReporte={rollosReporte} ingresosStock={ingresosStock} egresosStock={egresosStock} />}
             {pagina === 'general' && <VistaGeneral ordenes={ordenes} onCambio={cargarTodo} rol={rol} />}
-            {pagina === 'muestras' && <VistaMuestras rol={rol} />}
+            {pagina === 'muestras' && <VistaMuestras rol={rol} nombreUsuario={nombreUsuario} />}
             {pagina === 'reporte' && <PanelReporteDiario ordenes={ordenes} rol={rol} />}
             {pagina === 'diseno' && <PanelDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
             {pagina === 'administracion' && <PanelAdministracion ordenes={ordenes} onCambio={cargarTodo} />}
@@ -1926,10 +1927,17 @@ function muestraVacia() {
     observaciones: '',
     imp_operario: '',
     fija_operario: '',
+    comercial: '',
   };
 }
 
-function VistaMuestras({ rol }: { rol: string }) {
+function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: string }) {
+  // La columna Comercial sólo la puede completar el rol Comercial, o el
+  // admin que sea Matías (por nombre, ya que "admin" no distingue personas).
+  // Se compara sin tildes/mayúsculas para no depender de cómo esté cargado
+  // el nombre en la tabla usuarios.
+  const sinTildes = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const puedeComercial = rol.trim() === 'comercial' || (rol.trim() === 'admin' && sinTildes(nombreUsuario).includes('matias'));
   const [muestras, setMuestras] = useState<Muestra[]>([]);
   const [cargando, setCargando] = useState(true);
   const [nuevo, setNuevo] = useState(muestraVacia());
@@ -2151,6 +2159,7 @@ function VistaMuestras({ rol }: { rol: string }) {
         observaciones: nuevo.observaciones || null,
         imp_operario: nuevo.imp_operario || null,
         fija_operario: nuevo.fija_operario || null,
+        comercial: nuevo.comercial || null,
       })
       .select()
       .single();
@@ -2191,7 +2200,7 @@ function VistaMuestras({ rol }: { rol: string }) {
 
   if (cargando) return <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando...</div>;
 
-  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'Ubic', 'Op Imp', 'Op Fij', 'Fecha fin', ...(esAdmin ? ['Borrar'] : [])];
+  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'Ubic', 'Op Imp', 'Op Fij', 'Fecha fin', 'Comercial', ...(esAdmin ? ['Borrar'] : [])];
 
   return (
     <div>
@@ -2337,6 +2346,18 @@ function VistaMuestras({ rol }: { rol: string }) {
                         </button>
                       )}
                     </td>
+                    <td style={td}>
+                      <select
+                        value={m.comercial || ''}
+                        onChange={(e) => actualizar(m.id, 'comercial', e.target.value || null)}
+                        disabled={!puedeComercial}
+                        title={!puedeComercial ? 'Sólo lo completa Comercial' : undefined}
+                        style={selSm}
+                      >
+                        <option value="">—</option>
+                        {RESPONSABLES_COMERCIAL.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </td>
                     {esAdmin && (
                       <td style={td}>
                         <button onClick={() => borrar(m.id)} style={{ ...btn, padding: '4px 8px', fontSize: 11, color: '#c00', borderColor: '#c00' }}>✕ Borrar</button>
@@ -2411,6 +2432,18 @@ function VistaMuestras({ rol }: { rol: string }) {
                   </select>
                 </td>
                 <td style={td}>—</td>
+                <td style={td}>
+                  <select
+                    value={nuevo.comercial}
+                    onChange={(e) => setNuevo({ ...nuevo, comercial: e.target.value })}
+                    disabled={!puedeComercial}
+                    title={!puedeComercial ? 'Sólo lo completa Comercial' : undefined}
+                    style={selSm}
+                  >
+                    <option value="">—</option>
+                    {RESPONSABLES_COMERCIAL.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </td>
                 {esAdmin && <td style={td}></td>}
               </tr>
             </tbody>

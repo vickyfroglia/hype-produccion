@@ -12,6 +12,10 @@ export const OPERARIOS_IMPRESION = ['Tomás', 'Néstor', 'Cache', 'Ricky'];
 export const OPERARIOS_FIJACION = ['Mati', 'Leo', 'Ciro', 'Lautaro'];
 export const OPERARIOS_ENTREGA = ['Mati', 'Leo', 'Ciro', 'Lautaro', 'Tomás', 'Néstor', 'Cache', 'Ricky'];
 
+// Responsables de Comercial que cargan la columna "Comercial" en Muestras
+// (quién pidió/está a cargo de esa muestra del lado comercial).
+export const RESPONSABLES_COMERCIAL = ['Matías', 'Sandy', 'Flor', 'Dai'];
+
 // Turnos del Reporte diario (control de mts impresos por rollo, por equipo):
 // T = turno día regular, S = turno día sábado, D = turno día domingo,
 // F = turno día feriado. Cada letra tiene 3 turnos (1/2/3).
@@ -116,6 +120,7 @@ export interface Muestra {
 
   observaciones: string | null;
   orden_manual: number | null;
+  comercial: string | null;
 
   created_at: string;
   updated_at: string;
