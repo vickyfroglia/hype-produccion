@@ -742,6 +742,7 @@ function SolicitudesPendientes({ nombreUsuario, onCambio }: { nombreUsuario: str
         mts_pedidos: Number(l.cantidad_mts) || 0,
         tela: l.tela_detalle || null,
         cod_tela: th?.id_hype || null,
+        color: l.color_tela || null,
         post: false,
         orden_manual: ordenManualParaGuardar,
         creado_por: nombreUsuario ? `${nombreUsuario} (form web)` : 'Form web',
@@ -2060,7 +2061,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
           <table className="vg-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['N', 'Prod', 'Fecha Pedido', 'Equipo', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', 'Prep', '¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió', 'Anular'].map((h) => {
+                {['N', 'Prod', 'Fecha Pedido', 'Equipo', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela / Color', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', 'Prep', '¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió', 'Anular'].map((h) => {
                   const esEntregaEnAdelante = ['¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].includes(h);
                   return (
                     <th key={h} style={{ ...th, textTransform: 'uppercase', background: esEntregaEnAdelante ? '#8e6fc9' : '#e85d2f', color: '#fff', fontWeight: 700, ...(h === 'Prod' ? { width: 40 } : {}) }}>{h}</th>
@@ -2144,7 +2145,14 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                       defaultValue={o.tela || ''}
                       onBlur={(e) => { actualizar(o.id, 'tela', e.target.value || null); buscarCodTela(o, e.target.value); }}
                       disabled={!puede(o, 'tela')}
-                      style={{ ...selSm, width: '100%', minWidth: 180 }}
+                      style={{ ...selSm, width: '100%', minWidth: 180, marginBottom: 3 }}
+                    />
+                    <input
+                      defaultValue={o.color || ''}
+                      onBlur={(e) => actualizar(o.id, 'color', e.target.value || null)}
+                      disabled={!puede(o, 'tela')}
+                      placeholder="Color"
+                      style={{ ...selSm, width: '100%', minWidth: 180, fontSize: 10, color: '#666' }}
                     />
                   </td>
                   <td style={{ ...td, width: 70, fontFamily: 'monospace', color: '#000', fontWeight: 700, fontSize: 12, ...bgCelda }}>{o.cod_tela || '—'}</td>

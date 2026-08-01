@@ -59,6 +59,7 @@ export interface OrdenDirecta {
   mts_pedidos: number;
   tela: string | null;
   cod_tela: string | null;
+  color: string | null;
   aprob: string;
   post: boolean;
 
