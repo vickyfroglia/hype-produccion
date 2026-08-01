@@ -688,10 +688,32 @@ function SolicitudesPendientes() {
     cargar();
   }, []);
 
-  async function marcarCargado(id: number) {
+  async function marcarCargado(s: SolicitudPedido) {
     if (!confirm('¿Ya cargaste este pedido en "Nuevo pedido" de abajo? Se va a sacar de esta lista.')) return;
-    const { error } = await supabase.from('solicitudes_pedido').update({ estado: 'cargado' }).eq('id', id);
+    const { error } = await supabase.from('solicitudes_pedido').update({ estado: 'cargado' }).eq('id', s.id);
     if (error) { alert('Error: ' + error.message); return; }
+    // Le mandamos al cliente el mail con el pedido consolidado (tela + diseño + mts).
+    // Es "mejor esfuerzo": si falla, no bloqueamos el flujo de todos modos.
+    if (s.email) {
+      try {
+        await fetch('/api/consolidar-pedido', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: s.email,
+            empresa: s.empresa,
+            lineas: (lineasPorSolicitud[s.id] || []).map((l) => ({
+              telaOrigen: l.tela_origen,
+              telaDetalle: l.tela_detalle,
+              diseno: l.diseno,
+              cantidadMts: l.cantidad_mts,
+            })),
+          }),
+        });
+      } catch (err) {
+        console.error('No se pudo mandar el mail del pedido consolidado:', err);
+      }
+    }
     cargar();
   }
 
@@ -712,7 +734,7 @@ function SolicitudesPendientes() {
               <div style={{ fontWeight: 700, fontSize: 15 }}>{s.empresa}</div>
               <div style={{ fontSize: 12, color: '#888' }}>{new Date(s.created_at).toLocaleString()}</div>
             </div>
-            <button onClick={() => marcarCargado(s.id)} style={{ ...btn, fontSize: 12, padding: '4px 10px' }}>✓ Marcar cargado</button>
+            <button onClick={() => marcarCargado(s)} style={{ ...btn, fontSize: 12, padding: '4px 10px' }}>✓ Marcar cargado</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, fontSize: 13, marginBottom: 12 }}>
             {s.tipo_trabajo && <div><b>Tipo:</b> {s.tipo_trabajo}</div>}
