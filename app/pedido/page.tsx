@@ -189,9 +189,11 @@ export default function PedidoCliente() {
         </div>
         <div style={{ padding: 32 }}>
         <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>
-          Fecha: {new Date().toLocaleDateString('es-AR')} (se carga sola)
+          Fecha: {new Date().toLocaleDateString('es-AR')} (automática — el pedido ingresa una vez que el form se encuentra confirmado)
         </div>
-        <div style={{ fontSize: 13, color: '#888', marginBottom: 24 }}>Completá los datos de tu pedido. Lo vamos a revisar antes de confirmarlo.</div>
+        <div style={{ fontSize: 13, color: '#888', marginBottom: 24 }}>
+          ¡Porfa! Completá todos los datos de tu pedido, ya que de esto depende que el pedido salga bien — es importante para nosotros. Y quedate tranquilo que lo vamos a revisar antes de confirmarlo: si por alguna razón hay algo mal, nos vamos a contactar para resolverlo.
+        </div>
 
         <div style={{ marginBottom: 16 }}>
           <label style={lbl}>Tipo de trabajo</label>
