@@ -793,24 +793,39 @@ function SolicitudesPendientes({ nombreUsuario, onCambio }: { nombreUsuario: str
     // no pisar datos que ya estén cargados y curados a mano. Si no existe
     // ningún cliente con ese nombre, no creamos uno nuevo (eso requiere
     // asignar un código de cliente, y eso lo sigue haciendo el staff a
-    // mano en Stock).
+    // mano en Stock). Guardamos una nota de qué pasó para mostrarla en el
+    // cartel final — así, si no se pudo actualizar, se ve por qué en vez
+    // de fallar en silencio.
+    let notaCliente = '';
     try {
-      const { data: clienteExistente } = await supabase
+      const { data: clienteExistente, error: errorBuscarCliente } = await supabase
         .from('clientes')
         .select('id, contacto, tel, mail')
         .ilike('nombre', s.empresa.trim())
         .maybeSingle();
-      if (clienteExistente) {
+      if (errorBuscarCliente) {
+        console.error('No se pudo buscar el cliente en Stock:', errorBuscarCliente);
+        notaCliente = `\n\n(No se pudo revisar el cliente "${s.empresa}" en Stock: ${errorBuscarCliente.message})`;
+      } else if (!clienteExistente) {
+        notaCliente = `\n\n(No encontré en Stock un cliente con el nombre "${s.empresa}" exacto — si ya existe, revisá que el nombre coincida igual, letra por letra.)`;
+      } else {
         const cambiosCliente: Record<string, string> = {};
         if (!clienteExistente.contacto && s.contacto) cambiosCliente.contacto = s.contacto;
         if (!clienteExistente.tel && s.telefono) cambiosCliente.tel = s.telefono;
         if (!clienteExistente.mail && s.email) cambiosCliente.mail = s.email;
         if (Object.keys(cambiosCliente).length > 0) {
-          await supabase.from('clientes').update(cambiosCliente).eq('id', clienteExistente.id);
+          const { error: errorActualizarCliente } = await supabase.from('clientes').update(cambiosCliente).eq('id', clienteExistente.id);
+          if (errorActualizarCliente) {
+            console.error('No se pudo actualizar el contacto del cliente en Stock:', errorActualizarCliente);
+            notaCliente = `\n\n(Encontré a "${s.empresa}" en Stock pero no pude actualizar su contacto: ${errorActualizarCliente.message})`;
+          } else {
+            notaCliente = `\n\nTambién completé el contacto de "${s.empresa}" en Stock.`;
+          }
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('No se pudo completar el contacto del cliente en Stock:', err);
+      notaCliente = `\n\n(No se pudo completar el contacto de "${s.empresa}" en Stock.)`;
     }
 
     // Le mandamos al cliente el mail con el pedido consolidado (tela + diseño + mts).
@@ -838,7 +853,7 @@ function SolicitudesPendientes({ nombreUsuario, onCambio }: { nombreUsuario: str
     }
 
     setProcesando(null);
-    alert(`Listo — se cargó en Producción con la OT ${nroOt}.`);
+    alert(`Listo — se cargó en Producción con la OT ${nroOt}.${notaCliente}`);
     cargar();
     onCambio();
   }
