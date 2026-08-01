@@ -2735,8 +2735,13 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
             </tr>
           </thead>
           <tbody>
-            {rollosFiltrados.map((r) => (
-              <tr key={r.id}>
+            {rollosFiltrados.map((r) => {
+              // Fila completa: se cargaron todos los datos de esa impresión
+              // (OT, diseño, tela, mts y operario). Rollo Nro y Novedades
+              // quedan afuera a propósito: son opcionales.
+              const filaCompleta = !!(r.nro_ot && r.diseno && r.tela && r.op_imp && Number(r.mts_imp_rollo) > 0);
+              return (
+              <tr key={r.id} style={filaCompleta ? { background: '#e6f4e1' } : undefined}>
                 <td style={{ ...td, minWidth: 100 }}>
                   <input type="date" defaultValue={r.fecha} onBlur={(e) => actualizar(r.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 95 }} />
                 </td>
@@ -2811,7 +2816,8 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
                   </td>
                 )}
               </tr>
-            ))}
+              );
+            })}
             <tr
               style={{ background: '#fff8ec' }}
               onBlur={(e) => {
@@ -3081,8 +3087,21 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
             </tr>
           </thead>
           <tbody>
-            {rollosFiltrados.map((r) => (
-              <tr key={r.id}>
+            {rollosFiltrados.map((r) => {
+              // Fila completa: se cargó todo lo necesario para ese proceso
+              // (tipo, OT, tela, mts, nro de rollos y operario). El diseño
+              // no se pide si el tipo es "PREP..." (no aplica).
+              const filaCompleta = !!(
+                r.tipo_proceso &&
+                r.nro_ot &&
+                r.tela &&
+                r.mts_fij !== null && r.mts_fij !== undefined &&
+                r.nro_rollos_fij &&
+                r.op_fij &&
+                (esTipoPrep(r.tipo_proceso) || r.diseno)
+              );
+              return (
+              <tr key={r.id} style={filaCompleta ? { background: '#e6f4e1' } : undefined}>
                 <td style={{ ...td, minWidth: 100 }}>
                   <input type="date" defaultValue={r.fecha} onBlur={(e) => actualizar(r.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 95 }} />
                 </td>
@@ -3170,7 +3189,8 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
                   </td>
                 )}
               </tr>
-            ))}
+              );
+            })}
             <tr
               style={{ background: '#fff8ec' }}
               onBlur={(e) => {
