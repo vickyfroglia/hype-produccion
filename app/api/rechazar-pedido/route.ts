@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { MAIL_BODY_STYLE, MAIL_FOOTER_STYLE } from '../../../lib/mailEstilos';
 
 // Se llama desde "Solicitudes de pedido recibidas" cuando el staff hace
 // clic en "Error pedido" y escribe el motivo — le avisa al cliente por
@@ -34,10 +35,10 @@ export async function POST(req: Request) {
       to: email,
       subject: 'PEDIDO RECHAZADO',
       html: `
-        <div style="font-family: Arial, sans-serif; color: #222;">
+        <div style="${MAIL_BODY_STYLE}">
           <p>Hola!! Tu pedido no es correcto, ${razon}.</p>
           <p>Por favor te pedimos que lo revises y lo reenvíes! Desde ya mil gracias,</p>
-          <p>El equipo de HYPE</p>
+          <p style="${MAIL_FOOTER_STYLE}">El equipo de HYPE</p>
         </div>
       `,
     });

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
+import { MAIL_BODY_STYLE, MAIL_TH_STYLE, MAIL_TD_STYLE, MAIL_FOOTER_STYLE } from '../../../lib/mailEstilos';
 
 // Recibe el pedido del formulario público (/pedido), lo guarda como
 // "solicitud pendiente" (no entra directo a Producción) y le manda al
@@ -96,31 +97,31 @@ export async function POST(req: Request) {
       const filasHtml = (lineas as LineaPayload[])
         .map(
           (l) =>
-            `<tr><td style="padding:6px 10px;border:1px solid #ddd;">${l.telaOrigen || '—'}</td><td style="padding:6px 10px;border:1px solid #ddd;">${l.telaDetalle || '—'}</td><td style="padding:6px 10px;border:1px solid #ddd;">${l.diseno}</td><td style="padding:6px 10px;border:1px solid #ddd;">${l.cantidadMts}</td><td style="padding:6px 10px;border:1px solid #ddd;">${l.observaciones || '—'}</td></tr>`
+            `<tr><td style="${MAIL_TD_STYLE}">${l.telaOrigen || '—'}</td><td style="${MAIL_TD_STYLE}">${l.telaDetalle || '—'}</td><td style="${MAIL_TD_STYLE}">${l.diseno}</td><td style="${MAIL_TD_STYLE}">${l.cantidadMts}</td><td style="${MAIL_TD_STYLE}">${l.observaciones || '—'}</td></tr>`
         )
         .join('');
       await transporter.sendMail({
         from: `"HYPE Printlab" <${process.env.GMAIL_USER}>`,
         to: email,
-        subject: 'Recibimos tu pedido — HYPE Printlab',
+        subject: 'RECIBIMOS TU PEDIDO — HYPE PRINTLAB',
         html: `
-          <div style="font-family: Arial, sans-serif; color: #222;">
-            <h2 style="margin-bottom:4px;">¡Gracias, ${empresa}!</h2>
+          <div style="${MAIL_BODY_STYLE}">
+            <h2 style="margin-bottom:4px;text-transform:uppercase;">¡Gracias, ${empresa}!</h2>
             <p>Recibimos tu pedido y lo vamos a revisar antes de confirmarlo.</p>
-            <table style="border-collapse: collapse; font-size: 13px; margin: 16px 0;">
+            <table style="border-collapse: collapse; margin: 16px 0;">
               <thead>
                 <tr>
-                  <th style="padding:6px 10px;border:1px solid #ddd;background:#f5f5f5;">Tela</th>
-                  <th style="padding:6px 10px;border:1px solid #ddd;background:#f5f5f5;">Tela específica</th>
-                  <th style="padding:6px 10px;border:1px solid #ddd;background:#f5f5f5;">Diseño</th>
-                  <th style="padding:6px 10px;border:1px solid #ddd;background:#f5f5f5;">Mts</th>
-                  <th style="padding:6px 10px;border:1px solid #ddd;background:#f5f5f5;">Observaciones</th>
+                  <th style="${MAIL_TH_STYLE}">Tela</th>
+                  <th style="${MAIL_TH_STYLE}">Tela específica</th>
+                  <th style="${MAIL_TH_STYLE}">Diseño</th>
+                  <th style="${MAIL_TH_STYLE}">Mts</th>
+                  <th style="${MAIL_TH_STYLE}">Observaciones</th>
                 </tr>
               </thead>
               <tbody>${filasHtml}</tbody>
             </table>
             <p>Recordá: si la tela es tuya, el plazo para enviarla es de <b>72 hs</b>, con el remito correspondiente (marca/razón social, descripción, mts y cantidad de rollos por tipo de tela). Si envías en kg, necesitamos obligatoriamente el rinde.</p>
-            <p style="margin-top:24px;color:#888;font-size:12px;">HYPE printlab</p>
+            <p style="${MAIL_FOOTER_STYLE}">HYPE printlab</p>
           </div>
         `,
       });

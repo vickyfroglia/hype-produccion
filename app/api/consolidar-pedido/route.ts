@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { MAIL_BODY_STYLE, MAIL_TH_STYLE, MAIL_TD_STYLE, MAIL_FOOTER_STYLE } from '../../../lib/mailEstilos';
 
 // Se llama desde "Solicitudes de pedido recibidas" cuando el staff hace
 // clic en "Marcar cargado" — es decir, cuando YA se revisó y confirmó el
@@ -40,28 +41,28 @@ export async function POST(req: Request) {
     const filasHtml = (lineas as LineaConsolidada[])
       .map((l) => {
         const tela = l.telaDetalle || l.telaOrigen || '—';
-        return `<tr><td style="padding:6px 10px;border:1px solid #ddd;">${tela}</td><td style="padding:6px 10px;border:1px solid #ddd;">${l.diseno || '—'}</td><td style="padding:6px 10px;border:1px solid #ddd;">${l.cantidadMts ?? '—'}</td></tr>`;
+        return `<tr><td style="${MAIL_TD_STYLE}">${tela}</td><td style="${MAIL_TD_STYLE}">${l.diseno || '—'}</td><td style="${MAIL_TD_STYLE}">${l.cantidadMts ?? '—'}</td></tr>`;
       })
       .join('');
 
     await transporter.sendMail({
       from: `"HYPE Printlab" <${process.env.GMAIL_USER}>`,
       to: email,
-      subject: 'Confirmación de tu pedido — HYPE Printlab',
+      subject: 'CONFIRMACIÓN DE TU PEDIDO — HYPE PRINTLAB',
       html: `
-        <div style="font-family: Arial, sans-serif; color: #222;">
+        <div style="${MAIL_BODY_STYLE}">
           <p>Hola!! Te confirmo que recibimos tu pedido correctamente, te enviamos el consolidado del mismo, para que lo tengas! muchas gracias!!</p>
-          <table style="border-collapse: collapse; font-size: 13px; margin: 16px 0;">
+          <table style="border-collapse: collapse; margin: 16px 0;">
             <thead>
               <tr>
-                <th style="padding:6px 10px;border:1px solid #ddd;background:#f5f5f5;">Tela</th>
-                <th style="padding:6px 10px;border:1px solid #ddd;background:#f5f5f5;">Diseño</th>
-                <th style="padding:6px 10px;border:1px solid #ddd;background:#f5f5f5;">Mts</th>
+                <th style="${MAIL_TH_STYLE}">Tela</th>
+                <th style="${MAIL_TH_STYLE}">Diseño</th>
+                <th style="${MAIL_TH_STYLE}">Mts</th>
               </tr>
             </thead>
             <tbody>${filasHtml}</tbody>
           </table>
-          <p>El equipo de HYPE</p>
+          <p style="${MAIL_FOOTER_STYLE}">El equipo de HYPE</p>
         </div>
       `,
     });
