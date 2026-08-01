@@ -1,6 +1,5 @@
 'use client';
 import { useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
 
 // Formulario público de pedido (calcado del Excel "FORM DE PEDIDO" que hoy
 // se manda por mail a ventas@hypearg.com). No requiere login. Lo que se
@@ -53,12 +52,22 @@ export default function PedidoCliente() {
     setLineas((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
   }
 
+  // Chequeo simple de formato de mail — no hace falta nada más estricto,
+  // solo evitar que quede vacío o directamente mal escrito.
+  function mailValido(valor: string): boolean {
+    return /\S+@\S+\.\S+/.test(valor.trim());
+  }
+
   // Valida los datos y, si está todo bien, muestra el aviso del plazo de
   // 72hs antes de mandar el pedido de verdad.
   function intentarEnviar() {
     const lineasValidas = lineas.filter((l) => l.diseno.trim() && parseFloat(l.cantidadMts));
     if (!empresa.trim() || lineasValidas.length === 0) {
       setError('Completá al menos Empresa / Razón Social y un diseño con su cantidad de mts.');
+      return;
+    }
+    if (!mailValido(email)) {
+      setError('Completá un mail válido — lo necesitamos para confirmarte la recepción del pedido.');
       return;
     }
     setError('');
@@ -70,45 +79,39 @@ export default function PedidoCliente() {
     setMostrarAviso(false);
     setEnviando(true);
 
-    const { data: solicitud, error: errorHeader } = await supabase
-      .from('solicitudes_pedido')
-      .insert({
-        tipo_trabajo: tipoTrabajo || null,
-        empresa: empresa.trim(),
-        contacto: contacto.trim() || null,
-        telefono: telefono.trim() || null,
-        email: email.trim() || null,
-        direccion: direccion.trim() || null,
-        cp: cp.trim() || null,
-        provincia: provincia.trim() || null,
-      })
-      .select()
-      .single();
-
-    if (errorHeader || !solicitud) {
+    try {
+      const resp = await fetch('/api/confirmar-pedido', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipoTrabajo: tipoTrabajo || null,
+          empresa: empresa.trim(),
+          contacto: contacto.trim() || null,
+          telefono: telefono.trim() || null,
+          email: email.trim(),
+          direccion: direccion.trim() || null,
+          cp: cp.trim() || null,
+          provincia: provincia.trim() || null,
+          lineas: lineasValidas.map((l) => ({
+            telaOrigen: l.telaOrigen || null,
+            diseno: l.diseno.trim(),
+            cantidadMts: parseFloat(l.cantidadMts) || 0,
+            observaciones: l.observaciones.trim() || null,
+          })),
+        }),
+      });
+      const data = await resp.json();
+      setEnviando(false);
+      if (!resp.ok) {
+        setError(data.error || 'No se pudo enviar el pedido. Probá de nuevo en unos minutos.');
+        return;
+      }
+      setEnviado(true);
+    } catch (err) {
       setEnviando(false);
       setError('No se pudo enviar el pedido. Probá de nuevo en unos minutos.');
-      console.error(errorHeader);
-      return;
+      console.error(err);
     }
-
-    const { error: errorLineas } = await supabase.from('solicitudes_pedido_lineas').insert(
-      lineasValidas.map((l) => ({
-        solicitud_id: solicitud.id,
-        tela_origen: l.telaOrigen || null,
-        diseno: l.diseno.trim(),
-        cantidad_mts: parseFloat(l.cantidadMts) || 0,
-        observaciones: l.observaciones.trim() || null,
-      }))
-    );
-
-    setEnviando(false);
-    if (errorLineas) {
-      setError('El pedido se creó pero hubo un problema al cargar los diseños. Escribinos para confirmarlo.');
-      console.error(errorLineas);
-      return;
-    }
-    setEnviado(true);
   }
 
   if (enviado) {
@@ -117,7 +120,7 @@ export default function PedidoCliente() {
         <div style={{ background: '#fff', borderRadius: 12, padding: 32, maxWidth: 420, textAlign: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>✓</div>
           <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>¡Pedido enviado!</div>
-          <div style={{ fontSize: 14, color: '#666' }}>Lo recibimos y lo vamos a revisar antes de cargarlo en producción. Gracias.</div>
+          <div style={{ fontSize: 14, color: '#666' }}>Lo recibimos y lo vamos a revisar antes de cargarlo en producción. Te mandamos un mail de confirmación. Gracias.</div>
         </div>
       </div>
     );
@@ -155,8 +158,8 @@ export default function PedidoCliente() {
           </div>
         </div>
         <div style={{ marginBottom: 16 }}>
-          <label style={lbl}>E-mail</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={inp} />
+          <label style={lbl}>E-mail * <span style={{ fontWeight: 400, color: '#888' }}>(te confirmamos la recepción del pedido a esta dirección)</span></label>
+          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} style={inp} />
         </div>
         <div style={{ marginBottom: 16 }}>
           <label style={lbl}>Dirección</label>
