@@ -1942,12 +1942,9 @@ function muestraVacia() {
 }
 
 function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: string }) {
-  // La columna Comercial sólo la puede completar el rol Comercial, o el
-  // admin que sea Matías (por nombre, ya que "admin" no distingue personas).
-  // Se compara sin tildes/mayúsculas para no depender de cómo esté cargado
-  // el nombre en la tabla usuarios.
-  const sinTildes = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-  const puedeComercial = rol.trim() === 'comercial' || (rol.trim() === 'admin' && sinTildes(nombreUsuario).includes('matias'));
+  // La columna Comercial y la de $ x Mt sólo las puede completar el rol
+  // Comercial o un admin.
+  const puedeComercial = rol.trim() === 'comercial' || rol.trim() === 'admin';
   const [muestras, setMuestras] = useState<Muestra[]>([]);
   const [cargando, setCargando] = useState(true);
   const [nuevo, setNuevo] = useState(muestraVacia());
@@ -2211,7 +2208,7 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
 
   if (cargando) return <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando...</div>;
 
-  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'Ubic', 'Op Imp', 'Op Fij', 'Fecha fin', 'Comercial', '$ x Mt', ...(esAdmin ? ['Borrar'] : [])];
+  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'Ubic', 'Op Imp', 'Op Fij', 'Fecha fin', ...(esAdmin ? ['Borrar'] : []), 'Comercial', '$ x Mt'];
 
   return (
     <div>
@@ -2357,6 +2354,11 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
                         </button>
                       )}
                     </td>
+                    {esAdmin && (
+                      <td style={td}>
+                        <button onClick={() => borrar(m.id)} style={{ ...btn, padding: '4px 8px', fontSize: 11, color: '#c00', borderColor: '#c00' }}>✕ Borrar</button>
+                      </td>
+                    )}
                     <td style={td}>
                       <select
                         value={m.comercial || ''}
@@ -2377,11 +2379,6 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
                         style={{ ...selSm, width: 70 }}
                       />
                     </td>
-                    {esAdmin && (
-                      <td style={td}>
-                        <button onClick={() => borrar(m.id)} style={{ ...btn, padding: '4px 8px', fontSize: 11, color: '#c00', borderColor: '#c00' }}>✕ Borrar</button>
-                      </td>
-                    )}
                   </tr>
                 );
               })}
@@ -2451,6 +2448,7 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
                   </select>
                 </td>
                 <td style={td}>—</td>
+                {esAdmin && <td style={td}></td>}
                 <td style={td}>
                   <select
                     value={nuevo.comercial}
@@ -2471,7 +2469,6 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
                     style={{ ...selSm, width: 70 }}
                   />
                 </td>
-                {esAdmin && <td style={td}></td>}
               </tr>
             </tbody>
           </table>
