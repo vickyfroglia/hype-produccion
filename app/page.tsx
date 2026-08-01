@@ -645,6 +645,7 @@ interface LineaSolicitud {
   id: number;
   solicitud_id: number;
   tela_origen: string | null;
+  tela_detalle: string | null;
   diseno: string | null;
   cantidad_mts: number | null;
   observaciones: string | null;
@@ -723,12 +724,13 @@ function SolicitudesPendientes() {
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
-              <tr>{['Tela', 'Diseño', 'Mts', 'Observaciones'].map((h) => <th key={h} style={{ ...th, padding: '4px 8px' }}>{h}</th>)}</tr>
+              <tr>{['Tela', 'Tela específica', 'Diseño', 'Mts', 'Observaciones'].map((h) => <th key={h} style={{ ...th, padding: '4px 8px' }}>{h}</th>)}</tr>
             </thead>
             <tbody>
               {(lineasPorSolicitud[s.id] || []).map((l) => (
                 <tr key={l.id}>
                   <td style={{ ...td, padding: '4px 8px' }}>{l.tela_origen || '—'}</td>
+                  <td style={{ ...td, padding: '4px 8px' }}>{l.tela_detalle || '—'}</td>
                   <td style={{ ...td, padding: '4px 8px' }}>{l.diseno || '—'}</td>
                   <td style={{ ...td, padding: '4px 8px' }}>{l.cantidad_mts ?? '—'}</td>
                   <td style={{ ...td, padding: '4px 8px' }}>{l.observaciones || '—'}</td>

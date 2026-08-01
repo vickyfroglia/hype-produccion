@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { TELAS_HYPE_TH } from '../../lib/types';
 
 // Formulario público de pedido (calcado del Excel "FORM DE PEDIDO" que hoy
 // se manda por mail a ventas@hypearg.com). No requiere login. Lo que se
@@ -13,15 +14,21 @@ const inp: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRa
 const lbl: React.CSSProperties = { fontSize: 12, color: '#555', display: 'block', marginBottom: 6, fontWeight: 600 };
 const btn: React.CSSProperties = { padding: '8px 14px', borderRadius: 8, border: '1px solid #ddd', background: '#fff', fontSize: 13, cursor: 'pointer' };
 
+// Estilos para la tabla de diseños (calcada del Excel: una fila por diseño).
+const thTabla: React.CSSProperties = { padding: '8px 10px', fontSize: 11, textTransform: 'uppercase', color: '#666', textAlign: 'left', background: '#f5f5f5', border: '1px solid #e5e5e5', whiteSpace: 'nowrap' };
+const tdTabla: React.CSSProperties = { padding: '6px 8px', border: '1px solid #e5e5e5', verticalAlign: 'top' };
+const inpCelda: React.CSSProperties = { width: '100%', padding: '7px 8px', borderRadius: 6, border: '1px solid #ddd', fontSize: 13 };
+
 interface LineaPedido {
   telaOrigen: 'CLIENTE' | 'HYPE' | '';
+  telaDetalle: string;
   diseno: string;
   cantidadMts: string;
   observaciones: string;
 }
 
 function lineaVacia(): LineaPedido {
-  return { telaOrigen: '', diseno: '', cantidadMts: '', observaciones: '' };
+  return { telaOrigen: '', telaDetalle: '', diseno: '', cantidadMts: '', observaciones: '' };
 }
 
 export default function PedidoCliente() {
@@ -60,10 +67,14 @@ export default function PedidoCliente() {
 
   // Valida los datos y, si está todo bien, muestra el aviso del plazo de
   // 72hs antes de mandar el pedido de verdad.
+  function lineaCompleta(l: LineaPedido): boolean {
+    return !!(l.diseno.trim() && parseFloat(l.cantidadMts) && l.telaOrigen && l.telaDetalle.trim());
+  }
+
   function intentarEnviar() {
-    const lineasValidas = lineas.filter((l) => l.diseno.trim() && parseFloat(l.cantidadMts));
+    const lineasValidas = lineas.filter(lineaCompleta);
     if (!empresa.trim() || lineasValidas.length === 0) {
-      setError('Completá al menos Empresa / Razón Social y un diseño con su cantidad de mts.');
+      setError('Completá al menos Empresa / Razón Social y un diseño con su tela, tela específica y cantidad de mts.');
       return;
     }
     if (!mailValido(email)) {
@@ -75,7 +86,7 @@ export default function PedidoCliente() {
   }
 
   async function confirmarYEnviar() {
-    const lineasValidas = lineas.filter((l) => l.diseno.trim() && parseFloat(l.cantidadMts));
+    const lineasValidas = lineas.filter(lineaCompleta);
     setMostrarAviso(false);
     setEnviando(true);
 
@@ -94,6 +105,7 @@ export default function PedidoCliente() {
           provincia: provincia.trim() || null,
           lineas: lineasValidas.map((l) => ({
             telaOrigen: l.telaOrigen || null,
+            telaDetalle: l.telaDetalle.trim() || null,
             diseno: l.diseno.trim(),
             cantidadMts: parseFloat(l.cantidadMts) || 0,
             observaciones: l.observaciones.trim() || null,
@@ -176,42 +188,83 @@ export default function PedidoCliente() {
           </div>
         </div>
 
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, textTransform: 'uppercase' }}>Diseños</div>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, textTransform: 'uppercase' }}>Diseños</div>
+        <div style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
+          Por cada diseño indicá si la tela la envías vos o es tela HYPE, y elegí/escribí cuál puntualmente.
+        </div>
 
-        {lineas.map((l, idx) => (
-          <div key={idx} style={{ border: '1px solid #eee', borderRadius: 10, padding: 16, marginBottom: 12, position: 'relative' }}>
-            {lineas.length > 1 && (
-              <button onClick={() => quitarLinea(idx)} style={{ ...btn, position: 'absolute', top: 10, right: 10, padding: '2px 8px', fontSize: 11, color: '#c00', borderColor: '#c00' }}>✕</button>
-            )}
-            <div style={{ marginBottom: 12 }}>
-              <label style={lbl}>Tela</label>
-              <div style={{ display: 'flex', gap: 16 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-                  <input type="radio" name={`tela-${idx}`} checked={l.telaOrigen === 'CLIENTE'} onChange={() => actualizarLinea(idx, { telaOrigen: 'CLIENTE' })} />
-                  Tela Cliente
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-                  <input type="radio" name={`tela-${idx}`} checked={l.telaOrigen === 'HYPE'} onChange={() => actualizarLinea(idx, { telaOrigen: 'HYPE' })} />
-                  Tela HYPE
-                </label>
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 12 }}>
-              <div>
-                <label style={lbl}>Diseño *</label>
-                <input value={l.diseno} onChange={(e) => actualizarLinea(idx, { diseno: e.target.value })} style={inp} />
-              </div>
-              <div>
-                <label style={lbl}>Cantidad (mts) *</label>
-                <input type="number" value={l.cantidadMts} onChange={(e) => actualizarLinea(idx, { cantidadMts: e.target.value })} style={inp} />
-              </div>
-            </div>
-            <div>
-              <label style={lbl}>Observaciones</label>
-              <textarea value={l.observaciones} onChange={(e) => actualizarLinea(idx, { observaciones: e.target.value })} rows={2} style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }} />
-            </div>
-          </div>
-        ))}
+        <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+            <thead>
+              <tr>
+                <th style={{ ...thTabla, width: 130 }}>Tela</th>
+                <th style={{ ...thTabla, width: 190 }}>Tela específica *</th>
+                <th style={thTabla}>Diseño *</th>
+                <th style={{ ...thTabla, width: 100 }}>Cant. (mts) *</th>
+                <th style={thTabla}>Observaciones</th>
+                <th style={{ ...thTabla, width: 30 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {lineas.map((l, idx) => (
+                <tr key={idx}>
+                  <td style={tdTabla}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, marginBottom: 4 }}>
+                      <input
+                        type="radio"
+                        name={`tela-${idx}`}
+                        checked={l.telaOrigen === 'CLIENTE'}
+                        onChange={() => actualizarLinea(idx, { telaOrigen: 'CLIENTE', telaDetalle: '' })}
+                      />
+                      Tela Cliente
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                      <input
+                        type="radio"
+                        name={`tela-${idx}`}
+                        checked={l.telaOrigen === 'HYPE'}
+                        onChange={() => actualizarLinea(idx, { telaOrigen: 'HYPE', telaDetalle: '' })}
+                      />
+                      Tela HYPE
+                    </label>
+                  </td>
+                  <td style={tdTabla}>
+                    {l.telaOrigen === 'HYPE' ? (
+                      <select value={l.telaDetalle} onChange={(e) => actualizarLinea(idx, { telaDetalle: e.target.value })} style={inpCelda}>
+                        <option value="">Elegir tela HYPE...</option>
+                        {TELAS_HYPE_TH.map((t) => (
+                          <option key={t.id_hype} value={t.descripcion}>{t.descripcion}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        value={l.telaDetalle}
+                        onChange={(e) => actualizarLinea(idx, { telaDetalle: e.target.value })}
+                        placeholder={l.telaOrigen === 'CLIENTE' ? 'Ej: jersey algodón 24/1' : 'Elegí Tela Cliente o Tela HYPE'}
+                        disabled={!l.telaOrigen}
+                        style={inpCelda}
+                      />
+                    )}
+                  </td>
+                  <td style={tdTabla}>
+                    <input value={l.diseno} onChange={(e) => actualizarLinea(idx, { diseno: e.target.value })} style={inpCelda} />
+                  </td>
+                  <td style={tdTabla}>
+                    <input type="number" value={l.cantidadMts} onChange={(e) => actualizarLinea(idx, { cantidadMts: e.target.value })} style={inpCelda} />
+                  </td>
+                  <td style={tdTabla}>
+                    <input value={l.observaciones} onChange={(e) => actualizarLinea(idx, { observaciones: e.target.value })} style={inpCelda} />
+                  </td>
+                  <td style={{ ...tdTabla, textAlign: 'center' }}>
+                    {lineas.length > 1 && (
+                      <button onClick={() => quitarLinea(idx)} style={{ ...btn, padding: '2px 6px', fontSize: 11, color: '#c00', borderColor: '#c00' }}>✕</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         <button onClick={agregarLinea} style={{ ...btn, marginBottom: 24 }}>+ Agregar otro diseño</button>
 

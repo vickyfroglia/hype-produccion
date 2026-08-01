@@ -15,6 +15,7 @@ const supabase = createClient(
 
 interface LineaPayload {
   telaOrigen?: string;
+  telaDetalle?: string;
   diseno: string;
   cantidadMts: number;
   observaciones?: string;
@@ -58,6 +59,7 @@ export async function POST(req: Request) {
     (lineas as LineaPayload[]).map((l) => ({
       solicitud_id: solicitud.id,
       tela_origen: l.telaOrigen || null,
+      tela_detalle: l.telaDetalle || null,
       diseno: l.diseno,
       cantidad_mts: l.cantidadMts,
       observaciones: l.observaciones || null,
@@ -81,7 +83,7 @@ export async function POST(req: Request) {
       const filasHtml = (lineas as LineaPayload[])
         .map(
           (l) =>
-            `<tr><td style="padding:6px 10px;border:1px solid #ddd;">${l.telaOrigen || '—'}</td><td style="padding:6px 10px;border:1px solid #ddd;">${l.diseno}</td><td style="padding:6px 10px;border:1px solid #ddd;">${l.cantidadMts}</td><td style="padding:6px 10px;border:1px solid #ddd;">${l.observaciones || '—'}</td></tr>`
+            `<tr><td style="padding:6px 10px;border:1px solid #ddd;">${l.telaOrigen || '—'}</td><td style="padding:6px 10px;border:1px solid #ddd;">${l.telaDetalle || '—'}</td><td style="padding:6px 10px;border:1px solid #ddd;">${l.diseno}</td><td style="padding:6px 10px;border:1px solid #ddd;">${l.cantidadMts}</td><td style="padding:6px 10px;border:1px solid #ddd;">${l.observaciones || '—'}</td></tr>`
         )
         .join('');
       await transporter.sendMail({
@@ -96,6 +98,7 @@ export async function POST(req: Request) {
               <thead>
                 <tr>
                   <th style="padding:6px 10px;border:1px solid #ddd;background:#f5f5f5;">Tela</th>
+                  <th style="padding:6px 10px;border:1px solid #ddd;background:#f5f5f5;">Tela específica</th>
                   <th style="padding:6px 10px;border:1px solid #ddd;background:#f5f5f5;">Diseño</th>
                   <th style="padding:6px 10px;border:1px solid #ddd;background:#f5f5f5;">Mts</th>
                   <th style="padding:6px 10px;border:1px solid #ddd;background:#f5f5f5;">Observaciones</th>
