@@ -1872,7 +1872,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                         formatFecha(o.fecha_fin)
                       )
                     ) : puede(o, 'fecha_fin') ? (
-                      <button onClick={() => marcarTerminado(o)} disabled={!o.fija_operario} title={!o.fija_operario ? 'Primero hay que cargar Op Fij' : 'Marcar como terminado hoy'} style={{ ...btn, padding: '2px 6px', fontSize: 10 }}>
+                      <button onClick={() => marcarTerminado(o)} disabled={!o.imp_operario} title={!o.imp_operario ? 'Primero hay que cargar Op Imp' : 'Marcar como terminado hoy'} style={{ ...btn, padding: '2px 6px', fontSize: 10 }}>
                         ✓ Marcar
                       </button>
                     ) : (
