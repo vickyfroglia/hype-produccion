@@ -132,6 +132,34 @@ export interface EventoDirecta {
   orden_id: number;
   evento: string;
   detalle: string | null;
+  usuario: string | null;
+  created_at: string;
+}
+
+// Eventos de Muestras y de Reporte diario: mismo patrón que EventoDirecta
+// (registrados solos por un trigger en Supabase), para que el Historial
+// pueda mostrar también los cambios de esos dos módulos.
+export interface EventoMuestra {
+  id: number;
+  muestra_id: number;
+  cliente: string | null;
+  diseno: string | null;
+  evento: string;
+  detalle: string | null;
+  usuario: string | null;
+  created_at: string;
+}
+
+export interface EventoRollo {
+  id: number;
+  rollo_id: number;
+  equipo: string | null;
+  nro_ot: string | null;
+  cliente: string | null;
+  diseno: string | null;
+  evento: string;
+  detalle: string | null;
+  usuario: string | null;
   created_at: string;
 }
 

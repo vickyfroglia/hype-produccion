@@ -21,6 +21,8 @@ import {
   TIPOS_PROCESO_CIBITEX,
   RolloReporte,
   Muestra,
+  EventoMuestra,
+  EventoRollo,
   faltaParaProducir,
   calcularPrioridad,
   formatFecha,
@@ -69,6 +71,8 @@ export default function Home() {
   const [pagina, setPagina] = useState('dashboard');
   const [ordenes, setOrdenes] = useState<OrdenDirecta[]>([]);
   const [eventos, setEventos] = useState<EventoDirecta[]>([]);
+  const [eventosMuestras, setEventosMuestras] = useState<EventoMuestra[]>([]);
+  const [eventosReporte, setEventosReporte] = useState<EventoRollo[]>([]);
   const [muestras, setMuestras] = useState<Muestra[]>([]);
   const [rollosReporte, setRollosReporte] = useState<RolloReporte[]>([]);
   const [ingresosStock, setIngresosStock] = useState<any[]>([]);
@@ -101,9 +105,11 @@ export default function Home() {
   // hacía que el scroll volviera arriba de todo cada vez que se tocaba algo.
   async function cargarTodo(mostrarLoading = false) {
     if (mostrarLoading) setLoading(true);
-    const [ords, evts, muestrasData, rollos, ingresos, egresos] = await Promise.all([
+    const [ords, evts, evtsMuestras, evtsReporte, muestrasData, rollos, ingresos, egresos] = await Promise.all([
       fetchAll('ordenes_directa', 'created_at'),
       fetchAll('ordenes_directa_eventos', 'created_at'),
+      fetchAll('muestras_eventos', 'created_at'),
+      fetchAll('reporte_rollos_eventos', 'created_at'),
       fetchAll('muestras', 'created_at'),
       fetchAll('reporte_rollos', 'created_at'),
       fetchStockTabla('ingresos'),
@@ -111,6 +117,8 @@ export default function Home() {
     ]);
     setOrdenes(ords);
     setEventos(evts);
+    setEventosMuestras(evtsMuestras);
+    setEventosReporte(evtsReporte);
     setMuestras(muestrasData);
     setRollosReporte(rollos);
     setIngresosStock(ingresos);
@@ -204,7 +212,7 @@ export default function Home() {
             {pagina === 'reporte' && <PanelReporteDiario ordenes={ordenes} rol={rol} />}
             {pagina === 'diseno' && <PanelDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
             {pagina === 'administracion' && <PanelAdministracion ordenes={ordenes} onCambio={cargarTodo} />}
-            {pagina === 'historial' && <Historial eventos={eventos} ordenes={ordenes} />}
+            {pagina === 'historial' && <Historial eventos={eventos} eventosMuestras={eventosMuestras} eventosReporte={eventosReporte} ordenes={ordenes} />}
           </>
         )}
       </div>
@@ -1754,10 +1762,11 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                 const terminado = !!o.fecha_fin;
                 const noImprimio = o.imp_operario === 'NO';
                 const impresoCompleto = !noImprimio && !!o.imp_operario && Number(o.mts_impresos) > 0;
-                const colorHastaOpImp = noImprimio ? '#fde8e8' : impresoCompleto ? '#e6f4e1' : undefined;
-                const bgCelda = !terminado && colorHastaOpImp ? { background: colorHastaOpImp } : {};
+                // Si no se pudo imprimir, el rojo pinta toda la fila (igual que en
+                // Muestras) en vez de solo las celdas hasta Op Imp.
+                const bgCelda = !terminado && !noImprimio && impresoCompleto ? { background: '#e6f4e1' } : {};
                 return (
-                <tr key={o.id} style={terminado ? { background: '#8fce8a' } : undefined}>
+                <tr key={o.id} style={terminado ? { background: '#8fce8a' } : noImprimio ? { background: '#fde8e8' } : undefined}>
                   <td style={{ ...td, color: '#888', ...bgCelda }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                       {prioridad.get(o.id)}
@@ -3278,48 +3287,125 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
 // ---------------------------------------------------------------------------
 // Historial de eventos
 // ---------------------------------------------------------------------------
-function Historial({ eventos, ordenes }: { eventos: EventoDirecta[]; ordenes: OrdenDirecta[] }) {
+// Forma común para poder mostrar en una sola tabla los eventos de los tres
+// módulos (Producción, Muestras y Reporte diario), que viven en tablas
+// distintas de Supabase.
+type FilaHistorial = {
+  key: string;
+  fecha: string;
+  modulo: 'Producción' | 'Muestras' | 'Reporte diario';
+  referencia: string;
+  cliente: string;
+  diseno: string;
+  evento: string;
+  detalle: string | null;
+  usuario: string | null;
+};
+
+const MODULOS_HISTORIAL = ['Producción', 'Muestras', 'Reporte diario'] as const;
+
+function Historial({
+  eventos,
+  eventosMuestras,
+  eventosReporte,
+  ordenes,
+}: {
+  eventos: EventoDirecta[];
+  eventosMuestras: EventoMuestra[];
+  eventosReporte: EventoRollo[];
+  ordenes: OrdenDirecta[];
+}) {
   const mapOrden = new Map(ordenes.map((o) => [o.id, o]));
   const [search, setSearch] = useState('');
+  const [filtroModulo, setFiltroModulo] = useState('');
 
-  const eventosFiltrados = eventos.filter((e) => {
+  const filas: FilaHistorial[] = [
+    ...eventos.map((e): FilaHistorial => {
+      const o = mapOrden.get(e.orden_id);
+      return {
+        key: `p-${e.id}`,
+        fecha: e.created_at,
+        modulo: 'Producción',
+        referencia: o?.nro_ot || `#${e.orden_id}`,
+        cliente: o?.cliente || '—',
+        diseno: o?.diseno || '—',
+        evento: e.evento,
+        detalle: e.detalle,
+        usuario: e.usuario,
+      };
+    }),
+    ...eventosMuestras.map((e): FilaHistorial => ({
+      key: `m-${e.id}`,
+      fecha: e.created_at,
+      modulo: 'Muestras',
+      referencia: `#${e.muestra_id}`,
+      cliente: e.cliente || '—',
+      diseno: e.diseno || '—',
+      evento: e.evento,
+      detalle: e.detalle,
+      usuario: e.usuario,
+    })),
+    ...eventosReporte.map((e): FilaHistorial => ({
+      key: `r-${e.id}`,
+      fecha: e.created_at,
+      modulo: 'Reporte diario',
+      referencia: e.nro_ot ? e.nro_ot.slice(-5) : `#${e.rollo_id}`,
+      cliente: e.cliente || '—',
+      diseno: e.diseno || '—',
+      evento: e.evento,
+      detalle: e.detalle,
+      usuario: e.usuario,
+    })),
+  ].sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+
+  const filasFiltradas = filas.filter((f) => {
+    if (filtroModulo && f.modulo !== filtroModulo) return false;
     if (!search) return true;
-    const o = mapOrden.get(e.orden_id);
     const q = search.toLowerCase();
-    return (o?.cliente || '').toLowerCase().includes(q) || (o?.diseno || '').toLowerCase().includes(q) || (o?.nro_ot || '').toLowerCase().includes(q);
+    return (
+      f.cliente.toLowerCase().includes(q) ||
+      f.diseno.toLowerCase().includes(q) ||
+      f.referencia.toLowerCase().includes(q) ||
+      (f.usuario || '').toLowerCase().includes(q)
+    );
   });
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 500 }}>Historial</div>
-          <div style={{ fontSize: 13, color: '#888' }}>Todos los hitos registrados automáticamente</div>
+          <div style={{ fontSize: 13, color: '#888' }}>Cambios de Producción, Muestras y Reporte diario, y quién los hizo</div>
         </div>
-        <input placeholder="Buscar por OT, cliente o diseño..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...inp, maxWidth: 280 }} />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <select value={filtroModulo} onChange={(e) => setFiltroModulo(e.target.value)} style={{ ...inp, maxWidth: 170 }}>
+            <option value="">Todos los módulos</option>
+            {MODULOS_HISTORIAL.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <input placeholder="Buscar por referencia, cliente, diseño o usuario..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...inp, maxWidth: 280 }} />
+        </div>
       </div>
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr>{['Fecha', 'OT', 'Cliente', 'Diseño', 'Evento', 'Detalle'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
+              <tr>{['Fecha', 'Módulo', 'Referencia', 'Cliente', 'Diseño', 'Evento', 'Detalle', 'Usuario'].map((h) => <th key={h} style={th}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {eventosFiltrados.slice(0, 300).map((e) => {
-                const o = mapOrden.get(e.orden_id);
-                return (
-                  <tr key={e.id}>
-                    <td style={td}>{new Date(e.created_at).toLocaleString()}</td>
-                    <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o?.nro_ot || `#${e.orden_id}`}</td>
-                    <td style={td}>{o?.cliente || '—'}</td>
-                    <td style={td}>{o?.diseno || '—'}</td>
-                    <td style={{ ...td, fontWeight: 600 }}>{e.evento}</td>
-                    <td style={td}>{e.detalle || '—'}</td>
-                  </tr>
-                );
-              })}
-              {eventosFiltrados.length === 0 && (
-                <tr><td colSpan={6} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin resultados</td></tr>
+              {filasFiltradas.slice(0, 300).map((f) => (
+                <tr key={f.key}>
+                  <td style={td}>{new Date(f.fecha).toLocaleString()}</td>
+                  <td style={{ ...td, fontWeight: 600 }}>{f.modulo}</td>
+                  <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{f.referencia}</td>
+                  <td style={td}>{f.cliente}</td>
+                  <td style={td}>{f.diseno}</td>
+                  <td style={{ ...td, fontWeight: 600 }}>{f.evento}</td>
+                  <td style={td}>{f.detalle || '—'}</td>
+                  <td style={td}>{f.usuario || '—'}</td>
+                </tr>
+              ))}
+              {filasFiltradas.length === 0 && (
+                <tr><td colSpan={8} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin resultados</td></tr>
               )}
             </tbody>
           </table>
