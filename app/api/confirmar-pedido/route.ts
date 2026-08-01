@@ -8,9 +8,17 @@ import nodemailer from 'nodemailer';
 // servidor porque el envío de mail necesita las credenciales de Gmail
 // (GMAIL_USER / GMAIL_APP_PASSWORD), que nunca deben quedar expuestas en
 // el navegador.
-const supabase = createClient(
+//
+// Usamos el Service Role (no el anon key) para guardar el pedido: la
+// política de anon en solicitudes_pedido solo permite INSERTAR, no LEER —
+// y el .select().single() de después del insert necesita permiso de
+// lectura para devolver la fila (si no, Supabase "pierde" el resultado y
+// esto falla con "No se pudo guardar el pedido" aunque en realidad sí se
+// guardó). El Service Role evita ese problema sin tener que abrirle
+// lectura pública a la tabla.
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 interface LineaPayload {
@@ -22,6 +30,11 @@ interface LineaPayload {
 }
 
 export async function POST(req: Request) {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('Falta la variable de entorno SUPABASE_SERVICE_ROLE_KEY.');
+    return NextResponse.json({ error: 'No se pudo guardar el pedido. Probá de nuevo en unos minutos.' }, { status: 500 });
+  }
+
   let body: any;
   try {
     body = await req.json();
@@ -35,7 +48,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Faltan datos obligatorios (empresa, mail y al menos un diseño).' }, { status: 400 });
   }
 
-  const { data: solicitud, error: errorHeader } = await supabase
+  const { data: solicitud, error: errorHeader } = await supabaseAdmin
     .from('solicitudes_pedido')
     .insert({
       tipo_trabajo: tipoTrabajo || null,
@@ -55,7 +68,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'No se pudo guardar el pedido. Probá de nuevo en unos minutos.' }, { status: 500 });
   }
 
-  const { error: errorLineas } = await supabase.from('solicitudes_pedido_lineas').insert(
+  const { error: errorLineas } = await supabaseAdmin.from('solicitudes_pedido_lineas').insert(
     (lineas as LineaPayload[]).map((l) => ({
       solicitud_id: solicitud.id,
       tela_origen: l.telaOrigen || null,
