@@ -717,6 +717,29 @@ function SolicitudesPendientes() {
     cargar();
   }
 
+  // Se llama desde "Error pedido": pide el motivo, lo manda por mail al
+  // cliente (asunto "PEDIDO RECHAZADO") y saca la solicitud de la lista de
+  // pendientes.
+  async function rechazarPedido(s: SolicitudPedido) {
+    const razon = window.prompt('¿Por qué el pedido no está bien? (esto se le manda al cliente por mail)', '');
+    if (razon === null) return; // canceló, no hace nada
+    if (!razon.trim()) { alert('Escribí el motivo del rechazo.'); return; }
+    const { error } = await supabase.from('solicitudes_pedido').update({ estado: 'rechazado' }).eq('id', s.id);
+    if (error) { alert('Error: ' + error.message); return; }
+    if (s.email) {
+      try {
+        await fetch('/api/rechazar-pedido', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: s.email, razon: razon.trim() }),
+        });
+      } catch (err) {
+        console.error('No se pudo mandar el mail de rechazo del pedido:', err);
+      }
+    }
+    cargar();
+  }
+
   if (cargando || solicitudes.length === 0) return null;
 
   return (
@@ -734,7 +757,10 @@ function SolicitudesPendientes() {
               <div style={{ fontWeight: 700, fontSize: 15 }}>{s.empresa}</div>
               <div style={{ fontSize: 12, color: '#888' }}>{new Date(s.created_at).toLocaleString()}</div>
             </div>
-            <button onClick={() => marcarCargado(s)} style={{ ...btn, fontSize: 12, padding: '4px 10px' }}>✓ Marcar cargado</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => marcarCargado(s)} style={{ ...btn, fontSize: 12, padding: '4px 10px' }}>✓ Marcar cargado</button>
+              <button onClick={() => rechazarPedido(s)} style={{ ...btn, fontSize: 12, padding: '4px 10px', color: '#c00', borderColor: '#c00' }}>✕ Error pedido</button>
+            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, fontSize: 13, marginBottom: 12 }}>
             {s.tipo_trabajo && <div><b>Tipo:</b> {s.tipo_trabajo}</div>}
