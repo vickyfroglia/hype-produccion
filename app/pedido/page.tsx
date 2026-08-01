@@ -52,6 +52,28 @@ export default function PedidoCliente() {
   // cartel se dispara el envío real.
   const [mostrarAviso, setMostrarAviso] = useState(false);
 
+  // Autocompletado de Empresa / Razón Social contra la base de Clientes
+  // del Stock — así, si el cliente ya existe (ej. "GRISINO-OTHER"), el
+  // nombre queda escrito exactamente igual y el pedido se vincula bien al
+  // pasar a Producción. Va a un endpoint propio (no expone la tabla
+  // completa): solo trae nombres que coincidan con lo que ya se escribió.
+  const [sugerenciasEmpresa, setSugerenciasEmpresa] = useState<string[]>([]);
+  const [mostrarSugerenciasEmpresa, setMostrarSugerenciasEmpresa] = useState(false);
+  useEffect(() => {
+    const q = empresa.trim();
+    if (q.length < 2) {
+      setSugerenciasEmpresa([]);
+      return;
+    }
+    const timeout = setTimeout(() => {
+      fetch(`/api/buscar-clientes?q=${encodeURIComponent(q)}`)
+        .then((r) => r.json())
+        .then((data) => setSugerenciasEmpresa(data.clientes || []))
+        .catch(() => setSugerenciasEmpresa([]));
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [empresa]);
+
   // Catálogo de colores del Stock (sigla + nombre) para que, si la tela es
   // del cliente, elija el color por nombre y quede guardado con la misma
   // sigla que usan en Stock. Si por algún motivo no carga (ej. falta la
@@ -216,9 +238,29 @@ export default function PedidoCliente() {
           </select>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 16 }}>
-          <div>
+          <div style={{ position: 'relative' }}>
             <label style={lbl}>Empresa / Marca y Razón Social * <span style={{ fontWeight: 400, color: '#888' }}>(a quién va facturado, quien abona)</span></label>
-            <input value={empresa} onChange={(e) => setEmpresa(e.target.value)} style={inp} />
+            <input
+              value={empresa}
+              onChange={(e) => { setEmpresa(e.target.value); setMostrarSugerenciasEmpresa(true); }}
+              onFocus={() => setMostrarSugerenciasEmpresa(true)}
+              onBlur={() => setTimeout(() => setMostrarSugerenciasEmpresa(false), 150)}
+              autoComplete="off"
+              style={inp}
+            />
+            {mostrarSugerenciasEmpresa && sugerenciasEmpresa.length > 0 && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #ddd', borderRadius: 8, maxHeight: 180, overflowY: 'auto', zIndex: 10, boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+                {sugerenciasEmpresa.map((nombre) => (
+                  <div
+                    key={nombre}
+                    onMouseDown={() => { setEmpresa(nombre); setMostrarSugerenciasEmpresa(false); }}
+                    style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f5f5f5' }}
+                  >
+                    {nombre}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <label style={lbl}>CUIT <span style={{ fontWeight: 400, color: '#888' }}>(si es necesario)</span></label>
