@@ -71,6 +71,25 @@ export default function PedidoCliente() {
       });
   }, []);
 
+  // Catálogo de telas del Stock (cod + nombre) para que, si la tela es del
+  // cliente, elija el nombre tal como está cargado en Stock (base de
+  // datos / telas), en vez de escribirlo a mano. Mismo fallback a texto
+  // libre si no carga.
+  const [telasCatalogo, setTelasCatalogo] = useState<{ cod: string; nombre: string }[]>([]);
+  useEffect(() => {
+    supabase
+      .from('telas')
+      .select('cod, nombre')
+      .order('nombre')
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('No se pudo cargar el catálogo de telas (¿falta la política de lectura pública?):', error);
+          return;
+        }
+        setTelasCatalogo(data || []);
+      });
+  }, []);
+
   function actualizarLinea(idx: number, cambios: Partial<LineaPedido>) {
     setLineas((prev) => prev.map((l, i) => (i === idx ? { ...l, ...cambios } : l)));
   }
@@ -258,6 +277,13 @@ export default function PedidoCliente() {
                         <option value="">Elegir tela HYPE...</option>
                         {TELAS_HYPE_TH.map((t) => (
                           <option key={t.id_hype} value={t.descripcion}>{t.descripcion}</option>
+                        ))}
+                      </select>
+                    ) : l.telaOrigen === 'CLIENTE' && telasCatalogo.length > 0 ? (
+                      <select value={l.telaDetalle} onChange={(e) => actualizarLinea(idx, { telaDetalle: e.target.value })} style={inpCelda}>
+                        <option value="">Elegir tela...</option>
+                        {telasCatalogo.map((t) => (
+                          <option key={t.cod} value={t.nombre}>{t.nombre}</option>
                         ))}
                       </select>
                     ) : (
