@@ -22,13 +22,14 @@ const inpCelda: React.CSSProperties = { width: '100%', padding: '7px 8px', borde
 interface LineaPedido {
   telaOrigen: 'CLIENTE' | 'HYPE' | '';
   telaDetalle: string;
+  colorTela: string;
   diseno: string;
   cantidadMts: string;
   observaciones: string;
 }
 
 function lineaVacia(): LineaPedido {
-  return { telaOrigen: '', telaDetalle: '', diseno: '', cantidadMts: '', observaciones: '' };
+  return { telaOrigen: '', telaDetalle: '', colorTela: '', diseno: '', cantidadMts: '', observaciones: '' };
 }
 
 export default function PedidoCliente() {
@@ -106,6 +107,7 @@ export default function PedidoCliente() {
           lineas: lineasValidas.map((l) => ({
             telaOrigen: l.telaOrigen || null,
             telaDetalle: l.telaDetalle.trim() || null,
+            colorTela: l.telaOrigen === 'CLIENTE' ? l.colorTela.trim() || null : null,
             diseno: l.diseno.trim(),
             cantidadMts: parseFloat(l.cantidadMts) || 0,
             observaciones: l.observaciones.trim() || null,
@@ -194,11 +196,12 @@ export default function PedidoCliente() {
         </div>
 
         <div style={{ overflowX: 'auto', marginBottom: 12 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 840 }}>
             <thead>
               <tr>
                 <th style={{ ...thTabla, width: 130 }}>Tela</th>
                 <th style={{ ...thTabla, width: 190 }}>Tela específica *</th>
+                <th style={{ ...thTabla, width: 120 }}>Color tela</th>
                 <th style={thTabla}>Diseño *</th>
                 <th style={{ ...thTabla, width: 100 }}>Cant. (mts) *</th>
                 <th style={thTabla}>Observaciones</th>
@@ -223,7 +226,7 @@ export default function PedidoCliente() {
                         type="radio"
                         name={`tela-${idx}`}
                         checked={l.telaOrigen === 'HYPE'}
-                        onChange={() => actualizarLinea(idx, { telaOrigen: 'HYPE', telaDetalle: '' })}
+                        onChange={() => actualizarLinea(idx, { telaOrigen: 'HYPE', telaDetalle: '', colorTela: '' })}
                       />
                       Tela HYPE
                     </label>
@@ -245,6 +248,15 @@ export default function PedidoCliente() {
                         style={inpCelda}
                       />
                     )}
+                  </td>
+                  <td style={tdTabla}>
+                    <input
+                      value={l.colorTela}
+                      onChange={(e) => actualizarLinea(idx, { colorTela: e.target.value })}
+                      placeholder={l.telaOrigen === 'CLIENTE' ? 'Ej: blanco' : '—'}
+                      disabled={l.telaOrigen !== 'CLIENTE'}
+                      style={l.telaOrigen !== 'CLIENTE' ? { ...inpCelda, background: '#f5f5f5', color: '#aaa' } : inpCelda}
+                    />
                   </td>
                   <td style={tdTabla}>
                     <input value={l.diseno} onChange={(e) => actualizarLinea(idx, { diseno: e.target.value })} style={inpCelda} />

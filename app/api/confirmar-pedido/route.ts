@@ -25,6 +25,7 @@ const supabaseAdmin = createClient(
 interface LineaPayload {
   telaOrigen?: string;
   telaDetalle?: string;
+  colorTela?: string;
   diseno: string;
   cantidadMts: number;
   observaciones?: string;
@@ -74,6 +75,7 @@ export async function POST(req: Request) {
       solicitud_id: solicitud.id,
       tela_origen: l.telaOrigen || null,
       tela_detalle: l.telaDetalle || null,
+      color_tela: l.colorTela || null,
       diseno: l.diseno,
       cantidad_mts: l.cantidadMts,
       observaciones: l.observaciones || null,
@@ -97,7 +99,7 @@ export async function POST(req: Request) {
       const filasHtml = (lineas as LineaPayload[])
         .map(
           (l) =>
-            `<tr><td style="${MAIL_TD_STYLE}">${l.telaOrigen || '—'}</td><td style="${MAIL_TD_STYLE}">${l.telaDetalle || '—'}</td><td style="${MAIL_TD_STYLE}">${l.diseno}</td><td style="${MAIL_TD_STYLE}">${l.cantidadMts}</td><td style="${MAIL_TD_STYLE}">${l.observaciones || '—'}</td></tr>`
+            `<tr><td style="${MAIL_TD_STYLE}">${l.telaOrigen || '—'}</td><td style="${MAIL_TD_STYLE}">${l.telaDetalle || '—'}</td><td style="${MAIL_TD_STYLE}">${l.colorTela || '—'}</td><td style="${MAIL_TD_STYLE}">${l.diseno}</td><td style="${MAIL_TD_STYLE}">${l.cantidadMts}</td><td style="${MAIL_TD_STYLE}">${l.observaciones || '—'}</td></tr>`
         )
         .join('');
       await transporter.sendMail({
@@ -113,6 +115,7 @@ export async function POST(req: Request) {
                 <tr>
                   <th style="${MAIL_TH_STYLE}">Tela</th>
                   <th style="${MAIL_TH_STYLE}">Tela específica</th>
+                  <th style="${MAIL_TH_STYLE}">Color</th>
                   <th style="${MAIL_TH_STYLE}">Diseño</th>
                   <th style="${MAIL_TH_STYLE}">Mts</th>
                   <th style="${MAIL_TH_STYLE}">Observaciones</th>

@@ -10,6 +10,7 @@ import { MAIL_BODY_STYLE, MAIL_TH_STYLE, MAIL_TD_STYLE, MAIL_FOOTER_STYLE } from
 interface LineaConsolidada {
   telaOrigen?: string | null;
   telaDetalle?: string | null;
+  colorTela?: string | null;
   diseno?: string | null;
   cantidadMts?: number | null;
 }
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
     const filasHtml = (lineas as LineaConsolidada[])
       .map((l) => {
         const tela = l.telaDetalle || l.telaOrigen || '—';
-        return `<tr><td style="${MAIL_TD_STYLE}">${tela}</td><td style="${MAIL_TD_STYLE}">${l.diseno || '—'}</td><td style="${MAIL_TD_STYLE}">${l.cantidadMts ?? '—'}</td></tr>`;
+        return `<tr><td style="${MAIL_TD_STYLE}">${tela}</td><td style="${MAIL_TD_STYLE}">${l.colorTela || '—'}</td><td style="${MAIL_TD_STYLE}">${l.diseno || '—'}</td><td style="${MAIL_TD_STYLE}">${l.cantidadMts ?? '—'}</td></tr>`;
       })
       .join('');
 
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
             <thead>
               <tr>
                 <th style="${MAIL_TH_STYLE}">Tela</th>
+                <th style="${MAIL_TH_STYLE}">Color</th>
                 <th style="${MAIL_TH_STYLE}">Diseño</th>
                 <th style="${MAIL_TH_STYLE}">Mts</th>
               </tr>
