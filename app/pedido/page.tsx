@@ -182,9 +182,12 @@ export default function PedidoCliente() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f7f7f7', padding: '40px 20px' }}>
-      <div style={{ maxWidth: 720, margin: '0 auto', background: '#fff', borderRadius: 12, padding: 32, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-        <img src="/logo.png" alt="HYPE printlab" style={{ height: 40, marginBottom: 8 }} />
-        <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>Form de pedido</div>
+      <div style={{ maxWidth: 720, margin: '0 auto', background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
+        <div style={{ background: '#ffdcb3', color: '#000', padding: '24px 32px 20px' }}>
+          <img src="/logo.png" alt="HYPE printlab" style={{ height: 40, marginBottom: 8 }} />
+          <div style={{ fontSize: 22, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#000' }}>Form de pedido</div>
+        </div>
+        <div style={{ padding: 32 }}>
         <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>
           Fecha: {new Date().toLocaleDateString('es-AR')} (se carga sola)
         </div>
@@ -346,6 +349,7 @@ export default function PedidoCliente() {
         >
           {enviando ? 'Enviando...' : 'Enviar pedido'}
         </button>
+        </div>
       </div>
 
       {mostrarAviso && (
