@@ -613,9 +613,131 @@ function PanelDiseno({ ordenes, nombreUsuario, onCambio }: { ordenes: OrdenDirec
         <div style={{ fontSize: 13, color: '#888' }}>Cargá el pedido, revisalo completo y confirmalo para sumarlo a Producción</div>
       </div>
 
+      <SolicitudesPendientes />
+
       <FormAltaDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onGuardado={onCambio} />
 
       <BuscarPedido ordenes={ordenes} onCambio={onCambio} />
+    </div>
+  );
+}
+
+// Solicitudes que llegaron desde el formulario público (/pedido), sin
+// login — todavía no son pedidos reales. Se muestran acá para que HYPE las
+// revise y las cargue a mano en "Nuevo pedido" (abajo). "Marcar cargado"
+// solo la saca de esta lista, no toca ordenes_directa: la carga real la
+// hace la persona usando el formulario de siempre, con estos datos como
+// referencia.
+interface SolicitudPedido {
+  id: number;
+  tipo_trabajo: string | null;
+  empresa: string;
+  contacto: string | null;
+  telefono: string | null;
+  email: string | null;
+  direccion: string | null;
+  cp: string | null;
+  provincia: string | null;
+  estado: string;
+  created_at: string;
+}
+interface LineaSolicitud {
+  id: number;
+  solicitud_id: number;
+  tela_origen: string | null;
+  diseno: string | null;
+  cantidad_mts: number | null;
+  observaciones: string | null;
+}
+
+function SolicitudesPendientes() {
+  const [solicitudes, setSolicitudes] = useState<SolicitudPedido[]>([]);
+  const [lineasPorSolicitud, setLineasPorSolicitud] = useState<Record<number, LineaSolicitud[]>>({});
+  const [cargando, setCargando] = useState(true);
+
+  async function cargar() {
+    const { data: sols, error } = await supabase
+      .from('solicitudes_pedido')
+      .select('*')
+      .eq('estado', 'pendiente')
+      .order('created_at', { ascending: true });
+    if (error) {
+      // Lo más probable si esto falla es que todavía no se corrió el SQL
+      // que crea las tablas — no rompemos la pantalla por eso.
+      console.error('No se pudieron cargar las solicitudes de pedido (¿se creó la tabla solicitudes_pedido?):', error);
+      setCargando(false);
+      return;
+    }
+    setSolicitudes(sols || []);
+    if (sols && sols.length > 0) {
+      const { data: lineas } = await supabase
+        .from('solicitudes_pedido_lineas')
+        .select('*')
+        .in('solicitud_id', sols.map((s: any) => s.id));
+      const agrupadas: Record<number, LineaSolicitud[]> = {};
+      (lineas || []).forEach((l: any) => {
+        agrupadas[l.solicitud_id] = agrupadas[l.solicitud_id] || [];
+        agrupadas[l.solicitud_id].push(l);
+      });
+      setLineasPorSolicitud(agrupadas);
+    }
+    setCargando(false);
+  }
+  useEffect(() => {
+    cargar();
+  }, []);
+
+  async function marcarCargado(id: number) {
+    if (!confirm('¿Ya cargaste este pedido en "Nuevo pedido" de abajo? Se va a sacar de esta lista.')) return;
+    const { error } = await supabase.from('solicitudes_pedido').update({ estado: 'cargado' }).eq('id', id);
+    if (error) { alert('Error: ' + error.message); return; }
+    cargar();
+  }
+
+  if (cargando || solicitudes.length === 0) return null;
+
+  return (
+    <div style={{ ...card, marginBottom: 20, border: '1px solid #e85d2f', background: '#fff8f2' }}>
+      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', color: '#e85d2f' }}>
+        Solicitudes de pedido recibidas ({solicitudes.length})
+      </div>
+      <div style={{ fontSize: 13, color: '#888', marginBottom: 16 }}>
+        Llegaron desde el formulario web del cliente. Revisalas y cargalas a mano en "Nuevo pedido" de abajo; después marcalas como cargadas.
+      </div>
+      {solicitudes.map((s) => (
+        <div key={s.id} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 16, marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{s.empresa}</div>
+              <div style={{ fontSize: 12, color: '#888' }}>{new Date(s.created_at).toLocaleString()}</div>
+            </div>
+            <button onClick={() => marcarCargado(s.id)} style={{ ...btn, fontSize: 12, padding: '4px 10px' }}>✓ Marcar cargado</button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, fontSize: 13, marginBottom: 12 }}>
+            {s.tipo_trabajo && <div><b>Tipo:</b> {s.tipo_trabajo}</div>}
+            {s.contacto && <div><b>Contacto:</b> {s.contacto}</div>}
+            {s.telefono && <div><b>Tel:</b> {s.telefono}</div>}
+            {s.email && <div><b>Mail:</b> {s.email}</div>}
+            {s.direccion && <div><b>Dirección:</b> {s.direccion}</div>}
+            {(s.cp || s.provincia) && <div><b>CP/Prov:</b> {s.cp || '—'} / {s.provincia || '—'}</div>}
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr>{['Tela', 'Diseño', 'Mts', 'Observaciones'].map((h) => <th key={h} style={{ ...th, padding: '4px 8px' }}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {(lineasPorSolicitud[s.id] || []).map((l) => (
+                <tr key={l.id}>
+                  <td style={{ ...td, padding: '4px 8px' }}>{l.tela_origen || '—'}</td>
+                  <td style={{ ...td, padding: '4px 8px' }}>{l.diseno || '—'}</td>
+                  <td style={{ ...td, padding: '4px 8px' }}>{l.cantidad_mts ?? '—'}</td>
+                  <td style={{ ...td, padding: '4px 8px' }}>{l.observaciones || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
     </div>
   );
 }
