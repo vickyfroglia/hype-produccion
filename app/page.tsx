@@ -800,7 +800,7 @@ function SolicitudesPendientes({ nombreUsuario, onCambio }: { nombreUsuario: str
     try {
       const { data: clienteExistente, error: errorBuscarCliente } = await supabase
         .from('clientes')
-        .select('id, contacto, tel, mail')
+        .select('id, cuit, contacto, tel, mail')
         .ilike('nombre', s.empresa.trim())
         .maybeSingle();
       if (errorBuscarCliente) {
@@ -810,6 +810,7 @@ function SolicitudesPendientes({ nombreUsuario, onCambio }: { nombreUsuario: str
         notaCliente = `\n\n(No encontré en Stock un cliente con el nombre "${s.empresa}" exacto — si ya existe, revisá que el nombre coincida igual, letra por letra.)`;
       } else {
         const cambiosCliente: Record<string, string> = {};
+        if (!clienteExistente.cuit && s.cuit) cambiosCliente.cuit = s.cuit;
         if (!clienteExistente.contacto && s.contacto) cambiosCliente.contacto = s.contacto;
         if (!clienteExistente.tel && s.telefono) cambiosCliente.tel = s.telefono;
         if (!clienteExistente.mail && s.email) cambiosCliente.mail = s.email;
