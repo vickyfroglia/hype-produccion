@@ -223,11 +223,11 @@ export default function PedidoCliente() {
           <div style={{ fontSize: 22, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#000' }}>Form de pedido</div>
         </div>
         <div style={{ padding: 32 }}>
-        <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>
+        <div style={{ fontSize: 13, color: '#000', textTransform: 'uppercase', marginBottom: 8 }}>
           Fecha: {new Date().toLocaleDateString('es-AR')} (automática — el pedido ingresa una vez que el form se encuentra confirmado)
         </div>
-        <div style={{ fontSize: 13, color: '#888', marginBottom: 24 }}>
-          ¡Porfa! Completá todos los datos de tu pedido, ya que de esto depende que el pedido salga bien — es importante para nosotros. Y quedate tranquilo que lo vamos a revisar antes de confirmarlo: si por alguna razón hay algo mal, nos vamos a contactar para resolverlo.
+        <div style={{ fontSize: 13, color: '#000', marginBottom: 24 }}>
+          ¡Porfa! Completá todos los datos de tu pedido, ya que de esto depende que el pedido salga bien — es importante para nosotros. Quedate tranqui que lo vamos a revisar antes de confirmarlo: si por alguna razón hay algo mal, nos vamos a contactar para resolverlo.
         </div>
 
         <div style={{ marginBottom: 16 }}>

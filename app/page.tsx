@@ -724,13 +724,29 @@ function SolicitudesPendientes({ nombreUsuario, onCambio }: { nombreUsuario: str
       .maybeSingle();
     const ordenManualParaGuardar = (maxRow?.orden_manual || 0) + 1;
 
+    // Buscamos en el stock REAL (no en ningún catálogo fijo) qué id_hype
+    // corresponde a cada tela del pedido, para completar la columna ID
+    // solo cuando esa tela puntual ya está físicamente ingresada. Tela
+    // HYPE (TH) se busca en el pool general de Stock TH (no es de un
+    // cliente en particular); Tela Cliente (TC) se busca en el stock
+    // cargado a nombre de este cliente puntual. Si no hay coincidencia,
+    // el ID queda vacío hasta que la tela se ingrese — igual criterio que
+    // el alta manual (buscarCodTela).
+    const necesitaStockTH = lineasSolicitud.some((l) => l.tela_origen === 'HYPE');
+    const [stockTHReal, stockClienteReal] = await Promise.all([
+      necesitaStockTH ? stockTH() : Promise.resolve([] as StockDisponible[]),
+      stockPorCliente(s.empresa),
+    ]);
+    const buscarIdHypeReal = (telaTexto: string, disponibles: StockDisponible[]): string | null => {
+      const tela = (telaTexto || '').trim().toLowerCase();
+      if (!tela) return null;
+      const coincidencias = disponibles.filter((d) => d.tela.trim().toLowerCase() === tela);
+      if (coincidencias.length === 0) return null;
+      return coincidencias.sort((a, b) => b.disponible - a.disponible)[0].id_hype;
+    };
+
     const filasParaInsertar = lineasSolicitud.map((l) => {
-      // Tela HYPE: el cliente elige por nombre (ej. "HYPE TUSSOR") del
-      // catálogo fijo — le buscamos el código id_hype correspondiente para
-      // que la reserva de stock TH de más abajo funcione igual que en el
-      // alta manual. Tela cliente: todavía no hay stock cargado para esa
-      // tela (la va a mandar el cliente), así que va sin código.
-      const th = l.tela_origen === 'HYPE' ? TELAS_HYPE_TH.find((t) => t.descripcion === l.tela_detalle) : undefined;
+      const stockDeEstaLinea = l.tela_origen === 'HYPE' ? stockTHReal : stockClienteReal;
       return {
         nro_ot: nroOt as string,
         fecha: new Date().toISOString().split('T')[0],
@@ -741,7 +757,7 @@ function SolicitudesPendientes({ nombreUsuario, onCambio }: { nombreUsuario: str
         diseno: l.diseno || '',
         mts_pedidos: Number(l.cantidad_mts) || 0,
         tela: l.tela_detalle || null,
-        cod_tela: th?.id_hype || null,
+        cod_tela: buscarIdHypeReal(l.tela_detalle, stockDeEstaLinea),
         color: l.color_tela || null,
         post: false,
         orden_manual: ordenManualParaGuardar,
@@ -1811,6 +1827,11 @@ const CAMPOS_ROL: Record<string, string[]> = {
 
 function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onCambio: () => void; rol: string }) {
   const [search, setSearch] = useState('');
+  // Si el pedido no tiene color cargado, no se muestra ningún campo vacío
+  // en la columna Tela/Color — solo un "+ color" chiquito para agregarlo
+  // cuando haga falta. Este set guarda qué filas tienen ese campo abierto
+  // para escribir (mientras no se guarde nada, o esté vacío, no se ve).
+  const [editandoColor, setEditandoColor] = useState<Set<number>>(new Set());
   const FILTROS_ESTADO = ['FICHAR CN', 'FICHAR CR', 'EN PROCESO'] as const;
   const [filtroEstado, setFiltroEstado] = useState('');
   const prioridad = calcularPrioridad(ordenes);
@@ -2141,7 +2162,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                     />
                   </td>
                   <td style={{ ...td, minWidth: 240, ...bgCelda }}>
-                    <div style={{ display: 'flex', gap: 4 }}>
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                       <input
                         defaultValue={o.tela || ''}
                         onBlur={(e) => { actualizar(o.id, 'tela', e.target.value || null); buscarCodTela(o, e.target.value); }}
@@ -2149,13 +2170,26 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                         placeholder="Tela"
                         style={{ ...selSm, flex: 2, minWidth: 110 }}
                       />
-                      <input
-                        defaultValue={o.color || ''}
-                        onBlur={(e) => actualizar(o.id, 'color', e.target.value || null)}
-                        disabled={!puede(o, 'tela')}
-                        placeholder="Color"
-                        style={{ ...selSm, flex: 1, minWidth: 70 }}
-                      />
+                      {(o.color || editandoColor.has(o.id)) ? (
+                        <input
+                          autoFocus={!o.color && editandoColor.has(o.id)}
+                          defaultValue={o.color || ''}
+                          onBlur={(e) => {
+                            actualizar(o.id, 'color', e.target.value || null);
+                            setEditandoColor((prev) => { const next = new Set(prev); next.delete(o.id); return next; });
+                          }}
+                          disabled={!puede(o, 'tela')}
+                          placeholder="Color"
+                          style={{ ...selSm, flex: 1, minWidth: 70 }}
+                        />
+                      ) : puede(o, 'tela') && (
+                        <button
+                          onClick={() => setEditandoColor((prev) => new Set(prev).add(o.id))}
+                          style={{ border: 'none', background: 'none', color: '#aaa', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap', padding: 0 }}
+                        >
+                          + color
+                        </button>
+                      )}
                     </div>
                   </td>
                   <td style={{ ...td, width: 70, fontFamily: 'monospace', color: '#000', fontWeight: 700, fontSize: 12, ...bgCelda }}>{o.cod_tela || '—'}</td>
