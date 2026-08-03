@@ -151,7 +151,7 @@ export default function Home() {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '▦', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
     { id: 'diseno', label: 'Ingreso y Modif Pedidos', icon: '✎', roles: ['admin', 'diseno'] },
-    { id: 'administracion', label: 'Administración', icon: '$', roles: ['admin', 'administrativo'] },
+    { id: 'administracion', label: 'Administración', icon: '$', roles: ['admin', 'administrativo', 'comercial'] },
     { id: 'reporte', label: 'Reporte diario', icon: '▤', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
     { id: 'general', label: 'Producción', icon: '☷', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
     { id: 'muestras', label: 'Muestras', icon: '◈', roles: ['admin', 'diseno', 'administrativo', 'operario', 'encargado', 'logistica', 'comercial'] },
@@ -1581,6 +1581,15 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
     return partes.join(' - ');
   }
 
+  // Formatea el precio por metro lineal con el formato pedido: "$" + 6
+  // dígitos numéricos, completando con ceros a la izquierda (ej. escribe
+  // "150" y queda "$000150"). Si no hay ningún dígito cargado, null.
+  function formatearPrecioMtSeisDigitos(valor: string): string | null {
+    const soloDigitos = (valor || '').replace(/\D/g, '');
+    if (!soloDigitos) return null;
+    return '$' + soloDigitos.slice(0, 6).padStart(6, '0');
+  }
+
   // Agrupa los renglones (diseños) por nro_ot. Una OT se considera
   // "terminada" recién cuando TODOS sus diseños tienen Fecha fin cargada
   // (no alcanza con que uno solo la tenga). Se descartan las que ya se
@@ -1741,7 +1750,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
             <table className="adm-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['OT', 'Cliente', 'Diseño', 'Observaciones', 'Mts Ped', 'Tela', 'Anticipo'].map((h) => (
+                  {['OT', 'Cliente', 'Diseño', 'Observaciones', 'Mts Ped', 'Tela', '$ x Mt Lineal', 'Anticipo'].map((h) => (
                     <th key={h} style={{ ...th, background: '#e85d2f', color: '#fff', textTransform: 'uppercase', fontWeight: 700 }}>{h}</th>
                   ))}
                 </tr>
@@ -1756,6 +1765,15 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                     <td style={td}>{o.mts_pedidos}</td>
                     <td style={td}>{descripcionTelaConsolidada(o)}</td>
                     <td style={td}>
+                      <input
+                        defaultValue={(o.precio_mt || '').replace(/\D/g, '')}
+                        onBlur={(e) => actualizar(o.id, 'precio_mt', formatearPrecioMtSeisDigitos(e.target.value))}
+                        placeholder="$000000"
+                        inputMode="numeric"
+                        style={{ ...selSm, width: 90, textAlign: 'center' }}
+                      />
+                    </td>
+                    <td style={td}>
                       <select value={o.anticipo} onChange={(e) => actualizar(o.id, 'anticipo', e.target.value)} style={selSm}>
                         {ANTICIPO_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
                       </select>
@@ -1763,7 +1781,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                   </tr>
                 ))}
                 {pendientesAnticipo.length === 0 && (
-                  <tr><td colSpan={7} style={{ ...td, textAlign: 'center', color: '#888' }}>No hay pedidos pendientes de anticipo 🎉</td></tr>
+                  <tr><td colSpan={8} style={{ ...td, textAlign: 'center', color: '#888' }}>No hay pedidos pendientes de anticipo 🎉</td></tr>
                 )}
               </tbody>
             </table>

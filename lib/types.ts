@@ -60,6 +60,7 @@ export interface OrdenDirecta {
   tela: string | null;
   cod_tela: string | null;
   color: string | null;
+  precio_mt: string | null;
   aprob: string;
   post: boolean;
 
