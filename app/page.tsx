@@ -1563,7 +1563,9 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
     else onCambio();
   }
 
-  const pendientesAnticipo = ordenes.filter((o) => o.anticipo === 'PENDIENTE');
+  // Orden fijo por id (más viejo primero), para que la fila de un pedido
+  // no cambie de lugar cada vez que se edita algo y se refresca la lista.
+  const pendientesAnticipo = ordenes.filter((o) => o.anticipo === 'PENDIENTE').sort((a, b) => a.id - b.id);
 
   // Descripción consolidada de la tela para la tabla de Administración.
   // Si es tela HYPE (el nombre arranca con "HYPE", como siempre se cargan
@@ -1765,13 +1767,16 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                     <td style={td}>{o.mts_pedidos}</td>
                     <td style={td}>{descripcionTelaConsolidada(o)}</td>
                     <td style={td}>
-                      <input
-                        defaultValue={(o.precio_mt || '').replace(/\D/g, '')}
-                        onBlur={(e) => actualizar(o.id, 'precio_mt', formatearPrecioMtSeisDigitos(e.target.value))}
-                        placeholder="$000000"
-                        inputMode="numeric"
-                        style={{ ...selSm, width: 90, textAlign: 'center' }}
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                        <span style={{ fontWeight: 700 }}>$</span>
+                        <input
+                          defaultValue={(o.precio_mt || '').replace(/\D/g, '')}
+                          onBlur={(e) => actualizar(o.id, 'precio_mt', formatearPrecioMtSeisDigitos(e.target.value))}
+                          placeholder="000000"
+                          inputMode="numeric"
+                          style={{ ...selSm, width: 80, textAlign: 'center' }}
+                        />
+                      </div>
                     </td>
                     <td style={td}>
                       <select value={o.anticipo} onChange={(e) => actualizar(o.id, 'anticipo', e.target.value)} style={selSm}>
