@@ -1592,6 +1592,16 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
     return '$' + soloDigitos.slice(0, 6).padStart(6, '0');
   }
 
+  // Importe = Mts Pedidos x $ x Mt Lineal, se calcula solo (no se guarda,
+  // se recalcula siempre a partir de esos dos campos). Si todavía no se
+  // cargó el precio, no hay nada para calcular.
+  function calcularImporte(o: OrdenDirecta): string {
+    const precio = Number((o.precio_mt || '').replace(/\D/g, '')) || 0;
+    if (!precio) return '—';
+    const importe = Math.round((o.mts_pedidos || 0) * precio);
+    return '$' + String(importe).padStart(10, '0');
+  }
+
   // Agrupa los renglones (diseños) por nro_ot. Una OT se considera
   // "terminada" recién cuando TODOS sus diseños tienen Fecha fin cargada
   // (no alcanza con que uno solo la tenga). Se descartan las que ya se
@@ -1752,7 +1762,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
             <table className="adm-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['OT', 'Cliente', 'Diseño', 'Observaciones', 'Mts Ped', 'Tela', '$ x Mt Lineal', 'Anticipo'].map((h) => (
+                  {['OT', 'Cliente', 'Diseño', 'Observaciones', 'Mts Ped', 'Tela', '$ x Mt Lineal', 'Importe', 'Anticipo'].map((h) => (
                     <th key={h} style={{ ...th, background: '#e85d2f', color: '#fff', textTransform: 'uppercase', fontWeight: 700 }}>{h}</th>
                   ))}
                 </tr>
@@ -1778,6 +1788,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                         />
                       </div>
                     </td>
+                    <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>{calcularImporte(o)}</td>
                     <td style={td}>
                       <select value={o.anticipo} onChange={(e) => actualizar(o.id, 'anticipo', e.target.value)} style={selSm}>
                         {ANTICIPO_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
@@ -1786,7 +1797,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                   </tr>
                 ))}
                 {pendientesAnticipo.length === 0 && (
-                  <tr><td colSpan={8} style={{ ...td, textAlign: 'center', color: '#888' }}>No hay pedidos pendientes de anticipo 🎉</td></tr>
+                  <tr><td colSpan={9} style={{ ...td, textAlign: 'center', color: '#888' }}>No hay pedidos pendientes de anticipo 🎉</td></tr>
                 )}
               </tbody>
             </table>
