@@ -2140,20 +2140,23 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                       style={{ ...selSm, width: '100%', minWidth: 250, resize: 'vertical', fontFamily: 'inherit' }}
                     />
                   </td>
-                  <td style={{ ...td, minWidth: 190, ...bgCelda }}>
-                    <input
-                      defaultValue={o.tela || ''}
-                      onBlur={(e) => { actualizar(o.id, 'tela', e.target.value || null); buscarCodTela(o, e.target.value); }}
-                      disabled={!puede(o, 'tela')}
-                      style={{ ...selSm, width: '100%', minWidth: 180, marginBottom: 3 }}
-                    />
-                    <input
-                      defaultValue={o.color || ''}
-                      onBlur={(e) => actualizar(o.id, 'color', e.target.value || null)}
-                      disabled={!puede(o, 'tela')}
-                      placeholder="Color"
-                      style={{ ...selSm, width: '100%', minWidth: 180, fontSize: 10, color: '#666' }}
-                    />
+                  <td style={{ ...td, minWidth: 240, ...bgCelda }}>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <input
+                        defaultValue={o.tela || ''}
+                        onBlur={(e) => { actualizar(o.id, 'tela', e.target.value || null); buscarCodTela(o, e.target.value); }}
+                        disabled={!puede(o, 'tela')}
+                        placeholder="Tela"
+                        style={{ ...selSm, flex: 2, minWidth: 110 }}
+                      />
+                      <input
+                        defaultValue={o.color || ''}
+                        onBlur={(e) => actualizar(o.id, 'color', e.target.value || null)}
+                        disabled={!puede(o, 'tela')}
+                        placeholder="Color"
+                        style={{ ...selSm, flex: 1, minWidth: 70 }}
+                      />
+                    </div>
                   </td>
                   <td style={{ ...td, width: 70, fontFamily: 'monospace', color: '#000', fontWeight: 700, fontSize: 12, ...bgCelda }}>{o.cod_tela || '—'}</td>
                   <td style={{ ...td, width: 95, ...bgCelda }}>
