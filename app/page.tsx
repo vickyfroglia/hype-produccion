@@ -1565,6 +1565,22 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
 
   const pendientesAnticipo = ordenes.filter((o) => o.anticipo === 'PENDIENTE');
 
+  // Descripción consolidada de la tela para la tabla de Administración.
+  // Si es tela HYPE (el nombre arranca con "HYPE", como siempre se cargan
+  // desde el catálogo TELAS_HYPE_TH), se muestra directo la descripción
+  // tal cual — ej. "HYPE BULL" — sin color, porque la tela HYPE no tiene
+  // variantes de color. Si es tela cliente, se muestra "TELA CLIENTE -
+  // {tela} - {color}" (sin color si no hay).
+  function descripcionTelaConsolidada(o: OrdenDirecta): string {
+    const tela = (o.tela || '').trim();
+    if (!tela) return '—';
+    const esHype = /^hype\b/i.test(tela);
+    if (esHype) return tela.toUpperCase();
+    const partes = ['TELA CLIENTE', tela.toUpperCase()];
+    if (o.color) partes.push(o.color.toUpperCase());
+    return partes.join(' - ');
+  }
+
   // Agrupa los renglones (diseños) por nro_ot. Una OT se considera
   // "terminada" recién cuando TODOS sus diseños tienen Fecha fin cargada
   // (no alcanza con que uno solo la tenga). Se descartan las que ya se
@@ -1725,7 +1741,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
             <table className="adm-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['OT', 'Cliente', 'Diseño', 'Mts Ped', 'Anticipo'].map((h) => (
+                  {['OT', 'Cliente', 'Diseño', 'Observaciones', 'Mts Ped', 'Tela', 'Anticipo'].map((h) => (
                     <th key={h} style={{ ...th, background: '#e85d2f', color: '#fff', textTransform: 'uppercase', fontWeight: 700 }}>{h}</th>
                   ))}
                 </tr>
@@ -1736,7 +1752,9 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                     <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
                     <td style={td}>{o.cliente}</td>
                     <td style={td}>{o.diseno}</td>
+                    <td style={td}>{o.observaciones || '—'}</td>
                     <td style={td}>{o.mts_pedidos}</td>
+                    <td style={td}>{descripcionTelaConsolidada(o)}</td>
                     <td style={td}>
                       <select value={o.anticipo} onChange={(e) => actualizar(o.id, 'anticipo', e.target.value)} style={selSm}>
                         {ANTICIPO_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
@@ -1745,7 +1763,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                   </tr>
                 ))}
                 {pendientesAnticipo.length === 0 && (
-                  <tr><td colSpan={5} style={{ ...td, textAlign: 'center', color: '#888' }}>No hay pedidos pendientes de anticipo 🎉</td></tr>
+                  <tr><td colSpan={7} style={{ ...td, textAlign: 'center', color: '#888' }}>No hay pedidos pendientes de anticipo 🎉</td></tr>
                 )}
               </tbody>
             </table>
