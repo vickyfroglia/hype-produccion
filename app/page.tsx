@@ -1599,7 +1599,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
     const precio = Number((o.precio_mt || '').replace(/\D/g, '')) || 0;
     if (!precio) return '—';
     const importe = Math.round((o.mts_pedidos || 0) * precio);
-    return '$' + String(importe).padStart(10, '0');
+    return '$' + importe.toLocaleString('es-AR');
   }
 
   // Agrupa los renglones (diseños) por nro_ot. Una OT se considera
@@ -1780,7 +1780,7 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
                         <span style={{ fontWeight: 700 }}>$</span>
                         <input
-                          defaultValue={(o.precio_mt || '').replace(/\D/g, '')}
+                          defaultValue={Number((o.precio_mt || '').replace(/\D/g, '')) || ''}
                           onBlur={(e) => actualizar(o.id, 'precio_mt', formatearPrecioMtSeisDigitos(e.target.value))}
                           placeholder="000000"
                           inputMode="numeric"
