@@ -61,6 +61,7 @@ export interface OrdenDirecta {
   cod_tela: string | null;
   color: string | null;
   precio_mt: string | null;
+  descuento_pct: number | null;
   aprob: string;
   post: boolean;
 
