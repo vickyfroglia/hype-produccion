@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { supabase, fetchAll, stockPorCliente, stockTH, StockDisponible } from '../lib/supabaseClient';
 import Login from './login';
 import {
@@ -1596,11 +1596,29 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
   // se recalcula siempre a partir de esos dos campos). Si todavía no se
   // cargó el precio, no hay nada para calcular.
   function calcularImporte(o: OrdenDirecta): string {
-    const precio = Number((o.precio_mt || '').replace(/\D/g, '')) || 0;
-    if (!precio) return '—';
-    const importe = Math.round((o.mts_pedidos || 0) * precio);
+    const importe = calcularImporteNumero(o);
+    if (!importe) return '—';
     return '$' + importe.toLocaleString('es-AR');
   }
+
+  function calcularImporteNumero(o: OrdenDirecta): number {
+    const precio = Number((o.precio_mt || '').replace(/\D/g, '')) || 0;
+    if (!precio) return 0;
+    return Math.round((o.mts_pedidos || 0) * precio);
+  }
+
+  // Agrupa las líneas de "Pendientes de anticipo" por Nro OT, para poder
+  // mostrar un renglón de Subtotal (suma de los Importe de esa OT) al
+  // final de cada grupo — una OT puede tener varios diseños/líneas.
+  const gruposPendientesPorOt = (() => {
+    const mapa = new Map<string, OrdenDirecta[]>();
+    pendientesAnticipo.forEach((o) => {
+      const arr = mapa.get(o.nro_ot) || [];
+      arr.push(o);
+      mapa.set(o.nro_ot, arr);
+    });
+    return Array.from(mapa.values());
+  })();
 
   // Agrupa los renglones (diseños) por nro_ot. Una OT se considera
   // "terminada" recién cuando TODOS sus diseños tienen Fecha fin cargada
@@ -1768,33 +1786,46 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                 </tr>
               </thead>
               <tbody>
-                {pendientesAnticipo.map((o) => (
-                  <tr key={o.id} style={{ background: '#fef3f3' }}>
-                    <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
-                    <td style={td}>{o.cliente}</td>
-                    <td style={td}>{o.diseno}</td>
-                    <td style={td}>{o.observaciones || '—'}</td>
-                    <td style={td}>{o.mts_pedidos}</td>
-                    <td style={td}>{descripcionTelaConsolidada(o)}</td>
-                    <td style={td}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                        <span style={{ fontWeight: 700 }}>$</span>
-                        <input
-                          defaultValue={Number((o.precio_mt || '').replace(/\D/g, '')) || ''}
-                          onBlur={(e) => actualizar(o.id, 'precio_mt', formatearPrecioMtSeisDigitos(e.target.value))}
-                          placeholder="000000"
-                          inputMode="numeric"
-                          style={{ ...selSm, width: 80, textAlign: 'center' }}
-                        />
-                      </div>
-                    </td>
-                    <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>{calcularImporte(o)}</td>
-                    <td style={td}>
-                      <select value={o.anticipo} onChange={(e) => actualizar(o.id, 'anticipo', e.target.value)} style={selSm}>
-                        {ANTICIPO_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
-                      </select>
-                    </td>
-                  </tr>
+                {gruposPendientesPorOt.map((grupo) => (
+                  <Fragment key={grupo[0].nro_ot}>
+                    {grupo.map((o) => (
+                      <tr key={o.id} style={{ background: '#fef3f3' }}>
+                        <td style={{ ...td, fontFamily: 'monospace', color: '#e85d2f' }}>{o.nro_ot}</td>
+                        <td style={td}>{o.cliente}</td>
+                        <td style={td}>{o.diseno}</td>
+                        <td style={td}>{o.observaciones || '—'}</td>
+                        <td style={td}>{o.mts_pedidos}</td>
+                        <td style={td}>{descripcionTelaConsolidada(o)}</td>
+                        <td style={td}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                            <span style={{ fontWeight: 700 }}>$</span>
+                            <input
+                              defaultValue={Number((o.precio_mt || '').replace(/\D/g, '')) || ''}
+                              onBlur={(e) => actualizar(o.id, 'precio_mt', formatearPrecioMtSeisDigitos(e.target.value))}
+                              placeholder="000000"
+                              inputMode="numeric"
+                              style={{ ...selSm, width: 80, textAlign: 'center' }}
+                            />
+                          </div>
+                        </td>
+                        <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>{calcularImporte(o)}</td>
+                        <td style={td}>
+                          <select value={o.anticipo} onChange={(e) => actualizar(o.id, 'anticipo', e.target.value)} style={selSm}>
+                            {ANTICIPO_OPCIONES.map((a) => <option key={a} value={a}>{a}</option>)}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                    <tr style={{ background: '#fde3d3' }}>
+                      <td colSpan={7} style={{ ...td, textAlign: 'right', fontWeight: 700, textTransform: 'uppercase' }}>
+                        Subtotal OT {grupo[0].nro_ot}
+                      </td>
+                      <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>
+                        ${grupo.reduce((acc, o) => acc + calcularImporteNumero(o), 0).toLocaleString('es-AR')}
+                      </td>
+                      <td style={td}></td>
+                    </tr>
+                  </Fragment>
                 ))}
                 {pendientesAnticipo.length === 0 && (
                   <tr><td colSpan={9} style={{ ...td, textAlign: 'center', color: '#888' }}>No hay pedidos pendientes de anticipo 🎉</td></tr>
