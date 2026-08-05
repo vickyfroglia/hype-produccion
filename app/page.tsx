@@ -1556,6 +1556,25 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
 // ---------------------------------------------------------------------------
 // Panel Administración: anticipo, entregar, tipo rto
 // ---------------------------------------------------------------------------
+// Layout fijo (label + control) para las filas de Subtotal/Descuento/
+// Impuesto o cargo/Envío/Total: dos columnas de ancho fijo, así el texto
+// de la etiqueta arranca siempre en la misma posición sin importar cuánto
+// mida el control de al lado (input, select, etc.) — quedan alineadas.
+const filaResumenFila: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '90px 190px',
+  gap: 8,
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+  marginLeft: 'auto',
+};
+const filaResumenLabel: React.CSSProperties = {
+  textAlign: 'left',
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  fontSize: 12,
+};
+
 function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio: () => void }) {
   async function actualizar(id: number, campo: string, valor: any) {
     const { error } = await supabase.from('ordenes_directa').update({ [campo]: valor }).eq('id', id);
@@ -1862,8 +1881,11 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                       </tr>
                     ))}
                     <tr style={{ background: '#fde3d3' }}>
-                      <td colSpan={7} style={{ ...td, textAlign: 'right', fontWeight: 700, textTransform: 'uppercase' }}>
-                        Subtotal OT {grupo[0].nro_ot}
+                      <td colSpan={7} style={{ ...td, textAlign: 'right' }}>
+                        <div style={filaResumenFila}>
+                          <span style={filaResumenLabel}>Subtotal</span>
+                          <span></span>
+                        </div>
                       </td>
                       <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>
                         ${grupo.reduce((acc, o) => acc + calcularImporteNumero(o), 0).toLocaleString('es-AR')}
@@ -1871,20 +1893,22 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                       <td style={td}></td>
                     </tr>
                     <tr style={{ background: '#fde3d3' }}>
-                      <td colSpan={7} style={{ ...td, textAlign: 'right', fontWeight: 700, textTransform: 'uppercase' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
-                          <span>Descuento</span>
-                          <input
-                            defaultValue={grupo[0].descuento_pct ?? ''}
-                            onBlur={(e) => {
-                              const val = e.target.value.trim();
-                              actualizarDescuentoOt(grupo[0].nro_ot, val ? Number(val) : null);
-                            }}
-                            placeholder="0"
-                            inputMode="decimal"
-                            style={{ ...selSm, width: 55, textAlign: 'center' }}
-                          />
-                          <span>%</span>
+                      <td colSpan={7} style={{ ...td, textAlign: 'right' }}>
+                        <div style={filaResumenFila}>
+                          <span style={filaResumenLabel}>Desc.</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <input
+                              defaultValue={grupo[0].descuento_pct ?? ''}
+                              onBlur={(e) => {
+                                const val = e.target.value.trim();
+                                actualizarDescuentoOt(grupo[0].nro_ot, val ? Number(val) : null);
+                              }}
+                              placeholder="0"
+                              inputMode="decimal"
+                              style={{ ...selSm, width: 55, textAlign: 'center' }}
+                            />
+                            <span>%</span>
+                          </div>
                         </div>
                       </td>
                       <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700, color: '#c00' }}>
@@ -1899,9 +1923,9 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                       <td style={td}></td>
                     </tr>
                     <tr style={{ background: '#fde3d3' }}>
-                      <td colSpan={7} style={{ ...td, textAlign: 'right', fontWeight: 700, textTransform: 'uppercase' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
-                          <span>Impuesto o cargo</span>
+                      <td colSpan={7} style={{ ...td, textAlign: 'right' }}>
+                        <div style={filaResumenFila}>
+                          <span style={{ ...filaResumenLabel, lineHeight: 1.1 }}>Imp.<br />o Cargo</span>
                           <select
                             value={grupo[0].forma_pago || ''}
                             onChange={(e) => actualizarFormaPagoOt(grupo[0].nro_ot, e.target.value)}
@@ -1928,20 +1952,22 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                       <td style={td}></td>
                     </tr>
                     <tr style={{ background: '#fde3d3' }}>
-                      <td colSpan={7} style={{ ...td, textAlign: 'right', fontWeight: 700, textTransform: 'uppercase' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-                          <span>Envío</span>
-                          <span style={{ fontWeight: 700 }}>$</span>
-                          <input
-                            defaultValue={grupo[0].envio ?? ''}
-                            onBlur={(e) => {
-                              const val = e.target.value.trim();
-                              actualizarEnvioOt(grupo[0].nro_ot, val ? Number(val) : null);
-                            }}
-                            placeholder="0"
-                            inputMode="numeric"
-                            style={{ ...selSm, width: 90, textAlign: 'center' }}
-                          />
+                      <td colSpan={7} style={{ ...td, textAlign: 'right' }}>
+                        <div style={filaResumenFila}>
+                          <span style={filaResumenLabel}>Envío</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontWeight: 700 }}>$</span>
+                            <input
+                              defaultValue={grupo[0].envio ?? ''}
+                              onBlur={(e) => {
+                                const val = e.target.value.trim();
+                                actualizarEnvioOt(grupo[0].nro_ot, val ? Number(val) : null);
+                              }}
+                              placeholder="0"
+                              inputMode="numeric"
+                              style={{ ...selSm, width: 90, textAlign: 'center' }}
+                            />
+                          </div>
                         </div>
                       </td>
                       <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>
@@ -1950,8 +1976,11 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                       <td style={td}></td>
                     </tr>
                     <tr style={{ background: '#e85d2f' }}>
-                      <td colSpan={7} style={{ ...td, textAlign: 'right', fontWeight: 700, textTransform: 'uppercase', color: '#fff' }}>
-                        Total OT {grupo[0].nro_ot}
+                      <td colSpan={7} style={{ ...td, textAlign: 'right' }}>
+                        <div style={filaResumenFila}>
+                          <span style={{ ...filaResumenLabel, color: '#fff' }}>Total</span>
+                          <span></span>
+                        </div>
                       </td>
                       <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700, color: '#fff', fontSize: 14 }}>
                         ${calcularTotalOt(grupo).toLocaleString('es-AR')}
