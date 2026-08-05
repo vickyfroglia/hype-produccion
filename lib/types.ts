@@ -98,6 +98,29 @@ export interface OrdenDirecta {
   updated_at: string;
 }
 
+// Anticipos que un cliente paga sin (necesariamente) comprometer una OT
+// puntual de Producción. Se gestionan aparte, en su propia tabla, con el
+// mismo formato de Subtotal/Descuento/Impuesto o cargo/Total que se usa
+// en Administración para las OT.
+export interface AnticipoSuelto {
+  id: number;
+  fecha: string;
+  cliente: string;
+  compromete_tela_th: boolean;
+  compromete_ot: boolean;
+  nro_ot_relacionado: string | null;
+  servicio_estampa: boolean;
+  cant_mts: number | null;
+  precio_mt: string | null;
+  descuento_pct: number | null;
+  forma_pago: string | null;
+  forma_pago_manual: string | null;
+  estado_anticipo: string;
+  observaciones: string | null;
+  creado_por: string | null;
+  created_at: string;
+}
+
 // Muestras: tabla independiente de ordenes_directa. No se cargan desde
 // Ingreso y Modif Pedidos — se agregan directamente en la solapa Muestras,
 // fila por fila (mismo patrón manual que Reporte diario). Mismas columnas

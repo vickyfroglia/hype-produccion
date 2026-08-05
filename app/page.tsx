@@ -23,6 +23,7 @@ import {
   Muestra,
   EventoMuestra,
   EventoRollo,
+  AnticipoSuelto,
   faltaParaProducir,
   calcularPrioridad,
   formatFecha,
@@ -77,6 +78,7 @@ export default function Home() {
   const [rollosReporte, setRollosReporte] = useState<RolloReporte[]>([]);
   const [ingresosStock, setIngresosStock] = useState<any[]>([]);
   const [egresosStock, setEgresosStock] = useState<any[]>([]);
+  const [anticiposSueltos, setAnticiposSueltos] = useState<AnticipoSuelto[]>([]);
   const [loading, setLoading] = useState(true);
   const [logueado, setLogueado] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -105,7 +107,7 @@ export default function Home() {
   // hacía que el scroll volviera arriba de todo cada vez que se tocaba algo.
   async function cargarTodo(mostrarLoading = false) {
     if (mostrarLoading) setLoading(true);
-    const [ords, evts, evtsMuestras, evtsReporte, muestrasData, rollos, ingresos, egresos] = await Promise.all([
+    const [ords, evts, evtsMuestras, evtsReporte, muestrasData, rollos, ingresos, egresos, anticipos] = await Promise.all([
       fetchAll('ordenes_directa', 'created_at'),
       fetchAll('ordenes_directa_eventos', 'created_at'),
       fetchAll('muestras_eventos', 'created_at'),
@@ -114,6 +116,7 @@ export default function Home() {
       fetchAll('reporte_rollos', 'created_at'),
       fetchStockTabla('ingresos'),
       fetchStockTabla('egresos'),
+      fetchAll('anticipos_sueltos', 'created_at'),
     ]);
     setOrdenes(ords);
     setEventos(evts);
@@ -123,6 +126,7 @@ export default function Home() {
     setRollosReporte(rollos);
     setIngresosStock(ingresos);
     setEgresosStock(egresos);
+    setAnticiposSueltos(anticipos);
     if (mostrarLoading) setLoading(false);
   }
 
@@ -211,7 +215,7 @@ export default function Home() {
             {pagina === 'muestras' && <VistaMuestras rol={rol} nombreUsuario={nombreUsuario} />}
             {pagina === 'reporte' && <PanelReporteDiario ordenes={ordenes} rol={rol} />}
             {pagina === 'diseno' && <PanelDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
-            {pagina === 'administracion' && <PanelAdministracion ordenes={ordenes} onCambio={cargarTodo} />}
+            {pagina === 'administracion' && <PanelAdministracion ordenes={ordenes} anticiposSueltos={anticiposSueltos} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
             {pagina === 'historial' && <Historial eventos={eventos} eventosMuestras={eventosMuestras} eventosReporte={eventosReporte} ordenes={ordenes} />}
           </>
         )}
@@ -1575,7 +1579,275 @@ const filaResumenLabel: React.CSSProperties = {
   fontSize: 12,
 };
 
-function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio: () => void }) {
+// % de recargo según la forma de pago elegida. Sin cargo no suma nada;
+// Cuenta Recaudadora +3,5%; IVA +21%.
+function porcentajeRecargo(formaPago: string | null): number {
+  if (formaPago === 'CUENTA RECAUDADORA') return 3.5;
+  if (formaPago === 'IVA') return 21;
+  return 0;
+}
+
+// Formatea un número con "000000" (6 dígitos, sin signo $), completando
+// con ceros a la izquierda. Se usa para Cant. Mts en el form de Anticipo
+// suelto, tal como se pidió.
+function formatearSeisDigitosSinSigno(valor: string): number | null {
+  const soloDigitos = (valor || '').replace(/\D/g, '');
+  if (!soloDigitos) return null;
+  return Number(soloDigitos.slice(0, 6));
+}
+
+// Igual que formatearPrecioMtSeisDigitos (definida dentro de
+// PanelAdministracion): guarda "$" + 6 dígitos con ceros a la izquierda.
+// Va a nivel de módulo porque PanelAnticiposSueltos también la necesita.
+function formatearPrecioMtSeisDigitosGlobal(valor: string): string | null {
+  const soloDigitos = (valor || '').replace(/\D/g, '');
+  if (!soloDigitos) return null;
+  return '$' + soloDigitos.slice(0, 6).padStart(6, '0');
+}
+
+// ---------------------------------------------------------------------------
+// Anticipos sueltos: se registran cuando un cliente paga un anticipo sin
+// (necesariamente) comprometer todavía una OT puntual de Producción. Viven
+// en su propia tabla, con el mismo formato de Subtotal/Descuento/Impuesto
+// o cargo/Total que las OT de Administración.
+// ---------------------------------------------------------------------------
+function PanelAnticiposSueltos({
+  anticiposSueltos,
+  nombreUsuario,
+  onCambio,
+}: {
+  anticiposSueltos: AnticipoSuelto[];
+  nombreUsuario: string;
+  onCambio: () => void;
+}) {
+  const [mostrarForm, setMostrarForm] = useState(false);
+  const vacio = {
+    fecha: new Date().toISOString().split('T')[0],
+    cliente: '',
+    compromete_tela_th: false,
+    compromete_ot: false,
+    nro_ot_relacionado: '',
+    servicio_estampa: false,
+    cant_mts: '',
+    precio_mt: '',
+    observaciones: '',
+  };
+  const [form, setForm] = useState(vacio);
+  const [guardando, setGuardando] = useState(false);
+
+  async function guardar() {
+    if (!form.cliente.trim()) { alert('Completá el cliente.'); return; }
+    setGuardando(true);
+    const { error } = await supabase.from('anticipos_sueltos').insert([{
+      fecha: form.fecha,
+      cliente: form.cliente.trim(),
+      compromete_tela_th: form.compromete_tela_th,
+      compromete_ot: form.compromete_ot,
+      nro_ot_relacionado: form.compromete_ot ? form.nro_ot_relacionado.trim() || null : null,
+      servicio_estampa: form.servicio_estampa,
+      cant_mts: formatearSeisDigitosSinSigno(form.cant_mts),
+      precio_mt: formatearPrecioMtSeisDigitosGlobal(form.precio_mt),
+      observaciones: form.observaciones.trim() || null,
+      estado_anticipo: 'PENDIENTE',
+      creado_por: nombreUsuario || null,
+    }]);
+    setGuardando(false);
+    if (error) { alert('Error al guardar: ' + error.message); return; }
+    setForm(vacio);
+    setMostrarForm(false);
+    onCambio();
+  }
+
+  async function actualizarAnticipo(id: number, campo: string, valor: any) {
+    const { error } = await supabase.from('anticipos_sueltos').update({ [campo]: valor }).eq('id', id);
+    if (error) alert('Error: ' + error.message);
+    else onCambio();
+  }
+
+  async function eliminarAnticipo(a: AnticipoSuelto) {
+    if (!confirm(`¿Eliminar el anticipo de "${a.cliente}" del ${formatFecha(a.fecha)}?`)) return;
+    const { error } = await supabase.from('anticipos_sueltos').delete().eq('id', a.id);
+    if (error) alert('Error: ' + error.message);
+    else onCambio();
+  }
+
+  function calcularSubtotal(a: AnticipoSuelto): number {
+    const mts = Number(a.cant_mts) || 0;
+    const precio = Number((a.precio_mt || '').replace(/\D/g, '')) || 0;
+    return Math.round(mts * precio);
+  }
+  function calcularDescuentoMonto(a: AnticipoSuelto): number {
+    const subtotal = calcularSubtotal(a);
+    const pct = a.descuento_pct || 0;
+    return Math.round((subtotal * pct) / 100);
+  }
+  function calcularRecargoMonto(a: AnticipoSuelto): number {
+    const base = calcularSubtotal(a) - calcularDescuentoMonto(a);
+    const pct = porcentajeRecargo(a.forma_pago);
+    return Math.round((base * pct) / 100);
+  }
+  function calcularTotalAnticipo(a: AnticipoSuelto): number {
+    return calcularSubtotal(a) - calcularDescuentoMonto(a) + calcularRecargoMonto(a);
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, textTransform: 'uppercase', color: '#1a7a4c' }}>
+          Anticipos sin OT ({anticiposSueltos.length})
+        </div>
+        <button onClick={() => setMostrarForm((v) => !v)} style={{ ...btn, background: '#1a7a4c', color: '#fff', border: '1px solid #1a7a4c' }}>
+          {mostrarForm ? 'Cancelar' : '+ Nuevo anticipo'}
+        </button>
+      </div>
+      <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>
+        Para cuando un cliente paga un anticipo sin comprometer todavía ninguna OT puntual.
+      </div>
+
+      {mostrarForm && (
+        <div style={{ ...card, border: '1px solid #bfe3cd', marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={lbl}>Fecha</label>
+              <input type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Cliente</label>
+              <input value={form.cliente} onChange={(e) => setForm({ ...form, cliente: e.target.value })} style={inp} placeholder="Nombre del cliente" />
+            </div>
+            <div>
+              <label style={lbl}>¿Compromete tela HYPE (TH)?</label>
+              <select value={form.compromete_tela_th ? 'SI' : 'NO'} onChange={(e) => setForm({ ...form, compromete_tela_th: e.target.value === 'SI' })} style={inp}>
+                <option value="NO">No</option>
+                <option value="SI">Sí</option>
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>¿Compromete un Nro de OT?</label>
+              <select value={form.compromete_ot ? 'SI' : 'NO'} onChange={(e) => setForm({ ...form, compromete_ot: e.target.value === 'SI' })} style={inp}>
+                <option value="NO">No</option>
+                <option value="SI">Sí</option>
+              </select>
+            </div>
+            {form.compromete_ot && (
+              <div>
+                <label style={lbl}>¿A qué Nro de OT responde?</label>
+                <input value={form.nro_ot_relacionado} onChange={(e) => setForm({ ...form, nro_ot_relacionado: e.target.value })} style={inp} placeholder="Nro OT" />
+              </div>
+            )}
+            <div>
+              <label style={lbl}>Servicio de estampa</label>
+              <select value={form.servicio_estampa ? 'SI' : 'NO'} onChange={(e) => setForm({ ...form, servicio_estampa: e.target.value === 'SI' })} style={inp}>
+                <option value="NO">No</option>
+                <option value="SI">Sí</option>
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>Cant. Mts</label>
+              <input value={form.cant_mts} onChange={(e) => setForm({ ...form, cant_mts: e.target.value.replace(/\D/g, '') })} style={inp} placeholder="000000" inputMode="numeric" />
+            </div>
+            <div>
+              <label style={lbl}>Precio x Mt Lineal</label>
+              <input value={form.precio_mt} onChange={(e) => setForm({ ...form, precio_mt: e.target.value.replace(/\D/g, '') })} style={inp} placeholder="$000000" inputMode="numeric" />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={lbl}>Observaciones</label>
+              <input value={form.observaciones} onChange={(e) => setForm({ ...form, observaciones: e.target.value })} style={inp} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button onClick={guardar} disabled={guardando} style={{ ...btn, background: '#1a7a4c', color: '#fff', border: '1px solid #1a7a4c' }}>
+              {guardando ? 'Guardando...' : 'Guardar anticipo'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {anticiposSueltos.length > 0 && (
+        <div style={{ ...card, padding: 0, overflow: 'hidden', border: '1px solid #bfe3cd', marginBottom: 32 }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="adm-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['Fecha', 'Cliente', 'TH', 'Nro OT', 'Estampa', 'Cant Mts', '$ x Mt', 'Subtotal', 'Desc.', 'Imp. o Cargo', 'Forma de pago', 'Total', 'Estado', ''].map((h) => (
+                    <th key={h} style={{ ...th, background: '#1a7a4c', color: '#fff', textTransform: 'uppercase', fontWeight: 700 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {anticiposSueltos.map((a) => (
+                  <tr key={a.id} style={{ background: '#f2faf5' }}>
+                    <td style={td}>{formatFecha(a.fecha)}</td>
+                    <td style={td}>{a.cliente}</td>
+                    <td style={td}>{a.compromete_tela_th ? 'Sí' : 'No'}</td>
+                    <td style={{ ...td, fontFamily: 'monospace' }}>{a.compromete_ot ? (a.nro_ot_relacionado || '—') : '—'}</td>
+                    <td style={td}>{a.servicio_estampa ? 'Sí' : 'No'}</td>
+                    <td style={td}>{a.cant_mts ?? '—'}</td>
+                    <td style={td}>{a.precio_mt ? '$' + Number(a.precio_mt.replace(/\D/g, '')).toLocaleString('es-AR') : '—'}</td>
+                    <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>${calcularSubtotal(a).toLocaleString('es-AR')}</td>
+                    <td style={td}>
+                      <input
+                        defaultValue={a.descuento_pct ?? ''}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim();
+                          actualizarAnticipo(a.id, 'descuento_pct', val ? Number(val) : null);
+                        }}
+                        placeholder="0%"
+                        inputMode="decimal"
+                        style={{ ...selSm, width: 50, textAlign: 'center' }}
+                      />
+                    </td>
+                    <td style={td}>
+                      <select
+                        value={a.forma_pago || ''}
+                        onChange={(e) => actualizarAnticipo(a.id, 'forma_pago', e.target.value || null)}
+                        style={selSm}
+                      >
+                        <option value="">Seleccionar</option>
+                        <option value="SIN CARGO">Sin cargo</option>
+                        <option value="CUENTA RECAUDADORA">Cta. Recaud. (+3,5%)</option>
+                        <option value="IVA">IVA (+21%)</option>
+                      </select>
+                    </td>
+                    <td style={td}>
+                      <input
+                        defaultValue={a.forma_pago_manual || ''}
+                        onBlur={(e) => actualizarAnticipo(a.id, 'forma_pago_manual', e.target.value || null)}
+                        placeholder="Lo negociado con el cliente"
+                        style={{ ...selSm, width: 150 }}
+                      />
+                    </td>
+                    <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>${calcularTotalAnticipo(a).toLocaleString('es-AR')}</td>
+                    <td style={td}>
+                      <select value={a.estado_anticipo} onChange={(e) => actualizarAnticipo(a.id, 'estado_anticipo', e.target.value)} style={selSm}>
+                        {ANTICIPO_OPCIONES.map((op) => <option key={op} value={op}>{op}</option>)}
+                      </select>
+                    </td>
+                    <td style={td}>
+                      <button onClick={() => eliminarAnticipo(a)} style={{ ...btn, padding: '4px 8px', fontSize: 11, color: '#c00', borderColor: '#c00' }}>✕</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PanelAdministracion({
+  ordenes,
+  anticiposSueltos,
+  nombreUsuario,
+  onCambio,
+}: {
+  ordenes: OrdenDirecta[];
+  anticiposSueltos: AnticipoSuelto[];
+  nombreUsuario: string;
+  onCambio: () => void;
+}) {
   async function actualizar(id: number, campo: string, valor: any) {
     const { error } = await supabase.from('ordenes_directa').update({ [campo]: valor }).eq('id', id);
     if (error) alert('Error: ' + error.message);
@@ -1601,12 +1873,6 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
   // % de recargo según la forma de pago elegida. Sin cargo no suma nada;
   // Cuenta Recaudadora +3,5%; IVA +21%. Se aplica sobre el subtotal ya
   // con el descuento restado (primero descuento, después recargo).
-  function porcentajeRecargo(formaPago: string | null): number {
-    if (formaPago === 'CUENTA RECAUDADORA') return 3.5;
-    if (formaPago === 'IVA') return 21;
-    return 0;
-  }
-
   // Envío: monto fijo en pesos, cargado a mano por OT (no es un %).
   async function actualizarEnvioOt(nroOt: string, monto: number | null) {
     const { error } = await supabase.from('ordenes_directa').update({ envio: monto }).eq('nro_ot', nroOt);
@@ -1849,7 +2115,9 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
         .adm-grid th, .adm-grid td { border: 1px solid #ddd !important; text-align: center !important; }
       `}</style>
 
-      <div>
+      <PanelAnticiposSueltos anticiposSueltos={anticiposSueltos} nombreUsuario={nombreUsuario} onCambio={onCambio} />
+
+      <div style={{ marginTop: 32 }}>
         <div style={{ fontSize: 15, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4, color: '#e85d2f' }}>
           Pendientes de anticipo ({pendientesAnticipo.length})
         </div>
