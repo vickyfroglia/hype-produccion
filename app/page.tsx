@@ -1595,6 +1595,19 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
     else onCambio();
   }
 
+  // Total = Subtotal - Descuento + Impuesto o cargo + Envío. El orden es
+  // primero descontar, después recargar (recargo calculado ya sobre el
+  // subtotal con el descuento restado), y por último sumar el envío.
+  function calcularTotalOt(grupo: OrdenDirecta[]): number {
+    const subtotal = grupo.reduce((acc, o) => acc + calcularImporteNumero(o), 0);
+    const descuentoPct = grupo[0].descuento_pct || 0;
+    const baseConDescuento = subtotal - Math.round((subtotal * descuentoPct) / 100);
+    const recargoPct = porcentajeRecargo(grupo[0].forma_pago);
+    const recargoMonto = Math.round((baseConDescuento * recargoPct) / 100);
+    const envio = Number(grupo[0].envio) || 0;
+    return baseConDescuento + recargoMonto + envio;
+  }
+
   // Orden fijo por id (más viejo primero), para que la fila de un pedido
   // no cambie de lugar cada vez que se edita algo y se refresca la lista.
   const pendientesAnticipo = ordenes.filter((o) => o.anticipo === 'PENDIENTE').sort((a, b) => a.id - b.id);
@@ -1933,6 +1946,15 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                       </td>
                       <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>
                         {grupo[0].envio ? `+$${Number(grupo[0].envio).toLocaleString('es-AR')}` : '—'}
+                      </td>
+                      <td style={td}></td>
+                    </tr>
+                    <tr style={{ background: '#e85d2f' }}>
+                      <td colSpan={7} style={{ ...td, textAlign: 'right', fontWeight: 700, textTransform: 'uppercase', color: '#fff' }}>
+                        Total OT {grupo[0].nro_ot}
+                      </td>
+                      <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700, color: '#fff', fontSize: 14 }}>
+                        ${calcularTotalOt(grupo).toLocaleString('es-AR')}
                       </td>
                       <td style={td}></td>
                     </tr>
