@@ -1910,6 +1910,36 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                     <tr style={{ background: '#fde3d3' }}>
                       <td colSpan={7} style={{ ...td, textAlign: 'right' }}>
                         <div style={filaResumenFila}>
+                          <span style={filaResumenLabel}>Desc.</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <input
+                              defaultValue={grupo[0].descuento_pct ?? ''}
+                              onBlur={(e) => {
+                                const val = e.target.value.trim();
+                                actualizarDescuentoOt(grupo[0].nro_ot, val ? Number(val) : null);
+                              }}
+                              placeholder="0"
+                              inputMode="decimal"
+                              style={{ ...selSm, width: 55, textAlign: 'center' }}
+                            />
+                            <span>%</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700, color: '#c00' }}>
+                        {(() => {
+                          const subtotal = grupo.reduce((acc, o) => acc + calcularImporteNumero(o), 0);
+                          const pct = grupo[0].descuento_pct || 0;
+                          if (!pct) return '—';
+                          const monto = Math.round((subtotal * pct) / 100);
+                          return `-$${monto.toLocaleString('es-AR')}`;
+                        })()}
+                      </td>
+                      <td style={td}></td>
+                    </tr>
+                    <tr style={{ background: '#fde3d3' }}>
+                      <td colSpan={7} style={{ ...td, textAlign: 'right' }}>
+                        <div style={filaResumenFila}>
                           <span style={filaResumenLabel}>Antic.</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <input
@@ -1940,36 +1970,6 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                           return `$${monto.toLocaleString('es-AR')}`;
                         })()}
                       </td>
-                    </tr>
-                    <tr style={{ background: '#fde3d3' }}>
-                      <td colSpan={7} style={{ ...td, textAlign: 'right' }}>
-                        <div style={filaResumenFila}>
-                          <span style={filaResumenLabel}>Desc.</span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <input
-                              defaultValue={grupo[0].descuento_pct ?? ''}
-                              onBlur={(e) => {
-                                const val = e.target.value.trim();
-                                actualizarDescuentoOt(grupo[0].nro_ot, val ? Number(val) : null);
-                              }}
-                              placeholder="0"
-                              inputMode="decimal"
-                              style={{ ...selSm, width: 55, textAlign: 'center' }}
-                            />
-                            <span>%</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700, color: '#c00' }}>
-                        {(() => {
-                          const subtotal = grupo.reduce((acc, o) => acc + calcularImporteNumero(o), 0);
-                          const pct = grupo[0].descuento_pct || 0;
-                          if (!pct) return '—';
-                          const monto = Math.round((subtotal * pct) / 100);
-                          return `-$${monto.toLocaleString('es-AR')}`;
-                        })()}
-                      </td>
-                      <td style={td}></td>
                     </tr>
                     <tr style={{ background: '#fde3d3' }}>
                       <td colSpan={7} style={{ ...td, textAlign: 'right' }}>
