@@ -1996,7 +1996,12 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                         {(() => {
                           const monto = calcularAnticipoMonto(grupo);
                           if (!monto) return '—';
-                          return `$${monto.toLocaleString('es-AR')}`;
+                          return (
+                            <>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: '#888', textTransform: 'uppercase' }}>Debe pagar:</div>
+                              <div>${monto.toLocaleString('es-AR')}</div>
+                            </>
+                          );
                         })()}
                       </td>
                     </tr>
