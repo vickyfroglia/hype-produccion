@@ -1588,6 +1588,13 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
     return 0;
   }
 
+  // Envío: monto fijo en pesos, cargado a mano por OT (no es un %).
+  async function actualizarEnvioOt(nroOt: string, monto: number | null) {
+    const { error } = await supabase.from('ordenes_directa').update({ envio: monto }).eq('nro_ot', nroOt);
+    if (error) alert('Error: ' + error.message);
+    else onCambio();
+  }
+
   // Orden fijo por id (más viejo primero), para que la fila de un pedido
   // no cambie de lugar cada vez que se edita algo y se refresca la lista.
   const pendientesAnticipo = ordenes.filter((o) => o.anticipo === 'PENDIENTE').sort((a, b) => a.id - b.id);
@@ -1904,6 +1911,28 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                           const monto = Math.round((baseConDescuento * recargoPct) / 100);
                           return `+$${monto.toLocaleString('es-AR')}`;
                         })()}
+                      </td>
+                      <td style={td}></td>
+                    </tr>
+                    <tr style={{ background: '#fde3d3' }}>
+                      <td colSpan={7} style={{ ...td, textAlign: 'right', fontWeight: 700, textTransform: 'uppercase' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                          <span>Envío</span>
+                          <span style={{ fontWeight: 700 }}>$</span>
+                          <input
+                            defaultValue={grupo[0].envio ?? ''}
+                            onBlur={(e) => {
+                              const val = e.target.value.trim();
+                              actualizarEnvioOt(grupo[0].nro_ot, val ? Number(val) : null);
+                            }}
+                            placeholder="0"
+                            inputMode="numeric"
+                            style={{ ...selSm, width: 90, textAlign: 'center' }}
+                          />
+                        </div>
+                      </td>
+                      <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>
+                        {grupo[0].envio ? `+$${Number(grupo[0].envio).toLocaleString('es-AR')}` : '—'}
                       </td>
                       <td style={td}></td>
                     </tr>
