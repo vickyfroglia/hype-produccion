@@ -1940,6 +1940,35 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                     <tr style={{ background: '#fde3d3' }}>
                       <td colSpan={7} style={{ ...td, textAlign: 'right' }}>
                         <div style={filaResumenFila}>
+                          <span style={{ ...filaResumenLabel, lineHeight: 1.1 }}>Imp.<br />o Cargo</span>
+                          <select
+                            value={grupo[0].forma_pago || ''}
+                            onChange={(e) => actualizarFormaPagoOt(grupo[0].nro_ot, e.target.value)}
+                            style={selSm}
+                          >
+                            <option value="">Seleccionar</option>
+                            <option value="SIN CARGO">Sin cargo</option>
+                            <option value="CUENTA RECAUDADORA">Cuenta Recaudadora (+3,5%)</option>
+                            <option value="IVA">IVA (+21%)</option>
+                          </select>
+                        </div>
+                      </td>
+                      <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>
+                        {(() => {
+                          const subtotal = grupo.reduce((acc, o) => acc + calcularImporteNumero(o), 0);
+                          const descuentoPct = grupo[0].descuento_pct || 0;
+                          const baseConDescuento = subtotal - Math.round((subtotal * descuentoPct) / 100);
+                          const recargoPct = porcentajeRecargo(grupo[0].forma_pago);
+                          if (!recargoPct) return '—';
+                          const monto = Math.round((baseConDescuento * recargoPct) / 100);
+                          return `+$${monto.toLocaleString('es-AR')}`;
+                        })()}
+                      </td>
+                      <td style={td}></td>
+                    </tr>
+                    <tr style={{ background: '#fde3d3' }}>
+                      <td colSpan={7} style={{ ...td, textAlign: 'right' }}>
+                        <div style={filaResumenFila}>
                           <span style={filaResumenLabel}>Antic.</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <input
@@ -1970,35 +1999,6 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                           return `$${monto.toLocaleString('es-AR')}`;
                         })()}
                       </td>
-                    </tr>
-                    <tr style={{ background: '#fde3d3' }}>
-                      <td colSpan={7} style={{ ...td, textAlign: 'right' }}>
-                        <div style={filaResumenFila}>
-                          <span style={{ ...filaResumenLabel, lineHeight: 1.1 }}>Imp.<br />o Cargo</span>
-                          <select
-                            value={grupo[0].forma_pago || ''}
-                            onChange={(e) => actualizarFormaPagoOt(grupo[0].nro_ot, e.target.value)}
-                            style={selSm}
-                          >
-                            <option value="">Seleccionar</option>
-                            <option value="SIN CARGO">Sin cargo</option>
-                            <option value="CUENTA RECAUDADORA">Cuenta Recaudadora (+3,5%)</option>
-                            <option value="IVA">IVA (+21%)</option>
-                          </select>
-                        </div>
-                      </td>
-                      <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>
-                        {(() => {
-                          const subtotal = grupo.reduce((acc, o) => acc + calcularImporteNumero(o), 0);
-                          const descuentoPct = grupo[0].descuento_pct || 0;
-                          const baseConDescuento = subtotal - Math.round((subtotal * descuentoPct) / 100);
-                          const recargoPct = porcentajeRecargo(grupo[0].forma_pago);
-                          if (!recargoPct) return '—';
-                          const monto = Math.round((baseConDescuento * recargoPct) / 100);
-                          return `+$${monto.toLocaleString('es-AR')}`;
-                        })()}
-                      </td>
-                      <td style={td}></td>
                     </tr>
                     <tr style={{ background: '#fde3d3' }}>
                       <td colSpan={7} style={{ ...td, textAlign: 'right' }}>
