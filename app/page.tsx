@@ -1572,6 +1572,22 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
     else onCambio();
   }
 
+  // Misma lógica que el descuento: la forma de pago es por OT completa.
+  async function actualizarFormaPagoOt(nroOt: string, valor: string) {
+    const { error } = await supabase.from('ordenes_directa').update({ forma_pago: valor || null }).eq('nro_ot', nroOt);
+    if (error) alert('Error: ' + error.message);
+    else onCambio();
+  }
+
+  // % de recargo según la forma de pago elegida. Sin cargo no suma nada;
+  // Cuenta Recaudadora +3,5%; IVA +21%. Se aplica sobre el subtotal ya
+  // con el descuento restado (primero descuento, después recargo).
+  function porcentajeRecargo(formaPago: string | null): number {
+    if (formaPago === 'CUENTA RECAUDADORA') return 3.5;
+    if (formaPago === 'IVA') return 21;
+    return 0;
+  }
+
   // Orden fijo por id (más viejo primero), para que la fila de un pedido
   // no cambie de lugar cada vez que se edita algo y se refresca la lista.
   const pendientesAnticipo = ordenes.filter((o) => o.anticipo === 'PENDIENTE').sort((a, b) => a.id - b.id);
@@ -1858,6 +1874,35 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                           if (!pct) return '—';
                           const monto = Math.round((subtotal * pct) / 100);
                           return `-$${monto.toLocaleString('es-AR')}`;
+                        })()}
+                      </td>
+                      <td style={td}></td>
+                    </tr>
+                    <tr style={{ background: '#fde3d3' }}>
+                      <td colSpan={7} style={{ ...td, textAlign: 'right', fontWeight: 700, textTransform: 'uppercase' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+                          <span>Impuesto o cargo</span>
+                          <select
+                            value={grupo[0].forma_pago || ''}
+                            onChange={(e) => actualizarFormaPagoOt(grupo[0].nro_ot, e.target.value)}
+                            style={selSm}
+                          >
+                            <option value="">Seleccionar</option>
+                            <option value="SIN CARGO">Sin cargo</option>
+                            <option value="CUENTA RECAUDADORA">Cuenta Recaudadora (+3,5%)</option>
+                            <option value="IVA">IVA (+21%)</option>
+                          </select>
+                        </div>
+                      </td>
+                      <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>
+                        {(() => {
+                          const subtotal = grupo.reduce((acc, o) => acc + calcularImporteNumero(o), 0);
+                          const descuentoPct = grupo[0].descuento_pct || 0;
+                          const baseConDescuento = subtotal - Math.round((subtotal * descuentoPct) / 100);
+                          const recargoPct = porcentajeRecargo(grupo[0].forma_pago);
+                          if (!recargoPct) return '—';
+                          const monto = Math.round((baseConDescuento * recargoPct) / 100);
+                          return `+$${monto.toLocaleString('es-AR')}`;
                         })()}
                       </td>
                       <td style={td}></td>

@@ -62,6 +62,7 @@ export interface OrdenDirecta {
   color: string | null;
   precio_mt: string | null;
   descuento_pct: number | null;
+  forma_pago: string | null;
   aprob: string;
   post: boolean;
 
