@@ -1614,9 +1614,23 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
     else onCambio();
   }
 
-  // Total = Subtotal - Descuento + Impuesto o cargo + Envío. El orden es
-  // primero descontar, después recargar (recargo calculado ya sobre el
-  // subtotal con el descuento restado), y por último sumar el envío.
+  // % de anticipo requerido, cargado a mano (mismo patrón que descuento).
+  async function actualizarAnticipoPctOt(nroOt: string, pct: number | null) {
+    const { error } = await supabase.from('ordenes_directa').update({ anticipo_pct: pct }).eq('nro_ot', nroOt);
+    if (error) alert('Error: ' + error.message);
+    else onCambio();
+  }
+
+  function calcularAnticipoMonto(grupo: OrdenDirecta[]): number {
+    const subtotal = grupo.reduce((acc, o) => acc + calcularImporteNumero(o), 0);
+    const pct = grupo[0].anticipo_pct || 0;
+    return Math.round((subtotal * pct) / 100);
+  }
+
+  // Total = Subtotal - Descuento + Impuesto o cargo + Envío - Anticipo (lo
+  // que ya se le pide de anticipo al cliente se resta, así el Total que
+  // queda es el saldo restante a cobrar). El recargo se calcula sobre el
+  // subtotal ya con el descuento restado (el anticipo no altera esa base).
   function calcularTotalOt(grupo: OrdenDirecta[]): number {
     const subtotal = grupo.reduce((acc, o) => acc + calcularImporteNumero(o), 0);
     const descuentoPct = grupo[0].descuento_pct || 0;
@@ -1624,7 +1638,8 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
     const recargoPct = porcentajeRecargo(grupo[0].forma_pago);
     const recargoMonto = Math.round((baseConDescuento * recargoPct) / 100);
     const envio = Number(grupo[0].envio) || 0;
-    return baseConDescuento + recargoMonto + envio;
+    const anticipoMonto = calcularAnticipoMonto(grupo);
+    return baseConDescuento + recargoMonto + envio - anticipoMonto;
   }
 
   // Orden fijo por id (más viejo primero), para que la fila de un pedido
@@ -1891,6 +1906,40 @@ function PanelAdministracion({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; o
                         ${grupo.reduce((acc, o) => acc + calcularImporteNumero(o), 0).toLocaleString('es-AR')}
                       </td>
                       <td style={td}></td>
+                    </tr>
+                    <tr style={{ background: '#fde3d3' }}>
+                      <td colSpan={7} style={{ ...td, textAlign: 'right' }}>
+                        <div style={filaResumenFila}>
+                          <span style={filaResumenLabel}>Antic.</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <input
+                              defaultValue={grupo[0].anticipo_pct ?? ''}
+                              onBlur={(e) => {
+                                const val = e.target.value.trim();
+                                actualizarAnticipoPctOt(grupo[0].nro_ot, val ? Number(val) : null);
+                              }}
+                              placeholder="0"
+                              inputMode="decimal"
+                              style={{ ...selSm, width: 55, textAlign: 'center' }}
+                            />
+                            <span>%</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700, color: '#c00' }}>
+                        {(() => {
+                          const monto = calcularAnticipoMonto(grupo);
+                          if (!monto) return '—';
+                          return `-$${monto.toLocaleString('es-AR')}`;
+                        })()}
+                      </td>
+                      <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>
+                        {(() => {
+                          const monto = calcularAnticipoMonto(grupo);
+                          if (!monto) return '—';
+                          return `$${monto.toLocaleString('es-AR')}`;
+                        })()}
+                      </td>
                     </tr>
                     <tr style={{ background: '#fde3d3' }}>
                       <td colSpan={7} style={{ ...td, textAlign: 'right' }}>

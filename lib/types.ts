@@ -64,6 +64,7 @@ export interface OrdenDirecta {
   descuento_pct: number | null;
   forma_pago: string | null;
   envio: number | null;
+  anticipo_pct: number | null;
   aprob: string;
   post: boolean;
 
