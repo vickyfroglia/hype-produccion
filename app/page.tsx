@@ -1635,6 +1635,13 @@ function PanelAnticiposSueltos({
   const [form, setForm] = useState(vacio);
   const [guardando, setGuardando] = useState(false);
 
+  // Autocompletar Cliente desde la tabla `clientes` (misma base que usa la
+  // app de Stock — un solo Supabase compartido entre las dos apps).
+  const [clientesStockAnticipo, setClientesStockAnticipo] = useState<string[]>([]);
+  useEffect(() => {
+    fetchAll('clientes', 'nombre', true).then((data) => setClientesStockAnticipo(data.map((c: any) => c.nombre)));
+  }, []);
+
   async function guardar() {
     if (!form.cliente.trim()) { alert('Completá el cliente.'); return; }
     setGuardando(true);
@@ -1713,7 +1720,16 @@ function PanelAnticiposSueltos({
             </div>
             <div>
               <label style={lbl}>Cliente</label>
-              <input value={form.cliente} onChange={(e) => setForm({ ...form, cliente: e.target.value })} style={inp} placeholder="Nombre del cliente" />
+              <input
+                value={form.cliente}
+                onChange={(e) => setForm({ ...form, cliente: e.target.value })}
+                style={inp}
+                placeholder="Nombre del cliente"
+                list="clientes-anticipo-suelto"
+              />
+              <datalist id="clientes-anticipo-suelto">
+                {clientesStockAnticipo.map((c) => <option key={c} value={c} />)}
+              </datalist>
             </div>
             <div>
               <label style={lbl}>¿Compromete tela HYPE (TH)?</label>
