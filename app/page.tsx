@@ -1625,6 +1625,8 @@ function PanelAnticiposSueltos({
     fecha: new Date().toISOString().split('T')[0],
     cliente: '',
     compromete_tela_th: false,
+    tela: '',
+    cod_tela: '',
     compromete_ot: false,
     nro_ot_relacionado: '',
     servicio_estampa: false,
@@ -1642,6 +1644,14 @@ function PanelAnticiposSueltos({
     fetchAll('clientes', 'nombre', true).then((data) => setClientesStockAnticipo(data.map((c: any) => c.nombre)));
   }, []);
 
+  // Catálogo real de telas TH (id_hype que arranca con "TH"), tomado en
+  // vivo del stock — así el desplegable siempre tiene las telas HYPE que
+  // realmente existen, sin depender de una lista fija desactualizada.
+  const [catalogoTHAnticipo, setCatalogoTHAnticipo] = useState<StockDisponible[]>([]);
+  useEffect(() => {
+    stockTH().then(setCatalogoTHAnticipo);
+  }, []);
+
   async function guardar() {
     if (!form.cliente.trim()) { alert('Completá el cliente.'); return; }
     setGuardando(true);
@@ -1649,6 +1659,8 @@ function PanelAnticiposSueltos({
       fecha: form.fecha,
       cliente: form.cliente.trim(),
       compromete_tela_th: form.compromete_tela_th,
+      tela: form.compromete_tela_th ? form.tela.trim() || null : null,
+      cod_tela: form.compromete_tela_th ? form.cod_tela.trim() || null : null,
       compromete_ot: form.compromete_ot,
       nro_ot_relacionado: form.compromete_ot ? form.nro_ot_relacionado.trim() || null : null,
       servicio_estampa: form.servicio_estampa,
@@ -1738,6 +1750,24 @@ function PanelAnticiposSueltos({
                 <option value="SI">Sí</option>
               </select>
             </div>
+            {form.compromete_tela_th && (
+              <div>
+                <label style={lbl}>Tela (código TH)</label>
+                <select
+                  value={form.cod_tela}
+                  onChange={(e) => {
+                    const seleccionada = catalogoTHAnticipo.find((t) => t.id_hype === e.target.value);
+                    setForm({ ...form, cod_tela: e.target.value, tela: seleccionada ? seleccionada.tela : '' });
+                  }}
+                  style={inp}
+                >
+                  <option value="">Seleccionar tela HYPE</option>
+                  {catalogoTHAnticipo.map((t) => (
+                    <option key={t.id_hype} value={t.id_hype}>{t.tela}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label style={lbl}>¿Compromete un Nro de OT?</label>
               <select value={form.compromete_ot ? 'SI' : 'NO'} onChange={(e) => setForm({ ...form, compromete_ot: e.target.value === 'SI' })} style={inp}>
@@ -1785,7 +1815,7 @@ function PanelAnticiposSueltos({
             <table className="adm-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['Fecha', 'Cliente', 'TH', 'Nro OT', 'Estampa', 'Cant Mts', '$ x Mt', 'Subtotal', 'Desc.', 'Imp. o Cargo', 'Forma de pago', 'Total', 'Estado', ''].map((h) => (
+                  {['Fecha', 'Cliente', 'Tela TH', 'Nro OT', 'Estampa', 'Cant Mts', '$ x Mt', 'Subtotal', 'Desc.', 'Imp. o Cargo', 'Forma de pago', 'Total', 'Estado', ''].map((h) => (
                     <th key={h} style={{ ...th, background: '#1a7a4c', color: '#fff', textTransform: 'uppercase', fontWeight: 700 }}>{h}</th>
                   ))}
                 </tr>
@@ -1795,7 +1825,7 @@ function PanelAnticiposSueltos({
                   <tr key={a.id} style={{ background: '#f2faf5' }}>
                     <td style={td}>{formatFecha(a.fecha)}</td>
                     <td style={td}>{a.cliente}</td>
-                    <td style={td}>{a.compromete_tela_th ? 'Sí' : 'No'}</td>
+                    <td style={td}>{a.compromete_tela_th ? (a.tela || '—') : '—'}</td>
                     <td style={{ ...td, fontFamily: 'monospace' }}>{a.compromete_ot ? (a.nro_ot_relacionado || '—') : '—'}</td>
                     <td style={td}>{a.servicio_estampa ? 'Sí' : 'No'}</td>
                     <td style={td}>{a.cant_mts ?? '—'}</td>

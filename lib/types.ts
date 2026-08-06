@@ -107,6 +107,8 @@ export interface AnticipoSuelto {
   fecha: string;
   cliente: string;
   compromete_tela_th: boolean;
+  tela: string | null;
+  cod_tela: string | null;
   compromete_ot: boolean;
   nro_ot_relacionado: string | null;
   servicio_estampa: boolean;
