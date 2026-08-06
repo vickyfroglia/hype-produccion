@@ -123,6 +123,22 @@ export interface AnticipoSuelto {
   created_at: string;
 }
 
+// Cotizaciones por OT: carga manual de Comercial para presupuestar una OT
+// (nro de OT tipeado a mano, no necesariamente ya cargada en Producción).
+// Va debajo de "Anticipos sin OT" en Administración, mismo estilo de tabla.
+export interface CotizacionOt {
+  id: number;
+  fecha: string;
+  nro_ot: string | null;
+  cliente: string;
+  cant_mts: number | null;
+  tela: string | null;
+  cod_tela: string | null;
+  precio_mt: string | null;
+  creado_por: string | null;
+  created_at: string;
+}
+
 // Muestras: tabla independiente de ordenes_directa. No se cargan desde
 // Ingreso y Modif Pedidos — se agregan directamente en la solapa Muestras,
 // fila por fila (mismo patrón manual que Reporte diario). Mismas columnas

@@ -24,6 +24,7 @@ import {
   EventoMuestra,
   EventoRollo,
   AnticipoSuelto,
+  CotizacionOt,
   faltaParaProducir,
   calcularPrioridad,
   formatFecha,
@@ -79,6 +80,7 @@ export default function Home() {
   const [ingresosStock, setIngresosStock] = useState<any[]>([]);
   const [egresosStock, setEgresosStock] = useState<any[]>([]);
   const [anticiposSueltos, setAnticiposSueltos] = useState<AnticipoSuelto[]>([]);
+  const [cotizacionesOt, setCotizacionesOt] = useState<CotizacionOt[]>([]);
   const [loading, setLoading] = useState(true);
   const [logueado, setLogueado] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -107,7 +109,7 @@ export default function Home() {
   // hacía que el scroll volviera arriba de todo cada vez que se tocaba algo.
   async function cargarTodo(mostrarLoading = false) {
     if (mostrarLoading) setLoading(true);
-    const [ords, evts, evtsMuestras, evtsReporte, muestrasData, rollos, ingresos, egresos, anticipos] = await Promise.all([
+    const [ords, evts, evtsMuestras, evtsReporte, muestrasData, rollos, ingresos, egresos, anticipos, cotizaciones] = await Promise.all([
       fetchAll('ordenes_directa', 'created_at'),
       fetchAll('ordenes_directa_eventos', 'created_at'),
       fetchAll('muestras_eventos', 'created_at'),
@@ -117,6 +119,7 @@ export default function Home() {
       fetchStockTabla('ingresos'),
       fetchStockTabla('egresos'),
       fetchAll('anticipos_sueltos', 'created_at'),
+      fetchAll('cotizaciones_ot', 'created_at'),
     ]);
     setOrdenes(ords);
     setEventos(evts);
@@ -127,6 +130,7 @@ export default function Home() {
     setIngresosStock(ingresos);
     setEgresosStock(egresos);
     setAnticiposSueltos(anticipos);
+    setCotizacionesOt(cotizaciones);
     if (mostrarLoading) setLoading(false);
   }
 
@@ -215,7 +219,7 @@ export default function Home() {
             {pagina === 'muestras' && <VistaMuestras rol={rol} nombreUsuario={nombreUsuario} />}
             {pagina === 'reporte' && <PanelReporteDiario ordenes={ordenes} rol={rol} />}
             {pagina === 'diseno' && <PanelDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
-            {pagina === 'administracion' && <PanelAdministracion ordenes={ordenes} anticiposSueltos={anticiposSueltos} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
+            {pagina === 'administracion' && <PanelAdministracion ordenes={ordenes} anticiposSueltos={anticiposSueltos} cotizacionesOt={cotizacionesOt} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
             {pagina === 'historial' && <Historial eventos={eventos} eventosMuestras={eventosMuestras} eventosReporte={eventosReporte} ordenes={ordenes} />}
           </>
         )}
@@ -1605,6 +1609,15 @@ function formatearPrecioMtSeisDigitosGlobal(valor: string): string | null {
   return '$' + soloDigitos.slice(0, 6).padStart(6, '0');
 }
 
+// Nro OT tal como se ve realmente hoy en Producción: 12 dígitos con ceros a
+// la izquierda (ej. "000000000004"). Se usa en Cotizaciones OT, donde el
+// Nro OT se tipea a mano en vez de generarse con el RPC de Producción.
+function formatearNroOtDocePadding(valor: string): string | null {
+  const soloDigitos = (valor || '').replace(/\D/g, '');
+  if (!soloDigitos) return null;
+  return soloDigitos.slice(0, 12).padStart(12, '0');
+}
+
 // ---------------------------------------------------------------------------
 // Anticipos sueltos: se registran cuando un cliente paga un anticipo sin
 // (necesariamente) comprometer todavía una OT puntual de Producción. Viven
@@ -1877,14 +1890,207 @@ function PanelAnticiposSueltos({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Cotizaciones OT: Comercial presupuesta a mano una OT (tipeando el Nro OT,
+// no necesariamente ya cargada en Producción). Va abajo de "Anticipos sin
+// OT", mismo formato tabla.
+// ---------------------------------------------------------------------------
+function PanelCotizacionesOt({
+  cotizacionesOt,
+  nombreUsuario,
+  onCambio,
+}: {
+  cotizacionesOt: CotizacionOt[];
+  nombreUsuario: string;
+  onCambio: () => void;
+}) {
+  const [mostrarForm, setMostrarForm] = useState(false);
+  const vacio = {
+    fecha: new Date().toISOString().split('T')[0],
+    nro_ot: '',
+    cliente: '',
+    cant_mts: '',
+    cod_tela: '',
+    tela: '',
+    precio_mt: '',
+  };
+  const [form, setForm] = useState(vacio);
+  const [guardando, setGuardando] = useState(false);
+
+  // Autocompletar Cliente desde la tabla `clientes` (misma base que la app
+  // de Stock).
+  const [clientesStockCotizacion, setClientesStockCotizacion] = useState<string[]>([]);
+  useEffect(() => {
+    fetchAll('clientes', 'nombre', true).then((data) => setClientesStockCotizacion(data.map((c: any) => c.nombre)));
+  }, []);
+
+  // Catálogo real de telas TH (siempre con "HYPE" adelante en la
+  // descripción, tal como está cargado en el stock).
+  const [catalogoTHCotizacion, setCatalogoTHCotizacion] = useState<StockDisponible[]>([]);
+  useEffect(() => {
+    stockTH().then(setCatalogoTHCotizacion);
+  }, []);
+
+  async function guardar() {
+    if (!form.cliente.trim()) { alert('Completá el cliente.'); return; }
+    setGuardando(true);
+    const { error } = await supabase.from('cotizaciones_ot').insert([{
+      fecha: form.fecha,
+      nro_ot: formatearNroOtDocePadding(form.nro_ot),
+      cliente: form.cliente.trim(),
+      cant_mts: formatearSeisDigitosSinSigno(form.cant_mts),
+      tela: form.tela || null,
+      cod_tela: form.cod_tela || null,
+      precio_mt: formatearPrecioMtSeisDigitosGlobal(form.precio_mt),
+      creado_por: nombreUsuario || null,
+    }]);
+    setGuardando(false);
+    if (error) { alert('Error al guardar: ' + error.message); return; }
+    setForm(vacio);
+    setMostrarForm(false);
+    onCambio();
+  }
+
+  async function eliminarCotizacion(c: CotizacionOt) {
+    if (!confirm(`¿Eliminar la cotización de "${c.cliente}" del ${formatFecha(c.fecha)}?`)) return;
+    const { error } = await supabase.from('cotizaciones_ot').delete().eq('id', c.id);
+    if (error) alert('Error: ' + error.message);
+    else onCambio();
+  }
+
+  function calcularImporteCotizacion(c: CotizacionOt): number {
+    const mts = Number(c.cant_mts) || 0;
+    const precio = Number((c.precio_mt || '').replace(/\D/g, '')) || 0;
+    return Math.round(mts * precio);
+  }
+
+  const previewImporte = (Number(form.cant_mts) || 0) * (Number(form.precio_mt) || 0);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, textTransform: 'uppercase', color: '#c77d16' }}>
+          Cotizaciones OT ({cotizacionesOt.length})
+        </div>
+        <button onClick={() => setMostrarForm((v) => !v)} style={{ ...btn, background: '#c77d16', color: '#fff', border: '1px solid #c77d16' }}>
+          {mostrarForm ? 'Cancelar' : '+ Nueva cotización'}
+        </button>
+      </div>
+      <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>
+        Para presupuestar una OT a mano (Nro OT tipeado, aunque todavía no esté cargada en Producción).
+      </div>
+
+      <div style={{ ...card, padding: 0, overflow: 'hidden', border: '1px solid #f1dcb8', marginBottom: 32 }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="adm-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['Fecha', 'OT', 'Cliente', 'Cant Mts', 'Tela', '$ x Mt', 'Importe', ''].map((h) => (
+                  <th key={h} style={{ ...th, background: '#c77d16', color: '#fff', textTransform: 'uppercase', fontWeight: 700 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {mostrarForm && (
+                <tr style={{ background: '#fff8ec' }}>
+                  <td style={td}>
+                    <input type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 120 }} />
+                  </td>
+                  <td style={td}>
+                    <input
+                      value={form.nro_ot}
+                      onChange={(e) => setForm({ ...form, nro_ot: e.target.value.replace(/\D/g, '') })}
+                      style={{ ...selSm, width: 110, fontFamily: 'monospace' }}
+                      placeholder="000000000004"
+                      inputMode="numeric"
+                    />
+                  </td>
+                  <td style={{ ...td, minWidth: 150 }}>
+                    <input
+                      value={form.cliente}
+                      onChange={(e) => setForm({ ...form, cliente: e.target.value })}
+                      style={{ ...selSm, width: '100%', minWidth: 140 }}
+                      placeholder="Cliente"
+                      list="clientes-cotizacion-ot"
+                    />
+                    <datalist id="clientes-cotizacion-ot">
+                      {clientesStockCotizacion.map((c) => <option key={c} value={c} />)}
+                    </datalist>
+                  </td>
+                  <td style={td}>
+                    <input value={form.cant_mts} onChange={(e) => setForm({ ...form, cant_mts: e.target.value.replace(/\D/g, '') })} style={{ ...selSm, width: 65 }} placeholder="000000" inputMode="numeric" />
+                  </td>
+                  <td style={{ ...td, minWidth: 170 }}>
+                    <select
+                      value={form.cod_tela ? form.cod_tela : (form.tela === 'TCL-' ? 'TCL-' : '')}
+                      onChange={(e) => {
+                        if (e.target.value === 'TCL-') {
+                          setForm({ ...form, tela: 'TCL-', cod_tela: '' });
+                          return;
+                        }
+                        const seleccionada = catalogoTHCotizacion.find((t) => t.id_hype === e.target.value);
+                        setForm({ ...form, cod_tela: e.target.value, tela: seleccionada ? seleccionada.tela : '' });
+                      }}
+                      style={{ ...selSm, width: '100%' }}
+                    >
+                      <option value="">Seleccionar tela</option>
+                      <option value="TCL-">TCL- (tela cliente)</option>
+                      {catalogoTHCotizacion.map((t) => (
+                        <option key={t.id_hype} value={t.id_hype}>{t.tela}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td style={td}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <span style={{ fontWeight: 700 }}>$</span>
+                      <input value={form.precio_mt} onChange={(e) => setForm({ ...form, precio_mt: e.target.value.replace(/\D/g, '') })} style={{ ...selSm, width: 65 }} placeholder="000000" inputMode="numeric" />
+                    </div>
+                  </td>
+                  <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>{previewImporte ? '$' + Math.round(previewImporte).toLocaleString('es-AR') : '—'}</td>
+                  <td style={td}>
+                    <button onClick={guardar} disabled={guardando} style={{ ...btn, padding: '4px 8px', fontSize: 11, background: '#c77d16', color: '#fff', border: '1px solid #c77d16' }}>
+                      {guardando ? '…' : 'Guardar'}
+                    </button>
+                  </td>
+                </tr>
+              )}
+              {cotizacionesOt.length === 0 && !mostrarForm && (
+                <tr>
+                  <td style={{ ...td, color: '#bbb' }} colSpan={8}>Todavía no hay cotizaciones cargadas.</td>
+                </tr>
+              )}
+              {cotizacionesOt.map((c) => (
+                <tr key={c.id} style={{ background: '#fff9f0' }}>
+                  <td style={td}>{formatFecha(c.fecha)}</td>
+                  <td style={{ ...td, fontFamily: 'monospace' }}>{c.nro_ot || '—'}</td>
+                  <td style={td}>{c.cliente}</td>
+                  <td style={td}>{c.cant_mts ?? '—'}</td>
+                  <td style={td}>{c.tela || '—'}</td>
+                  <td style={td}>{c.precio_mt ? '$' + Number(c.precio_mt.replace(/\D/g, '')).toLocaleString('es-AR') : '—'}</td>
+                  <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>${calcularImporteCotizacion(c).toLocaleString('es-AR')}</td>
+                  <td style={td}>
+                    <button onClick={() => eliminarCotizacion(c)} style={{ ...btn, padding: '4px 8px', fontSize: 11, color: '#c00', borderColor: '#c00' }}>✕</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PanelAdministracion({
   ordenes,
   anticiposSueltos,
+  cotizacionesOt,
   nombreUsuario,
   onCambio,
 }: {
   ordenes: OrdenDirecta[];
   anticiposSueltos: AnticipoSuelto[];
+  cotizacionesOt: CotizacionOt[];
   nombreUsuario: string;
   onCambio: () => void;
 }) {
@@ -2156,6 +2362,10 @@ function PanelAdministracion({
       `}</style>
 
       <PanelAnticiposSueltos anticiposSueltos={anticiposSueltos} nombreUsuario={nombreUsuario} onCambio={onCambio} />
+
+      <div style={{ marginTop: 32 }}>
+        <PanelCotizacionesOt cotizacionesOt={cotizacionesOt} nombreUsuario={nombreUsuario} onCambio={onCambio} />
+      </div>
 
       <div style={{ marginTop: 32 }}>
         <div style={{ fontSize: 15, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4, color: '#e85d2f' }}>
