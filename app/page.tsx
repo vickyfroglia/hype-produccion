@@ -1709,6 +1709,8 @@ function PanelAnticiposSueltos({
     return calcularSubtotal(a) - calcularDescuentoMonto(a) + calcularRecargoMonto(a);
   }
 
+  const previewSubtotal = (Number(form.cant_mts) || 0) * (Number(form.precio_mt) || 0);
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -1723,105 +1725,98 @@ function PanelAnticiposSueltos({
         Para cuando un cliente paga un anticipo sin comprometer todavía ninguna OT puntual.
       </div>
 
-      {mostrarForm && (
-        <div style={{ ...card, border: '1px solid #bfe3cd', marginBottom: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 12 }}>
-            <div>
-              <label style={lbl}>Fecha</label>
-              <input type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} style={inp} />
-            </div>
-            <div>
-              <label style={lbl}>Cliente</label>
-              <input
-                value={form.cliente}
-                onChange={(e) => setForm({ ...form, cliente: e.target.value })}
-                style={inp}
-                placeholder="Nombre del cliente"
-                list="clientes-anticipo-suelto"
-              />
-              <datalist id="clientes-anticipo-suelto">
-                {clientesStockAnticipo.map((c) => <option key={c} value={c} />)}
-              </datalist>
-            </div>
-            <div>
-              <label style={lbl}>¿Compromete tela HYPE (TH)?</label>
-              <select value={form.compromete_tela_th ? 'SI' : 'NO'} onChange={(e) => setForm({ ...form, compromete_tela_th: e.target.value === 'SI' })} style={inp}>
-                <option value="NO">No</option>
-                <option value="SI">Sí</option>
-              </select>
-            </div>
-            {form.compromete_tela_th && (
-              <div>
-                <label style={lbl}>Tela (código TH)</label>
-                <select
-                  value={form.cod_tela}
-                  onChange={(e) => {
-                    const seleccionada = catalogoTHAnticipo.find((t) => t.id_hype === e.target.value);
-                    setForm({ ...form, cod_tela: e.target.value, tela: seleccionada ? seleccionada.tela : '' });
-                  }}
-                  style={inp}
-                >
-                  <option value="">Seleccionar tela HYPE</option>
-                  {catalogoTHAnticipo.map((t) => (
-                    <option key={t.id_hype} value={t.id_hype}>{t.tela}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div>
-              <label style={lbl}>¿Compromete un Nro de OT?</label>
-              <select value={form.compromete_ot ? 'SI' : 'NO'} onChange={(e) => setForm({ ...form, compromete_ot: e.target.value === 'SI' })} style={inp}>
-                <option value="NO">No</option>
-                <option value="SI">Sí</option>
-              </select>
-            </div>
-            {form.compromete_ot && (
-              <div>
-                <label style={lbl}>¿A qué Nro de OT responde?</label>
-                <input value={form.nro_ot_relacionado} onChange={(e) => setForm({ ...form, nro_ot_relacionado: e.target.value })} style={inp} placeholder="Nro OT" />
-              </div>
-            )}
-            <div>
-              <label style={lbl}>Servicio de estampa</label>
-              <select value={form.servicio_estampa ? 'SI' : 'NO'} onChange={(e) => setForm({ ...form, servicio_estampa: e.target.value === 'SI' })} style={inp}>
-                <option value="NO">No</option>
-                <option value="SI">Sí</option>
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Cant. Mts</label>
-              <input value={form.cant_mts} onChange={(e) => setForm({ ...form, cant_mts: e.target.value.replace(/\D/g, '') })} style={inp} placeholder="000000" inputMode="numeric" />
-            </div>
-            <div>
-              <label style={lbl}>Precio x Mt Lineal</label>
-              <input value={form.precio_mt} onChange={(e) => setForm({ ...form, precio_mt: e.target.value.replace(/\D/g, '') })} style={inp} placeholder="$000000" inputMode="numeric" />
-            </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={lbl}>Observaciones</label>
-              <input value={form.observaciones} onChange={(e) => setForm({ ...form, observaciones: e.target.value })} style={inp} />
-            </div>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button onClick={guardar} disabled={guardando} style={{ ...btn, background: '#1a7a4c', color: '#fff', border: '1px solid #1a7a4c' }}>
-              {guardando ? 'Guardando...' : 'Guardar anticipo'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {anticiposSueltos.length > 0 && (
-        <div style={{ ...card, padding: 0, overflow: 'hidden', border: '1px solid #bfe3cd', marginBottom: 32 }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="adm-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Fecha', 'Cliente', 'Tela TH', 'Nro OT', 'Estampa', 'Cant Mts', '$ x Mt', 'Subtotal', 'Desc.', 'Imp. o Cargo', 'Forma de pago', 'Total', 'Estado', ''].map((h) => (
-                    <th key={h} style={{ ...th, background: '#1a7a4c', color: '#fff', textTransform: 'uppercase', fontWeight: 700 }}>{h}</th>
-                  ))}
+      <div style={{ ...card, padding: 0, overflow: 'hidden', border: '1px solid #bfe3cd', marginBottom: 32 }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="adm-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['Fecha', 'Cliente', 'Tela TH', 'Nro OT', 'Estampa', 'Cant Mts', '$ x Mt', 'Subtotal', 'Desc.', 'Imp. o Cargo', 'Forma de pago', 'Total', 'Estado', ''].map((h) => (
+                  <th key={h} style={{ ...th, background: '#1a7a4c', color: '#fff', textTransform: 'uppercase', fontWeight: 700 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {mostrarForm && (
+                <tr style={{ background: '#fff8ec' }}>
+                  <td style={td}>
+                    <input type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 120 }} />
+                  </td>
+                  <td style={{ ...td, minWidth: 150 }}>
+                    <input
+                      value={form.cliente}
+                      onChange={(e) => setForm({ ...form, cliente: e.target.value })}
+                      style={{ ...selSm, width: '100%', minWidth: 140 }}
+                      placeholder="Cliente"
+                      list="clientes-anticipo-suelto"
+                    />
+                    <datalist id="clientes-anticipo-suelto">
+                      {clientesStockAnticipo.map((c) => <option key={c} value={c} />)}
+                    </datalist>
+                  </td>
+                  <td style={{ ...td, minWidth: 150 }}>
+                    <select value={form.compromete_tela_th ? 'SI' : 'NO'} onChange={(e) => setForm({ ...form, compromete_tela_th: e.target.value === 'SI' })} style={{ ...selSm, width: '100%', marginBottom: 4 }}>
+                      <option value="NO">No compromete TH</option>
+                      <option value="SI">Sí compromete TH</option>
+                    </select>
+                    {form.compromete_tela_th && (
+                      <select
+                        value={form.cod_tela}
+                        onChange={(e) => {
+                          const seleccionada = catalogoTHAnticipo.find((t) => t.id_hype === e.target.value);
+                          setForm({ ...form, cod_tela: e.target.value, tela: seleccionada ? seleccionada.tela : '' });
+                        }}
+                        style={{ ...selSm, width: '100%' }}
+                      >
+                        <option value="">Seleccionar tela HYPE</option>
+                        {catalogoTHAnticipo.map((t) => (
+                          <option key={t.id_hype} value={t.id_hype}>{t.tela}</option>
+                        ))}
+                      </select>
+                    )}
+                  </td>
+                  <td style={{ ...td, minWidth: 110 }}>
+                    <select value={form.compromete_ot ? 'SI' : 'NO'} onChange={(e) => setForm({ ...form, compromete_ot: e.target.value === 'SI' })} style={{ ...selSm, width: '100%', marginBottom: 4 }}>
+                      <option value="NO">No</option>
+                      <option value="SI">Sí</option>
+                    </select>
+                    {form.compromete_ot && (
+                      <input value={form.nro_ot_relacionado} onChange={(e) => setForm({ ...form, nro_ot_relacionado: e.target.value })} style={{ ...selSm, width: '100%' }} placeholder="Nro OT" />
+                    )}
+                  </td>
+                  <td style={td}>
+                    <select value={form.servicio_estampa ? 'SI' : 'NO'} onChange={(e) => setForm({ ...form, servicio_estampa: e.target.value === 'SI' })} style={selSm}>
+                      <option value="NO">No</option>
+                      <option value="SI">Sí</option>
+                    </select>
+                  </td>
+                  <td style={td}>
+                    <input value={form.cant_mts} onChange={(e) => setForm({ ...form, cant_mts: e.target.value.replace(/\D/g, '') })} style={{ ...selSm, width: 65 }} placeholder="000000" inputMode="numeric" />
+                  </td>
+                  <td style={td}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <span style={{ fontWeight: 700 }}>$</span>
+                      <input value={form.precio_mt} onChange={(e) => setForm({ ...form, precio_mt: e.target.value.replace(/\D/g, '') })} style={{ ...selSm, width: 65 }} placeholder="000000" inputMode="numeric" />
+                    </div>
+                  </td>
+                  <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>{previewSubtotal ? '$' + Math.round(previewSubtotal).toLocaleString('es-AR') : '—'}</td>
+                  <td style={{ ...td, color: '#bbb', fontSize: 11 }}>—</td>
+                  <td style={{ ...td, color: '#bbb', fontSize: 11 }}>—</td>
+                  <td style={{ ...td, color: '#bbb', fontSize: 11 }}>—</td>
+                  <td style={{ ...td, color: '#bbb', fontSize: 11 }}>—</td>
+                  <td style={{ ...td, color: '#bbb', fontSize: 11 }}>—</td>
+                  <td style={td}>
+                    <button onClick={guardar} disabled={guardando} style={{ ...btn, padding: '4px 8px', fontSize: 11, background: '#1a7a4c', color: '#fff', border: '1px solid #1a7a4c' }}>
+                      {guardando ? '…' : 'Guardar'}
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {anticiposSueltos.map((a) => (
+              )}
+              {anticiposSueltos.length === 0 && !mostrarForm && (
+                <tr>
+                  <td style={{ ...td, color: '#bbb' }} colSpan={14}>Todavía no hay anticipos sueltos cargados.</td>
+                </tr>
+              )}
+              {anticiposSueltos.map((a) => (
                   <tr key={a.id} style={{ background: '#f2faf5' }}>
                     <td style={td}>{formatFecha(a.fecha)}</td>
                     <td style={td}>{a.cliente}</td>
@@ -1878,7 +1873,6 @@ function PanelAnticiposSueltos({
             </table>
           </div>
         </div>
-      )}
     </div>
   );
 }
