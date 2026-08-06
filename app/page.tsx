@@ -1690,12 +1690,6 @@ function PanelAnticiposSueltos({
     onCambio();
   }
 
-  async function actualizarAnticipo(id: number, campo: string, valor: any) {
-    const { error } = await supabase.from('anticipos_sueltos').update({ [campo]: valor }).eq('id', id);
-    if (error) alert('Error: ' + error.message);
-    else onCambio();
-  }
-
   async function eliminarAnticipo(a: AnticipoSuelto) {
     if (!confirm(`¿Eliminar el anticipo de "${a.cliente}" del ${formatFecha(a.fecha)}?`)) return;
     const { error } = await supabase.from('anticipos_sueltos').delete().eq('id', a.id);
@@ -1707,19 +1701,6 @@ function PanelAnticiposSueltos({
     const mts = Number(a.cant_mts) || 0;
     const precio = Number((a.precio_mt || '').replace(/\D/g, '')) || 0;
     return Math.round(mts * precio);
-  }
-  function calcularDescuentoMonto(a: AnticipoSuelto): number {
-    const subtotal = calcularSubtotal(a);
-    const pct = a.descuento_pct || 0;
-    return Math.round((subtotal * pct) / 100);
-  }
-  function calcularRecargoMonto(a: AnticipoSuelto): number {
-    const base = calcularSubtotal(a) - calcularDescuentoMonto(a);
-    const pct = porcentajeRecargo(a.forma_pago);
-    return Math.round((base * pct) / 100);
-  }
-  function calcularTotalAnticipo(a: AnticipoSuelto): number {
-    return calcularSubtotal(a) - calcularDescuentoMonto(a) + calcularRecargoMonto(a);
   }
 
   const previewSubtotal = (Number(form.cant_mts) || 0) * (Number(form.precio_mt) || 0);
@@ -1743,7 +1724,7 @@ function PanelAnticiposSueltos({
           <table className="adm-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['Fecha', 'Cliente', 'Tela TH', 'Nro OT', 'Estampa', 'Cant Mts', '$ x Mt', 'Subtotal', 'Desc.', 'Imp. o Cargo', 'Forma de pago', 'Total', 'Estado', ''].map((h) => (
+                {['Fecha', 'Cliente', 'Tela TH', 'Nro OT', 'Estampa', 'Cant Mts', '$ x Mt', 'Subtotal', ''].map((h) => (
                   <th key={h} style={{ ...th, background: '#1a7a4c', color: '#fff', textTransform: 'uppercase', fontWeight: 700 }}>{h}</th>
                 ))}
               </tr>
@@ -1812,11 +1793,6 @@ function PanelAnticiposSueltos({
                     </div>
                   </td>
                   <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>{previewSubtotal ? '$' + Math.round(previewSubtotal).toLocaleString('es-AR') : '—'}</td>
-                  <td style={{ ...td, color: '#bbb', fontSize: 11 }}>—</td>
-                  <td style={{ ...td, color: '#bbb', fontSize: 11 }}>—</td>
-                  <td style={{ ...td, color: '#bbb', fontSize: 11 }}>—</td>
-                  <td style={{ ...td, color: '#bbb', fontSize: 11 }}>—</td>
-                  <td style={{ ...td, color: '#bbb', fontSize: 11 }}>—</td>
                   <td style={td}>
                     <button onClick={guardar} disabled={guardando} style={{ ...btn, padding: '4px 8px', fontSize: 11, background: '#1a7a4c', color: '#fff', border: '1px solid #1a7a4c' }}>
                       {guardando ? '…' : 'Guardar'}
@@ -1826,7 +1802,7 @@ function PanelAnticiposSueltos({
               )}
               {anticiposSueltos.length === 0 && !mostrarForm && (
                 <tr>
-                  <td style={{ ...td, color: '#bbb' }} colSpan={14}>Todavía no hay anticipos sueltos cargados.</td>
+                  <td style={{ ...td, color: '#bbb' }} colSpan={9}>Todavía no hay anticipos sueltos cargados.</td>
                 </tr>
               )}
               {anticiposSueltos.map((a) => (
@@ -1839,44 +1815,6 @@ function PanelAnticiposSueltos({
                     <td style={td}>{a.cant_mts ?? '—'}</td>
                     <td style={td}>{a.precio_mt ? '$' + Number(a.precio_mt.replace(/\D/g, '')).toLocaleString('es-AR') : '—'}</td>
                     <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>${calcularSubtotal(a).toLocaleString('es-AR')}</td>
-                    <td style={td}>
-                      <input
-                        defaultValue={a.descuento_pct ?? ''}
-                        onBlur={(e) => {
-                          const val = e.target.value.trim();
-                          actualizarAnticipo(a.id, 'descuento_pct', val ? Number(val) : null);
-                        }}
-                        placeholder="0%"
-                        inputMode="decimal"
-                        style={{ ...selSm, width: 50, textAlign: 'center' }}
-                      />
-                    </td>
-                    <td style={td}>
-                      <select
-                        value={a.forma_pago || ''}
-                        onChange={(e) => actualizarAnticipo(a.id, 'forma_pago', e.target.value || null)}
-                        style={selSm}
-                      >
-                        <option value="">Seleccionar</option>
-                        <option value="SIN CARGO">Sin cargo</option>
-                        <option value="CUENTA RECAUDADORA">Cta. Recaud. (+3,5%)</option>
-                        <option value="IVA">IVA (+21%)</option>
-                      </select>
-                    </td>
-                    <td style={td}>
-                      <input
-                        defaultValue={a.forma_pago_manual || ''}
-                        onBlur={(e) => actualizarAnticipo(a.id, 'forma_pago_manual', e.target.value || null)}
-                        placeholder="Lo negociado con el cliente"
-                        style={{ ...selSm, width: 150 }}
-                      />
-                    </td>
-                    <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>${calcularTotalAnticipo(a).toLocaleString('es-AR')}</td>
-                    <td style={td}>
-                      <select value={a.estado_anticipo} onChange={(e) => actualizarAnticipo(a.id, 'estado_anticipo', e.target.value)} style={selSm}>
-                        {ANTICIPO_OPCIONES.map((op) => <option key={op} value={op}>{op}</option>)}
-                      </select>
-                    </td>
                     <td style={td}>
                       <button onClick={() => eliminarAnticipo(a)} style={{ ...btn, padding: '4px 8px', fontSize: 11, color: '#c00', borderColor: '#c00' }}>✕</button>
                     </td>
