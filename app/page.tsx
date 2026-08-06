@@ -23,7 +23,6 @@ import {
   Muestra,
   EventoMuestra,
   EventoRollo,
-  AnticipoSuelto,
   CotizacionOt,
   faltaParaProducir,
   calcularPrioridad,
@@ -79,7 +78,6 @@ export default function Home() {
   const [rollosReporte, setRollosReporte] = useState<RolloReporte[]>([]);
   const [ingresosStock, setIngresosStock] = useState<any[]>([]);
   const [egresosStock, setEgresosStock] = useState<any[]>([]);
-  const [anticiposSueltos, setAnticiposSueltos] = useState<AnticipoSuelto[]>([]);
   const [cotizacionesOt, setCotizacionesOt] = useState<CotizacionOt[]>([]);
   const [loading, setLoading] = useState(true);
   const [logueado, setLogueado] = useState(false);
@@ -109,7 +107,7 @@ export default function Home() {
   // hacía que el scroll volviera arriba de todo cada vez que se tocaba algo.
   async function cargarTodo(mostrarLoading = false) {
     if (mostrarLoading) setLoading(true);
-    const [ords, evts, evtsMuestras, evtsReporte, muestrasData, rollos, ingresos, egresos, anticipos, cotizaciones] = await Promise.all([
+    const [ords, evts, evtsMuestras, evtsReporte, muestrasData, rollos, ingresos, egresos, cotizaciones] = await Promise.all([
       fetchAll('ordenes_directa', 'created_at'),
       fetchAll('ordenes_directa_eventos', 'created_at'),
       fetchAll('muestras_eventos', 'created_at'),
@@ -118,7 +116,6 @@ export default function Home() {
       fetchAll('reporte_rollos', 'created_at'),
       fetchStockTabla('ingresos'),
       fetchStockTabla('egresos'),
-      fetchAll('anticipos_sueltos', 'created_at'),
       fetchAll('cotizaciones_ot', 'created_at'),
     ]);
     setOrdenes(ords);
@@ -129,7 +126,6 @@ export default function Home() {
     setRollosReporte(rollos);
     setIngresosStock(ingresos);
     setEgresosStock(egresos);
-    setAnticiposSueltos(anticipos);
     setCotizacionesOt(cotizaciones);
     if (mostrarLoading) setLoading(false);
   }
@@ -219,7 +215,7 @@ export default function Home() {
             {pagina === 'muestras' && <VistaMuestras rol={rol} nombreUsuario={nombreUsuario} />}
             {pagina === 'reporte' && <PanelReporteDiario ordenes={ordenes} rol={rol} />}
             {pagina === 'diseno' && <PanelDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
-            {pagina === 'administracion' && <PanelAdministracion ordenes={ordenes} anticiposSueltos={anticiposSueltos} cotizacionesOt={cotizacionesOt} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
+            {pagina === 'administracion' && <PanelAdministracion ordenes={ordenes} cotizacionesOt={cotizacionesOt} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
             {pagina === 'historial' && <Historial eventos={eventos} eventosMuestras={eventosMuestras} eventosReporte={eventosReporte} ordenes={ordenes} />}
           </>
         )}
@@ -1602,7 +1598,7 @@ function formatearSeisDigitosSinSigno(valor: string): number | null {
 
 // Igual que formatearPrecioMtSeisDigitos (definida dentro de
 // PanelAdministracion): guarda "$" + 6 dígitos con ceros a la izquierda.
-// Va a nivel de módulo porque PanelAnticiposSueltos también la necesita.
+// Va a nivel de módulo porque PanelCotizacionesOt también la necesita.
 function formatearPrecioMtSeisDigitosGlobal(valor: string): string | null {
   const soloDigitos = (valor || '').replace(/\D/g, '');
   if (!soloDigitos) return null;
@@ -1616,216 +1612,6 @@ function formatearNroOtDocePadding(valor: string): string | null {
   const soloDigitos = (valor || '').replace(/\D/g, '');
   if (!soloDigitos) return null;
   return soloDigitos.slice(0, 12).padStart(12, '0');
-}
-
-// ---------------------------------------------------------------------------
-// Anticipos sueltos: se registran cuando un cliente paga un anticipo sin
-// (necesariamente) comprometer todavía una OT puntual de Producción. Viven
-// en su propia tabla, con el mismo formato de Subtotal/Descuento/Impuesto
-// o cargo/Total que las OT de Administración.
-// ---------------------------------------------------------------------------
-function PanelAnticiposSueltos({
-  anticiposSueltos,
-  nombreUsuario,
-  onCambio,
-}: {
-  anticiposSueltos: AnticipoSuelto[];
-  nombreUsuario: string;
-  onCambio: () => void;
-}) {
-  const [mostrarForm, setMostrarForm] = useState(false);
-  const vacio = {
-    fecha: new Date().toISOString().split('T')[0],
-    cliente: '',
-    compromete_tela_th: false,
-    tela: '',
-    cod_tela: '',
-    compromete_ot: false,
-    nro_ot_relacionado: '',
-    servicio_estampa: false,
-    cant_mts: '',
-    precio_mt: '',
-    observaciones: '',
-  };
-  const [form, setForm] = useState(vacio);
-  const [guardando, setGuardando] = useState(false);
-
-  // Autocompletar Cliente desde la tabla `clientes` (misma base que usa la
-  // app de Stock — un solo Supabase compartido entre las dos apps).
-  const [clientesStockAnticipo, setClientesStockAnticipo] = useState<string[]>([]);
-  useEffect(() => {
-    fetchAll('clientes', 'nombre', true).then((data) => setClientesStockAnticipo(data.map((c: any) => c.nombre)));
-  }, []);
-
-  // Catálogo real de telas TH (id_hype que arranca con "TH"), tomado en
-  // vivo del stock — así el desplegable siempre tiene las telas HYPE que
-  // realmente existen, sin depender de una lista fija desactualizada.
-  const [catalogoTHAnticipo, setCatalogoTHAnticipo] = useState<StockDisponible[]>([]);
-  useEffect(() => {
-    stockTH().then(setCatalogoTHAnticipo);
-  }, []);
-
-  async function guardar() {
-    if (!form.cliente.trim()) { alert('Completá el cliente.'); return; }
-    setGuardando(true);
-    const { error } = await supabase.from('anticipos_sueltos').insert([{
-      fecha: form.fecha,
-      cliente: form.cliente.trim(),
-      compromete_tela_th: form.compromete_tela_th,
-      tela: form.compromete_tela_th ? form.tela.trim() || null : null,
-      cod_tela: form.compromete_tela_th ? form.cod_tela.trim() || null : null,
-      compromete_ot: form.compromete_ot,
-      nro_ot_relacionado: form.compromete_ot ? form.nro_ot_relacionado.trim() || null : null,
-      servicio_estampa: form.servicio_estampa,
-      cant_mts: formatearSeisDigitosSinSigno(form.cant_mts),
-      precio_mt: formatearPrecioMtSeisDigitosGlobal(form.precio_mt),
-      observaciones: form.observaciones.trim() || null,
-      estado_anticipo: 'PENDIENTE',
-      creado_por: nombreUsuario || null,
-    }]);
-    setGuardando(false);
-    if (error) { alert('Error al guardar: ' + error.message); return; }
-    setForm(vacio);
-    setMostrarForm(false);
-    onCambio();
-  }
-
-  async function eliminarAnticipo(a: AnticipoSuelto) {
-    if (!confirm(`¿Eliminar el anticipo de "${a.cliente}" del ${formatFecha(a.fecha)}?`)) return;
-    const { error } = await supabase.from('anticipos_sueltos').delete().eq('id', a.id);
-    if (error) alert('Error: ' + error.message);
-    else onCambio();
-  }
-
-  function calcularSubtotal(a: AnticipoSuelto): number {
-    const mts = Number(a.cant_mts) || 0;
-    const precio = Number((a.precio_mt || '').replace(/\D/g, '')) || 0;
-    return Math.round(mts * precio);
-  }
-
-  const previewSubtotal = (Number(form.cant_mts) || 0) * (Number(form.precio_mt) || 0);
-
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, textTransform: 'uppercase', color: '#1a7a4c' }}>
-          Anticipos sin OT ({anticiposSueltos.length})
-        </div>
-        <button onClick={() => setMostrarForm((v) => !v)} style={{ ...btn, background: '#1a7a4c', color: '#fff', border: '1px solid #1a7a4c' }}>
-          {mostrarForm ? 'Cancelar' : '+ Nuevo anticipo'}
-        </button>
-      </div>
-      <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>
-        Para cuando un cliente paga un anticipo sin comprometer todavía ninguna OT puntual.
-      </div>
-
-      <div style={{ ...card, padding: 0, overflow: 'hidden', border: '1px solid #bfe3cd', marginBottom: 32 }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table className="adm-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {['Fecha', 'Cliente', 'Tela TH', 'Nro OT', 'Estampa', 'Cant Mts', '$ x Mt', 'Subtotal', ''].map((h) => (
-                  <th key={h} style={{ ...th, background: '#1a7a4c', color: '#fff', textTransform: 'uppercase', fontWeight: 700 }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {mostrarForm && (
-                <tr style={{ background: '#fff8ec' }}>
-                  <td style={td}>
-                    <input type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 120 }} />
-                  </td>
-                  <td style={{ ...td, minWidth: 150 }}>
-                    <input
-                      value={form.cliente}
-                      onChange={(e) => setForm({ ...form, cliente: e.target.value })}
-                      style={{ ...selSm, width: '100%', minWidth: 140 }}
-                      placeholder="Cliente"
-                      list="clientes-anticipo-suelto"
-                    />
-                    <datalist id="clientes-anticipo-suelto">
-                      {clientesStockAnticipo.map((c) => <option key={c} value={c} />)}
-                    </datalist>
-                  </td>
-                  <td style={{ ...td, minWidth: 150 }}>
-                    <select value={form.compromete_tela_th ? 'SI' : 'NO'} onChange={(e) => setForm({ ...form, compromete_tela_th: e.target.value === 'SI' })} style={{ ...selSm, width: '100%', marginBottom: 4 }}>
-                      <option value="NO">No compromete TH</option>
-                      <option value="SI">Sí compromete TH</option>
-                    </select>
-                    {form.compromete_tela_th && (
-                      <select
-                        value={form.cod_tela}
-                        onChange={(e) => {
-                          const seleccionada = catalogoTHAnticipo.find((t) => t.id_hype === e.target.value);
-                          setForm({ ...form, cod_tela: e.target.value, tela: seleccionada ? seleccionada.tela : '' });
-                        }}
-                        style={{ ...selSm, width: '100%' }}
-                      >
-                        <option value="">Seleccionar tela HYPE</option>
-                        {catalogoTHAnticipo.map((t) => (
-                          <option key={t.id_hype} value={t.id_hype}>{t.tela}</option>
-                        ))}
-                      </select>
-                    )}
-                  </td>
-                  <td style={{ ...td, minWidth: 110 }}>
-                    <select value={form.compromete_ot ? 'SI' : 'NO'} onChange={(e) => setForm({ ...form, compromete_ot: e.target.value === 'SI' })} style={{ ...selSm, width: '100%', marginBottom: 4 }}>
-                      <option value="NO">No</option>
-                      <option value="SI">Sí</option>
-                    </select>
-                    {form.compromete_ot && (
-                      <input value={form.nro_ot_relacionado} onChange={(e) => setForm({ ...form, nro_ot_relacionado: e.target.value })} style={{ ...selSm, width: '100%' }} placeholder="Nro OT" />
-                    )}
-                  </td>
-                  <td style={td}>
-                    <select value={form.servicio_estampa ? 'SI' : 'NO'} onChange={(e) => setForm({ ...form, servicio_estampa: e.target.value === 'SI' })} style={selSm}>
-                      <option value="NO">No</option>
-                      <option value="SI">Sí</option>
-                    </select>
-                  </td>
-                  <td style={td}>
-                    <input value={form.cant_mts} onChange={(e) => setForm({ ...form, cant_mts: e.target.value.replace(/\D/g, '') })} style={{ ...selSm, width: 65 }} placeholder="000000" inputMode="numeric" />
-                  </td>
-                  <td style={td}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <span style={{ fontWeight: 700 }}>$</span>
-                      <input value={form.precio_mt} onChange={(e) => setForm({ ...form, precio_mt: e.target.value.replace(/\D/g, '') })} style={{ ...selSm, width: 65 }} placeholder="000000" inputMode="numeric" />
-                    </div>
-                  </td>
-                  <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>{previewSubtotal ? '$' + Math.round(previewSubtotal).toLocaleString('es-AR') : '—'}</td>
-                  <td style={td}>
-                    <button onClick={guardar} disabled={guardando} style={{ ...btn, padding: '4px 8px', fontSize: 11, background: '#1a7a4c', color: '#fff', border: '1px solid #1a7a4c' }}>
-                      {guardando ? '…' : 'Guardar'}
-                    </button>
-                  </td>
-                </tr>
-              )}
-              {anticiposSueltos.length === 0 && !mostrarForm && (
-                <tr>
-                  <td style={{ ...td, color: '#bbb' }} colSpan={9}>Todavía no hay anticipos sueltos cargados.</td>
-                </tr>
-              )}
-              {anticiposSueltos.map((a) => (
-                  <tr key={a.id} style={{ background: '#f2faf5' }}>
-                    <td style={td}>{formatFecha(a.fecha)}</td>
-                    <td style={td}>{a.cliente}</td>
-                    <td style={td}>{a.compromete_tela_th ? (a.tela || '—') : '—'}</td>
-                    <td style={{ ...td, fontFamily: 'monospace' }}>{a.compromete_ot ? (a.nro_ot_relacionado || '—') : '—'}</td>
-                    <td style={td}>{a.servicio_estampa ? 'Sí' : 'No'}</td>
-                    <td style={td}>{a.cant_mts ?? '—'}</td>
-                    <td style={td}>{a.precio_mt ? '$' + Number(a.precio_mt.replace(/\D/g, '')).toLocaleString('es-AR') : '—'}</td>
-                    <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700 }}>${calcularSubtotal(a).toLocaleString('es-AR')}</td>
-                    <td style={td}>
-                      <button onClick={() => eliminarAnticipo(a)} style={{ ...btn, padding: '4px 8px', fontSize: 11, color: '#c00', borderColor: '#c00' }}>✕</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -2021,13 +1807,11 @@ function PanelCotizacionesOt({
 
 function PanelAdministracion({
   ordenes,
-  anticiposSueltos,
   cotizacionesOt,
   nombreUsuario,
   onCambio,
 }: {
   ordenes: OrdenDirecta[];
-  anticiposSueltos: AnticipoSuelto[];
   cotizacionesOt: CotizacionOt[];
   nombreUsuario: string;
   onCambio: () => void;
@@ -2298,8 +2082,6 @@ function PanelAdministracion({
       <style>{`
         .adm-grid th, .adm-grid td { border: 1px solid #ddd !important; text-align: center !important; }
       `}</style>
-
-      <PanelAnticiposSueltos anticiposSueltos={anticiposSueltos} nombreUsuario={nombreUsuario} onCambio={onCambio} />
 
       <div style={{ marginTop: 32 }}>
         <PanelCotizacionesOt cotizacionesOt={cotizacionesOt} nombreUsuario={nombreUsuario} onCambio={onCambio} />
