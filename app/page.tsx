@@ -2907,6 +2907,7 @@ function muestraVacia() {
   return {
     fecha: new Date().toISOString().split('T')[0],
     equipo: '',
+    perfil: '',
     cliente: '',
     diseno: '',
     mts_pedidos: '',
@@ -3137,6 +3138,7 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
       .insert({
         fecha: nuevo.fecha,
         equipo: nuevo.equipo || null,
+        perfil: nuevo.perfil || null,
         cliente: nuevo.cliente || null,
         diseno: nuevo.diseno || null,
         mts_pedidos: parseFloat(nuevo.mts_pedidos) || 0,
@@ -3187,7 +3189,7 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
 
   if (cargando) return <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando...</div>;
 
-  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'Ubic', 'Op Imp', 'Op Fij', 'Fecha fin', ...(esAdmin ? ['Borrar'] : []), 'Comercial', '$ x Mt'];
+  const columnas = ['N', 'Fecha Pedido', 'Equipo', 'Perfil', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela', 'Ubic', 'Op Imp', 'Op Fij', 'Fecha fin', ...(esAdmin ? ['Borrar'] : []), 'Comercial', '$ x Mt'];
 
   return (
     <div>
@@ -3244,6 +3246,11 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
                     <td style={{ ...td, width: 100, ...bgCelda }}>
                       <select value={m.equipo || ''} onChange={(e) => actualizar(m.id, 'equipo', e.target.value || null)} style={{ ...selSm, textTransform: 'uppercase', color: colorEquipo(m.equipo), fontWeight: colorEquipo(m.equipo) ? 700 : undefined }}>
                         <option value="">—</option>{EQUIPOS.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
+                      </select>
+                    </td>
+                    <td style={{ ...td, width: 110, ...bgCelda }}>
+                      <select value={m.perfil || ''} onChange={(e) => actualizar(m.id, 'perfil', e.target.value || null)} style={{ ...selSm, textTransform: 'uppercase', fontWeight: 700, borderRadius: 6, background: colorPerfil(m.perfil)?.bg, color: colorPerfil(m.perfil)?.color }}>
+                        <option value="">—</option>{PERFILES.map((p) => <option key={p} value={p}>{p}</option>)}
                       </select>
                     </td>
                     <td style={{ ...td, minWidth: 170, ...bgCelda }}>
@@ -3375,6 +3382,11 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
                 <td style={{ ...td, width: 100 }}>
                   <select value={nuevo.equipo} onChange={(e) => setNuevo({ ...nuevo, equipo: e.target.value })} style={{ ...selSm, textTransform: 'uppercase', color: colorEquipo(nuevo.equipo), fontWeight: colorEquipo(nuevo.equipo) ? 700 : undefined }}>
                     <option value="">—</option>{EQUIPOS.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
+                  </select>
+                </td>
+                <td style={{ ...td, width: 110 }}>
+                  <select value={nuevo.perfil} onChange={(e) => setNuevo({ ...nuevo, perfil: e.target.value })} style={{ ...selSm, textTransform: 'uppercase', fontWeight: 700, borderRadius: 6, background: colorPerfil(nuevo.perfil)?.bg, color: colorPerfil(nuevo.perfil)?.color }}>
+                    <option value="">—</option>{PERFILES.map((p) => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </td>
                 <td style={{ ...td, minWidth: 170 }}>

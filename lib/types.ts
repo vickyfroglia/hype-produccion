@@ -122,6 +122,7 @@ export interface Muestra {
   id: number;
   fecha: string;
   equipo: string | null;
+  perfil: string | null;
   nro_ot: string | null;
   cliente: string | null;
   diseno: string | null;
