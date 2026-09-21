@@ -1,6 +1,6 @@
 export const EQUIPOS = ['Monalisa 32', 'Monalisa 8'] as const;
 export const PERFILES = ['ST 4 PASS', 'ST 3 PASS', 'TUSSOR HQ', 'TUSSOR 3P', 'TUSSOR 2P', '3 PASADAS', '2 PASADAS', 'INEDIT 3P', 'INEDIT 2P'] as const;
-export const TIPOS_OT = ['OT', 'OP', 'REPO', 'OI'] as const;
+export const TIPOS_OT = ['OP', 'REPO', 'OM', 'OI'] as const;
 export const APROB_OPCIONES = ['FICHAR CN', 'FICHAR CR', 'EN PROCESO', 'C APROB', 'S APROB'] as const;
 export const ANTICIPO_OPCIONES = ['PAGADO', 'PENDIENTE', 'N/A'] as const;
 export const TIPO_RTO_OPCIONES = ['OFICIAL', 'NO OFICIAL'] as const;
@@ -8,9 +8,9 @@ export const ESTADO_ENTREGA_OPCIONES = ['En almacén', 'Entregado a cliente', 'E
 
 // Operarios habilitados por paso (si no tenés una tabla `empleados` filtrable
 // por área, se usa esta lista fija — fácil de editar acá).
-export const OPERARIOS_IMPRESION = ['Tomás', 'Néstor', 'Cache', 'Ricky'];
+export const OPERARIOS_IMPRESION = ['Tomás', 'Néstor', 'Cache', 'Ricky', 'Franco'];
 export const OPERARIOS_FIJACION = ['Mati', 'Leo', 'Ciro', 'Lautaro'];
-export const OPERARIOS_ENTREGA = ['Mati', 'Leo', 'Ciro', 'Lautaro', 'Tomás', 'Néstor', 'Cache', 'Ricky'];
+export const OPERARIOS_ENTREGA = ['Mati', 'Leo', 'Ciro', 'Lautaro', 'Tomás', 'Néstor', 'Cache', 'Ricky', 'Franco'];
 
 // Responsables de Comercial que cargan la columna "Comercial" en Muestras
 // (quién pidió/está a cargo de esa muestra del lado comercial).
@@ -80,6 +80,7 @@ export interface OrdenDirecta {
   prep: boolean;
   fija_operario: string | null;
   fecha_fin: string | null;
+  tinto_hype: number | null;
   nro_rto: string | null;
   bulto_actual: number | null;
   bulto_total: number | null;

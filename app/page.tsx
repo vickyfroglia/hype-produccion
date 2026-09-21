@@ -776,6 +776,7 @@ function SolicitudesPendientes({ nombreUsuario, onCambio }: { nombreUsuario: str
         equipo: null,
         perfil: null,
         tipo_ot: null,
+        tinto_hype: null,
         cliente: s.empresa,
         diseno: l.diseno || '',
         mts_pedidos: Number(l.cantidad_mts) || 0,
@@ -2376,8 +2377,8 @@ const CAMPOS_ROL: Record<string, string[]> = {
   diseno: ['fecha', 'equipo', 'perfil', 'cliente', 'diseno', 'mts_pedidos', 'tela', 'aprob', 'post', 'observaciones'],
   administrativo: ['entregar', 'tipo_rto', 'observaciones'],
   operario: ['imp_operario', 'mts_impresos'],
-  encargado: ['imp_operario', 'mts_impresos', 'prep', 'fija_operario', 'fecha_fin', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
-  logistica: ['fija_operario', 'fecha_fin', 'prep', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
+  encargado: ['imp_operario', 'mts_impresos', 'prep', 'fija_operario', 'fecha_fin', 'tinto_hype', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
+  logistica: ['fija_operario', 'fecha_fin', 'tinto_hype', 'prep', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
   comercial: [],
 };
 
@@ -2667,7 +2668,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
           <table className="vg-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['N', 'Prod', 'Fecha Pedido', 'Equipo', 'Perfil', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela / Color', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', 'Prep', '¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió', 'Anular'].map((h) => {
+                {['N', 'Prod', 'Fecha Pedido', 'Equipo', 'Perfil', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela / Color', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', 'Tinto Hype', 'Prep', '¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió', 'Anular'].map((h) => {
                   const esEntregaEnAdelante = ['¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].includes(h);
                   return (
                     <th key={h} style={{ ...th, textTransform: 'uppercase', background: esEntregaEnAdelante ? '#8e6fc9' : '#e85d2f', color: '#fff', fontWeight: 700, ...(h === 'Prod' ? { width: 40 } : {}) }}>{h}</th>
@@ -2676,7 +2677,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
               </tr>
             </thead>
             <tbody>
-              {filtradas.length === 0 && <tr><td colSpan={27} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
+              {filtradas.length === 0 && <tr><td colSpan={28} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
               {filtradas.map((o) => {
                 // El verde/rojo de "impreso" ahora solo tiñe las celdas de N
                 // hasta Op Imp (no toda la fila), y el verde únicamente
@@ -2831,6 +2832,9 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                     ) : (
                       '—'
                     )}
+                  </td>
+                  <td style={{ ...td, width: 70 }}>
+                    <input type="number" step="0.01" defaultValue={o.tinto_hype ?? ''} onBlur={(e) => actualizar(o.id, 'tinto_hype', e.target.value === '' ? null : parseFloat(e.target.value))} disabled={!puede(o, 'tinto_hype')} style={{ ...selSm, width: 60 }} />
                   </td>
                   <td style={td}>
                     <input type="checkbox" checked={o.prep} onChange={(e) => actualizar(o.id, 'prep', e.target.checked)} disabled={!puede(o, 'prep')} />
