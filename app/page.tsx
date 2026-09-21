@@ -2660,7 +2660,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                       {o.puede_producir ? 'SÍ' : 'NO'}
                     </span>
                   </td>
-                  <td style={{ ...td, minWidth: 140, ...bgCelda }}><input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} disabled={!puede(o, 'fecha')} style={{ ...selSm, width: '100%', minWidth: 130 }} /></td>
+                  <td style={{ ...td, width: 108, ...bgCelda }}><input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} disabled={!puede(o, 'fecha')} style={{ ...selSm, width: '100%' }} /></td>
                   <td style={{ ...td, width: 100, ...bgCelda }}>
                     <select value={o.equipo || ''} onChange={(e) => actualizar(o.id, 'equipo', e.target.value || null)} disabled={!puede(o, 'equipo')} style={{ ...selSm, textTransform: 'uppercase', color: colorEquipo(o.equipo), fontWeight: colorEquipo(o.equipo) ? 700 : undefined }}>
                       <option value="">—</option>{EQUIPOS.map((eq) => <option key={eq} value={eq} style={{ textTransform: 'uppercase' }}>{eq}</option>)}
