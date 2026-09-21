@@ -60,6 +60,25 @@ function fondoEquipo(equipo: string): string {
   return '#fbe0c8';
 }
 
+// Colores de la columna Perfil en Produccion: 4 familias por tono (ST
+// azul, Tussor verde agua, Pasadas naranja, Inedit violeta), variando
+// la intensidad del fondo segun cantidad de pasadas/calidad, con el
+// texto en la version oscura de ese mismo tono para que se lea bien.
+const COLORES_PERFIL: Record<string, { bg: string; color: string }> = {
+  'ST 4 PASS': { bg: '#90CAF9', color: '#0D47A1' },
+  'ST 3 PASS': { bg: '#BBDEFB', color: '#0D47A1' },
+  'TUSSOR HQ': { bg: '#4DB6AC', color: '#00594C' },
+  'TUSSOR 3P': { bg: '#80CBC4', color: '#00594C' },
+  'TUSSOR 2P': { bg: '#B2DFDB', color: '#00594C' },
+  '3 PASADAS': { bg: '#FFB74D', color: '#B34700' },
+  '2 PASADAS': { bg: '#FFE0B2', color: '#B34700' },
+  'INEDIT 3P': { bg: '#CE93D8', color: '#4A148C' },
+  'INEDIT 2P': { bg: '#E1BEE7', color: '#4A148C' },
+};
+function colorPerfil(perfil: string | null | undefined): { bg: string; color: string } | undefined {
+  return perfil ? COLORES_PERFIL[perfil] : undefined;
+}
+
 const inp: React.CSSProperties = { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13 };
 const lbl: React.CSSProperties = { fontSize: 11, color: '#888', display: 'block', marginBottom: 4 };
 const btn: React.CSSProperties = { padding: '8px 14px', borderRadius: 8, border: '1px solid #ddd', background: '#fff', fontSize: 13, cursor: 'pointer' };
@@ -2354,7 +2373,7 @@ function PanelAdministracion({
 // (vuelve al circuito original por rol, ahora aplicado campo por campo
 // en vez de pantalla por pantalla). admin siempre puede editar todo.
 const CAMPOS_ROL: Record<string, string[]> = {
-  diseno: ['fecha', 'equipo', 'cliente', 'diseno', 'mts_pedidos', 'tela', 'aprob', 'post', 'observaciones'],
+  diseno: ['fecha', 'equipo', 'perfil', 'cliente', 'diseno', 'mts_pedidos', 'tela', 'aprob', 'post', 'observaciones'],
   administrativo: ['entregar', 'tipo_rto', 'observaciones'],
   operario: ['imp_operario', 'mts_impresos'],
   encargado: ['imp_operario', 'mts_impresos', 'prep', 'fija_operario', 'fecha_fin', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
@@ -2613,17 +2632,17 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
       </div>
       <style>{`
         .vg-grid th, .vg-grid td { border: 1px solid #ddd !important; text-align: center !important; }
-        .vg-grid input, .vg-grid select {
+        .vg-grid input, .vg-grid select:not(.perfil-select) {
           border: none !important;
           background: transparent !important;
           border-radius: 0 !important;
           text-align: center !important;
           padding: 4px 2px !important;
         }
-        .vg-grid input:hover:not(:disabled), .vg-grid select:hover:not(:disabled) {
+        .vg-grid input:hover:not(:disabled), .vg-grid select:not(.perfil-select):hover:not(:disabled) {
           background: #f5f5f7 !important;
         }
-        .vg-grid input:focus, .vg-grid select:focus {
+        .vg-grid input:focus, .vg-grid select:not(.perfil-select):focus {
           outline: 2px solid #e85d2f !important;
           outline-offset: -2px;
           background: #fff !important;
@@ -2632,13 +2651,23 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
           opacity: 0.5;
           cursor: not-allowed;
         }
+        .vg-grid select.perfil-select {
+          border: none !important;
+          border-radius: 6px !important;
+          padding: 4px 6px !important;
+          font-weight: 700;
+        }
+        .vg-grid select.perfil-select:focus {
+          outline: 2px solid #1a1a2e !important;
+          outline-offset: -2px;
+        }
       `}</style>
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table className="vg-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['N', 'Prod', 'Fecha Pedido', 'Equipo', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela / Color', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', 'Prep', '¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió', 'Anular'].map((h) => {
+                {['N', 'Prod', 'Fecha Pedido', 'Equipo', 'Perfil', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela / Color', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', 'Prep', '¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió', 'Anular'].map((h) => {
                   const esEntregaEnAdelante = ['¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].includes(h);
                   return (
                     <th key={h} style={{ ...th, textTransform: 'uppercase', background: esEntregaEnAdelante ? '#8e6fc9' : '#e85d2f', color: '#fff', fontWeight: 700, ...(h === 'Prod' ? { width: 40 } : {}) }}>{h}</th>
@@ -2647,7 +2676,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
               </tr>
             </thead>
             <tbody>
-              {filtradas.length === 0 && <tr><td colSpan={26} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
+              {filtradas.length === 0 && <tr><td colSpan={27} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
               {filtradas.map((o) => {
                 // El verde/rojo de "impreso" ahora solo tiñe las celdas de N
                 // hasta Op Imp (no toda la fila), y el verde únicamente
@@ -2683,6 +2712,11 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                   <td style={{ ...td, width: 100, ...bgCelda }}>
                     <select value={o.equipo || ''} onChange={(e) => actualizar(o.id, 'equipo', e.target.value || null)} disabled={!puede(o, 'equipo')} style={{ ...selSm, textTransform: 'uppercase', color: colorEquipo(o.equipo), fontWeight: colorEquipo(o.equipo) ? 700 : undefined }}>
                       <option value="">—</option>{EQUIPOS.map((eq) => <option key={eq} value={eq} style={{ textTransform: 'uppercase' }}>{eq}</option>)}
+                    </select>
+                  </td>
+                  <td style={{ ...td, width: 110, ...bgCelda }}>
+                    <select value={o.perfil || ''} onChange={(e) => actualizar(o.id, 'perfil', e.target.value || null)} disabled={!puede(o, 'perfil')} className="perfil-select" style={{ ...selSm, textTransform: 'uppercase', background: colorPerfil(o.perfil)?.bg, color: colorPerfil(o.perfil)?.color }}>
+                      <option value="">—</option>{PERFILES.map((p) => <option key={p} value={p} style={{ textTransform: 'uppercase' }}>{p}</option>)}
                     </select>
                   </td>
                   <td style={{ ...td, width: 55, fontFamily: 'monospace', color: '#e85d2f', ...bgCelda }} title={o.nro_ot}>{o.nro_ot.slice(-6)}</td>

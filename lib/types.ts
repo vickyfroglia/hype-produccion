@@ -1,5 +1,5 @@
 export const EQUIPOS = ['Monalisa 32', 'Monalisa 8'] as const;
-export const PERFILES = ['2 pasadas', '3 pasadas'] as const;
+export const PERFILES = ['ST 4 PASS', 'ST 3 PASS', 'TUSSOR HQ', 'TUSSOR 3P', 'TUSSOR 2P', '3 PASADAS', '2 PASADAS', 'INEDIT 3P', 'INEDIT 2P'] as const;
 export const TIPOS_OT = ['OT', 'OP', 'REPO', 'OI'] as const;
 export const APROB_OPCIONES = ['FICHAR CN', 'FICHAR CR', 'EN PROCESO', 'C APROB', 'S APROB'] as const;
 export const ANTICIPO_OPCIONES = ['PAGADO', 'PENDIENTE', 'N/A'] as const;
