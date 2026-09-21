@@ -2613,6 +2613,25 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
       </div>
       <style>{`
         .vg-grid th, .vg-grid td { border: 1px solid #ddd !important; text-align: center !important; }
+        .vg-grid input, .vg-grid select {
+          border: none !important;
+          background: transparent !important;
+          border-radius: 0 !important;
+          text-align: center !important;
+          padding: 4px 2px !important;
+        }
+        .vg-grid input:hover:not(:disabled), .vg-grid select:hover:not(:disabled) {
+          background: #f5f5f7 !important;
+        }
+        .vg-grid input:focus, .vg-grid select:focus {
+          outline: 2px solid #e85d2f !important;
+          outline-offset: -2px;
+          background: #fff !important;
+        }
+        .vg-grid input:disabled, .vg-grid select:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
       `}</style>
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
