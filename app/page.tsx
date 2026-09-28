@@ -1,5 +1,6 @@
 'use client';
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useState, useRef, useLayoutEffect } from 'react';
+import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { supabase, fetchAll, stockPorCliente, stockTH, StockDisponible } from '../lib/supabaseClient';
 import Login from './login';
 import {
@@ -2616,6 +2617,31 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
     // Pedido más viejo (N 1) arriba, más nuevo abajo — mismo orden que la columna N.
     .sort((a, b) => (prioridad.get(a.id) || 0) - (prioridad.get(b.id) || 0));
 
+  // Virtualización real de filas: la tabla puede tener miles de pedidos
+  // (histórico migrado incluido), y renderizar un <tr> por cada uno hacía
+  // que la pantalla se pusiera pesadísima (React tenía que crear y
+  // reconciliar todos los inputs/selects de todas las filas en cada
+  // tipeo o actualización). Con esto solo se crean en el DOM las filas
+  // que están realmente visibles en la ventana (+ un margen), sin
+  // cambiar el scroll continuo, la búsqueda ni el orden.
+  const vgTableContainerRef = useRef<HTMLTableSectionElement>(null);
+  const vgOffsetRef = useRef(0);
+  useLayoutEffect(() => {
+    const el = vgTableContainerRef.current;
+    if (el) {
+      vgOffsetRef.current = el.getBoundingClientRect().top + window.scrollY;
+    }
+  });
+  const rowVirtualizer = useWindowVirtualizer({
+    count: filtradas.length,
+    estimateSize: () => 33,
+    overscan: 15,
+    scrollMargin: vgOffsetRef.current,
+  });
+  const vgVirtualRows = rowVirtualizer.getVirtualItems();
+  const vgTopPad = vgVirtualRows.length > 0 ? Math.max(0, vgVirtualRows[0].start - rowVirtualizer.options.scrollMargin) : 0;
+  const vgBottomPad = vgVirtualRows.length > 0 ? Math.max(0, rowVirtualizer.getTotalSize() - (vgVirtualRows[vgVirtualRows.length - 1].end - rowVirtualizer.options.scrollMargin)) : 0;
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
@@ -2633,7 +2659,6 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
       </div>
       <style>{`
         .vg-grid th, .vg-grid td { border: 1px solid #ddd !important; text-align: center !important; }
-        .vg-grid tbody tr { content-visibility: auto; contain-intrinsic-size: auto 33px; }
         .vg-grid input, .vg-grid select:not(.perfil-select) {
           border: none !important;
           background: transparent !important;
@@ -2677,9 +2702,11 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                 })}
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={vgTableContainerRef}>
               {filtradas.length === 0 && <tr><td colSpan={28} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
-              {filtradas.map((o) => {
+              {vgTopPad > 0 && <tr aria-hidden style={{ height: vgTopPad }}><td colSpan={28} style={{ padding: 0, border: 'none' }} /></tr>}
+              {vgVirtualRows.map((virtualRow) => {
+                const o = filtradas[virtualRow.index];
                 // El verde/rojo de "impreso" ahora solo tiñe las celdas de N
                 // hasta Op Imp (no toda la fila), y el verde únicamente
                 // aparece cuando YA se cargaron Mts Imp Y Op Imp juntos —
@@ -2693,7 +2720,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                 // Muestras) en vez de solo las celdas hasta Op Imp.
                 const bgCelda = !terminado && !noImprimio && impresoCompleto ? { background: '#e6f4e1' } : {};
                 return (
-                <tr key={o.id} style={terminado ? { background: '#8fce8a' } : noImprimio ? { background: '#fde8e8' } : undefined}>
+                <tr key={o.id} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} style={terminado ? { background: '#8fce8a' } : noImprimio ? { background: '#fde8e8' } : undefined}>
                   <td style={{ ...td, color: '#888', ...bgCelda }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                       {prioridad.get(o.id)}
@@ -2877,6 +2904,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                 </tr>
                 );
               })}
+              {vgBottomPad > 0 && <tr aria-hidden style={{ height: vgBottomPad }}><td colSpan={28} style={{ padding: 0, border: 'none' }} /></tr>}
             </tbody>
           </table>
         </div>
