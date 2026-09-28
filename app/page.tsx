@@ -2633,6 +2633,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
       </div>
       <style>{`
         .vg-grid th, .vg-grid td { border: 1px solid #ddd !important; text-align: center !important; }
+        .vg-grid tbody tr { content-visibility: auto; contain-intrinsic-size: auto 33px; }
         .vg-grid input, .vg-grid select:not(.perfil-select) {
           border: none !important;
           background: transparent !important;
