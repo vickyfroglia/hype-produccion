@@ -9,8 +9,8 @@ export const ESTADO_ENTREGA_OPCIONES = ['En almacén', 'Entregado a cliente', 'E
 // Operarios habilitados por paso (si no tenés una tabla `empleados` filtrable
 // por área, se usa esta lista fija — fácil de editar acá).
 export const OPERARIOS_IMPRESION = ['Tomás', 'Néstor', 'Cache', 'Ricky', 'Franco'];
-export const OPERARIOS_FIJACION = ['Mati', 'Leo', 'Ciro', 'Lautaro'];
-export const OPERARIOS_ENTREGA = ['Mati', 'Leo', 'Ciro', 'Lautaro', 'Tomás', 'Néstor', 'Cache', 'Ricky', 'Franco'];
+export const OPERARIOS_FIJACION = ['Mati', 'Leo', 'Ciro', 'Lautaro', 'Isma'];
+export const OPERARIOS_ENTREGA = ['Mati', 'Leo', 'Ciro', 'Lautaro', 'Isma', 'Tomás', 'Néstor', 'Cache', 'Ricky', 'Franco'];
 
 // Responsables de Comercial que cargan la columna "Comercial" en Muestras
 // (quién pidió/está a cargo de esa muestra del lado comercial).
