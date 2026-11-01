@@ -2378,8 +2378,8 @@ const CAMPOS_ROL: Record<string, string[]> = {
   diseno: ['fecha', 'equipo', 'perfil', 'cliente', 'diseno', 'mts_pedidos', 'tela', 'aprob', 'post', 'observaciones'],
   administrativo: ['entregar', 'tipo_rto', 'observaciones'],
   operario: ['imp_operario', 'mts_impresos'],
-  encargado: ['imp_operario', 'mts_impresos', 'prep', 'fija_operario', 'fecha_fin', 'tinto_hype', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
-  logistica: ['fija_operario', 'fecha_fin', 'tinto_hype', 'prep', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'observaciones'],
+  encargado: ['imp_operario', 'mts_impresos', 'prep', 'fija_operario', 'fecha_fin', 'tinto_hype', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'fecha_entrega', 'entrego', 'recibio', 'observaciones'],
+  logistica: ['fija_operario', 'fecha_fin', 'tinto_hype', 'prep', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'fecha_entrega', 'entrego', 'recibio', 'observaciones'],
   comercial: [],
 };
 
@@ -2402,7 +2402,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
   // Prod dice NO (falta anticipo, aprobación o tela preparada), salvo admin.
   // Aprob y Prep quedan afuera de esta lista a propósito: son justamente
   // los que hay que completar para que Prod pase a decir SÍ.
-  const CAMPOS_PRODUCCION = ['imp_operario', 'mts_impresos', 'fija_operario', 'fecha_fin', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'entrego', 'recibio', 'entregar', 'tipo_rto'];
+  const CAMPOS_PRODUCCION = ['imp_operario', 'mts_impresos', 'fija_operario', 'fecha_fin', 'nro_rto', 'bulto_actual', 'bulto_total', 'estado_entrega', 'fecha_entrega', 'entrego', 'recibio', 'entregar', 'tipo_rto'];
   // Una vez que el pedido tiene Fecha fin (se marcó "terminado" a mano),
   // se "congela": nadie salvo admin puede seguir editando esa fila. La
   // única excepción es el propio campo fecha_fin: es la manija para volver
@@ -2701,8 +2701,8 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
           <table className="vg-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['N', 'Prod', 'Fecha Pedido', 'Equipo', 'Perfil', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela / Color', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', 'Tinto Hype', 'Prep', '¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió', 'Anular'].map((h) => {
-                  const esEntregaEnAdelante = ['¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Entregó', 'Recibió'].includes(h);
+                {['N', 'Prod', 'Fecha Pedido', 'Equipo', 'Perfil', 'Nro OT', 'Cliente', 'Diseño', 'Mts Ped', 'Mts Imp', 'Observaciones', 'Tela / Color', 'ID', 'Aprob', 'Op Imp', 'Post', 'Op Fij', 'Fecha fin', 'Tinto Hype', 'Prep', '¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Fecha entrega', 'Entregó', 'Recibió', 'Anular'].map((h) => {
+                  const esEntregaEnAdelante = ['¿Entregar?', 'Tipo RTO', 'Nº RTO', 'Bultos', 'Estado entrega', 'Fecha entrega', 'Entregó', 'Recibió'].includes(h);
                   return (
                     <th key={h} style={{ ...th, textTransform: 'uppercase', background: esEntregaEnAdelante ? '#8e6fc9' : '#e85d2f', color: '#fff', fontWeight: 700, ...(h === 'Prod' ? { width: 40 } : {}) }}>{h}</th>
                   );
@@ -2710,8 +2710,8 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
               </tr>
             </thead>
             <tbody ref={vgTableContainerRef}>
-              {filtradas.length === 0 && <tr><td colSpan={28} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
-              {vgTopPad > 0 && <tr aria-hidden style={{ height: vgTopPad }}><td colSpan={28} style={{ padding: 0, border: 'none' }} /></tr>}
+              {filtradas.length === 0 && <tr><td colSpan={29} style={{ ...td, textAlign: 'center', color: '#888' }}>Sin pedidos</td></tr>}
+              {vgTopPad > 0 && <tr aria-hidden style={{ height: vgTopPad }}><td colSpan={29} style={{ padding: 0, border: 'none' }} /></tr>}
               {vgVirtualRows.map((virtualRow) => {
                 const o = filtradas[virtualRow.index];
                 // El verde/rojo de "impreso" ahora solo tiñe las celdas de N
@@ -2896,6 +2896,9 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                     </select>
                   </td>
                   <td style={td}>
+                    <input type="date" value={o.fecha_entrega || ''} onChange={(e) => actualizar(o.id, 'fecha_entrega', e.target.value || null)} disabled={!puede(o, 'fecha_entrega')} style={{ ...selSm, width: 118 }} />
+                  </td>
+                  <td style={td}>
                     <select value={o.entrego || ''} onChange={(e) => actualizarEntrego(o, e.target.value)} disabled={!puede(o, 'entrego')} style={selSm}>
                       <option value="">—</option>{OPERARIOS_ENTREGA.map((op) => <option key={op} value={op}>{op}</option>)}
                     </select>
@@ -2911,7 +2914,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                 </tr>
                 );
               })}
-              {vgBottomPad > 0 && <tr aria-hidden style={{ height: vgBottomPad }}><td colSpan={28} style={{ padding: 0, border: 'none' }} /></tr>}
+              {vgBottomPad > 0 && <tr aria-hidden style={{ height: vgBottomPad }}><td colSpan={29} style={{ padding: 0, border: 'none' }} /></tr>}
             </tbody>
           </table>
         </div>
