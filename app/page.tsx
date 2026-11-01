@@ -1072,7 +1072,7 @@ function BuscarPedido({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
                     <tr key={o.id} style={bloqueada ? { background: '#fff5f5' } : undefined}>
                       <td style={{ ...td, fontFamily: 'monospace', color: bloqueada ? '#c00' : '#e85d2f' }}>{o.nro_ot}</td>
                       <td style={{ ...td, minWidth: 120 }}>
-                        <input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} disabled={bloqueada} style={{ ...selSm, width: '100%', minWidth: 110, ...estiloBloqueado }} />
+                        <InputFecha value={o.fecha} onCommit={(v) => actualizar(o.id, 'fecha', v)} disabled={bloqueada} style={{ ...selSm, width: '100%', minWidth: 110, ...estiloBloqueado }} />
                       </td>
                       <td style={{ ...td, minWidth: 140 }}>
                         <input defaultValue={o.cliente} onBlur={(e) => actualizar(o.id, 'cliente', e.target.value)} disabled={bloqueada} style={{ ...selSm, width: '100%', minWidth: 130, ...estiloBloqueado }} />
@@ -1428,7 +1428,7 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12, marginBottom: 20 }}>
-        <div><label style={lbl}>Fecha</label><input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={inp} disabled={modo === 'existente'} /></div>
+        <div><label style={lbl}>Fecha</label><InputFecha value={fecha} onCommit={(v) => setFecha(v)} style={inp} disabled={modo === 'existente'} /></div>
         <div><label style={lbl}>Tipo OT</label>
           <select value={tipoOt} onChange={(e) => setTipoOt(e.target.value)} style={inp} disabled={modo === 'existente'}>
             <option value="">Seleccionar</option>{TIPOS_OT.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -1759,7 +1759,7 @@ function PanelCotizacionesOt({
               {mostrarForm && (
                 <tr style={{ background: '#fff8ec' }}>
                   <td style={td}>
-                    <input type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 120 }} />
+                    <InputFecha value={form.fecha} onCommit={(v) => setForm({ ...form, fecha: v })} style={{ ...selSm, width: '100%', minWidth: 120 }} />
                   </td>
                   <td style={td}>
                     <input
@@ -2403,6 +2403,79 @@ const CAMPOS_ROL: Record<string, string[]> = {
   comercial: [],
 };
 
+// Campo de fecha que se puede ESCRIBIR a mano de forma corta: "01/11" completa
+// el año actual, "01/11/26" o "01112026" tambien se entienden. Al salir del
+// campo (o apretar Enter) se interpreta y se guarda como fecha (AAAA-MM-DD).
+// Tiene ademas un boton de calendario por si se prefiere elegir con el mouse.
+function fechaIsoATexto(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('T')[0].split('-');
+  return y && m && d ? `${d}/${m}/${y}` : iso;
+}
+
+function parsearFechaCorta(texto: string): string | null {
+  const t = texto.trim();
+  if (!t) return '';
+  let d: number, m: number, y: string | undefined;
+  const conSep = t.match(/^(\d{1,2})[\/\-. ](\d{1,2})(?:[\/\-. ](\d{2}|\d{4}))?$/);
+  if (conSep) {
+    d = parseInt(conSep[1], 10); m = parseInt(conSep[2], 10); y = conSep[3];
+  } else if (/^\d+$/.test(t) && [4, 6, 8].includes(t.length)) {
+    d = parseInt(t.slice(0, 2), 10); m = parseInt(t.slice(2, 4), 10); y = t.length > 4 ? t.slice(4) : undefined;
+  } else {
+    return null;
+  }
+  let anio = y ? parseInt(y, 10) : new Date().getFullYear();
+  if (y && y.length === 2) anio += 2000;
+  const f = new Date(anio, m - 1, d);
+  if (f.getFullYear() !== anio || f.getMonth() !== m - 1 || f.getDate() !== d) return null;
+  return `${String(anio).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function InputFecha({ value, onCommit, disabled, style, permitirVacio }: {
+  value: string | null | undefined;
+  onCommit: (iso: string) => void;
+  disabled?: boolean;
+  style?: React.CSSProperties;
+  permitirVacio?: boolean;
+}) {
+  const [texto, setTexto] = useState(fechaIsoATexto(value));
+  const [editando, setEditando] = useState(false);
+  const pickerRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (!editando) setTexto(fechaIsoATexto(value)); }, [value, editando]);
+
+  function confirmar() {
+    setEditando(false);
+    const iso = parsearFechaCorta(texto);
+    if (iso === null || (iso === '' && !permitirVacio)) { setTexto(fechaIsoATexto(value)); return; }
+    setTexto(fechaIsoATexto(iso));
+    if (iso !== (value || '').split('T')[0]) onCommit(iso);
+  }
+
+  return (
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: style?.width ?? '100%', minWidth: style?.minWidth }}>
+      <input
+        value={texto}
+        placeholder="dd/mm"
+        disabled={disabled}
+        onFocus={(e) => { setEditando(true); e.target.select(); }}
+        onChange={(e) => setTexto(e.target.value)}
+        onBlur={confirmar}
+        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') { setTexto(fechaIsoATexto(value)); setEditando(false); (e.target as HTMLInputElement).blur(); } }}
+        style={{ ...style, width: '100%', minWidth: 0, paddingRight: 18, boxSizing: 'border-box' }}
+      />
+      {!disabled && (
+        <>
+          <button type="button" tabIndex={-1} title="Elegir en el calendario" onMouseDown={(e) => e.preventDefault()} onClick={() => pickerRef.current?.showPicker?.()}
+            style={{ position: 'absolute', right: 1, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 11, padding: 0, width: 16 }}>▾</button>
+          <input ref={pickerRef} type="date" tabIndex={-1} value={(value || '').split('T')[0]} onChange={(e) => { if (e.target.value) { setTexto(fechaIsoATexto(e.target.value)); onCommit(e.target.value); } }}
+            style={{ position: 'absolute', right: 0, bottom: 0, width: 0, height: 0, opacity: 0, pointerEvents: 'none', border: 'none', padding: 0 }} />
+        </>
+      )}
+    </div>
+  );
+}
+
 function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onCambio: () => void; rol: string }) {
   const [search, setSearch] = useState('');
   // Si el pedido no tiene color cargado, no se muestra ningún campo vacío
@@ -2819,7 +2892,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                       {o.puede_producir ? 'SÍ' : 'NO'}
                     </span>
                   </td>
-                  <td style={{ ...td, width: 108, ...bgCelda }}><input type="date" defaultValue={o.fecha} onBlur={(e) => actualizar(o.id, 'fecha', e.target.value)} disabled={!puede(o, 'fecha')} style={{ ...selSm, width: '100%' }} /></td>
+                  <td style={{ ...td, width: 108, ...bgCelda }}><InputFecha value={o.fecha} onCommit={(v) => actualizar(o.id, 'fecha', v)} disabled={!puede(o, 'fecha')} style={{ ...selSm, width: '100%' }} /></td>
                   <td style={{ ...td, width: 100, ...bgCelda }}>
                     <select value={o.equipo || ''} onChange={(e) => actualizar(o.id, 'equipo', e.target.value || null)} disabled={!puede(o, 'equipo')} style={{ ...selSm, textTransform: 'uppercase', color: colorEquipo(o.equipo), fontWeight: colorEquipo(o.equipo) ? 700 : undefined }}>
                       <option value="">—</option>{EQUIPOS.map((eq) => <option key={eq} value={eq} style={{ textTransform: 'uppercase' }}>{eq}</option>)}
@@ -2971,7 +3044,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
                     </select>
                   </td>
                   <td style={td}>
-                    <input type="date" value={o.fecha_entrega || ''} onChange={(e) => actualizar(o.id, 'fecha_entrega', e.target.value || null)} disabled={!puede(o, 'fecha_entrega')} style={{ ...selSm, width: 118 }} />
+                    <InputFecha permitirVacio value={o.fecha_entrega || ''} onCommit={(v) => actualizar(o.id, 'fecha_entrega', v || null)} disabled={!puede(o, 'fecha_entrega')} style={{ ...selSm, width: 118 }} />
                   </td>
                   <td style={td}>
                     <select value={o.entrego || ''} onChange={(e) => actualizarEntrego(o, e.target.value)} disabled={!puede(o, 'entrego')} style={selSm}>
@@ -3359,7 +3432,7 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
                       </div>
                     </td>
                     <td style={{ ...td, minWidth: 140, ...bgCelda }}>
-                      <input type="date" defaultValue={m.fecha} onBlur={(e) => actualizar(m.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 130 }} />
+                      <InputFecha value={m.fecha} onCommit={(v) => actualizar(m.id, 'fecha', v)} style={{ ...selSm, width: '100%', minWidth: 130 }} />
                     </td>
                     <td style={{ ...td, width: 100, ...bgCelda }}>
                       <select value={m.equipo || ''} onChange={(e) => actualizar(m.id, 'equipo', e.target.value || null)} style={{ ...selSm, textTransform: 'uppercase', color: colorEquipo(m.equipo), fontWeight: colorEquipo(m.equipo) ? 700 : undefined }}>
@@ -3495,7 +3568,7 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
               >
                 <td style={{ ...td, color: '#bbb', fontSize: 11 }}>{guardando ? '…' : 'Nueva'}</td>
                 <td style={{ ...td, minWidth: 140 }}>
-                  <input type="date" value={nuevo.fecha} onChange={(e) => setNuevo({ ...nuevo, fecha: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 130 }} />
+                  <InputFecha value={nuevo.fecha} onCommit={(v) => setNuevo({ ...nuevo, fecha: v })} style={{ ...selSm, width: '100%', minWidth: 130 }} />
                 </td>
                 <td style={{ ...td, width: 100 }}>
                   <select value={nuevo.equipo} onChange={(e) => setNuevo({ ...nuevo, equipo: e.target.value })} style={{ ...selSm, textTransform: 'uppercase', color: colorEquipo(nuevo.equipo), fontWeight: colorEquipo(nuevo.equipo) ? 700 : undefined }}>
@@ -3826,7 +3899,7 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
               return (
               <tr key={r.id} style={filaCompleta ? { background: '#e6f4e1' } : undefined}>
                 <td style={{ ...td, minWidth: 100 }}>
-                  <input type="date" defaultValue={r.fecha} onBlur={(e) => actualizar(r.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 95 }} />
+                  <InputFecha value={r.fecha} onCommit={(v) => actualizar(r.id, 'fecha', v)} style={{ ...selSm, width: '100%', minWidth: 95 }} />
                 </td>
                 <td style={td}>
                   <select defaultValue={r.turno} onChange={(e) => actualizar(r.id, 'turno', e.target.value)} style={selSm}>
@@ -3908,7 +3981,7 @@ function TablaRollos({ equipo, ordenes, rol }: { equipo: string; ordenes: OrdenD
               }}
             >
               <td style={{ ...td, minWidth: 100 }}>
-                <input type="date" value={nuevo.fecha} onChange={(e) => setNuevo({ ...nuevo, fecha: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 95 }} />
+                <InputFecha value={nuevo.fecha} onCommit={(v) => setNuevo({ ...nuevo, fecha: v })} style={{ ...selSm, width: '100%', minWidth: 95 }} />
               </td>
               <td style={td}>
                 <select value={nuevo.turno} onChange={(e) => setNuevo({ ...nuevo, turno: e.target.value })} style={selSm}>
@@ -4186,7 +4259,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
               return (
               <tr key={r.id} style={filaCompleta ? { background: '#e6f4e1' } : undefined}>
                 <td style={{ ...td, minWidth: 100 }}>
-                  <input type="date" defaultValue={r.fecha} onBlur={(e) => actualizar(r.id, 'fecha', e.target.value)} style={{ ...selSm, width: '100%', minWidth: 95 }} />
+                  <InputFecha value={r.fecha} onCommit={(v) => actualizar(r.id, 'fecha', v)} style={{ ...selSm, width: '100%', minWidth: 95 }} />
                 </td>
                 <td style={td}>
                   <select defaultValue={r.turno || ''} onChange={(e) => actualizar(r.id, 'turno', e.target.value || null)} style={selSm}>
@@ -4281,7 +4354,7 @@ function TablaCibitex({ ordenes, rol }: { ordenes: OrdenDirecta[]; rol: string }
               }}
             >
               <td style={{ ...td, minWidth: 100 }}>
-                <input type="date" value={nuevo.fecha} onChange={(e) => setNuevo({ ...nuevo, fecha: e.target.value })} style={{ ...selSm, width: '100%', minWidth: 95 }} />
+                <InputFecha value={nuevo.fecha} onCommit={(v) => setNuevo({ ...nuevo, fecha: v })} style={{ ...selSm, width: '100%', minWidth: 95 }} />
               </td>
               <td style={td}>
                 <select value={nuevo.turno} onChange={(e) => setNuevo({ ...nuevo, turno: e.target.value })} style={selSm}>
