@@ -2392,6 +2392,10 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
   const [editandoColor, setEditandoColor] = useState<Set<number>>(new Set());
   const FILTROS_ESTADO = ['FICHAR CN', 'FICHAR CR', 'EN PROCESO'] as const;
   const [filtroEstado, setFiltroEstado] = useState('');
+  // Los pedidos ya entregados (campo "Entregó" completo) no se muestran en
+  // esta pantalla para mantenerla liviana. Siguen existiendo: aparecen al
+  // buscar por OT/cliente/diseño/tela, o tildando "Ver entregados".
+  const [verEntregados, setVerEntregados] = useState(false);
   const prioridad = calcularPrioridad(ordenes);
   const esAdmin = rol.trim() === 'admin';
   // Campos que son "producir" propiamente dicho: no se pueden tocar si
@@ -2605,7 +2609,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
   const filtradas = ordenes
     .filter((o) => {
       if (filtroEstado && o.aprob !== filtroEstado) return false;
-      if (!search) return true;
+      if (!search) return verEntregados || !(o.entrego || '').trim();
       const q = search.toLowerCase();
       return (
         o.nro_ot.toLowerCase().includes(q) ||
@@ -2647,13 +2651,16 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 700, textTransform: 'uppercase' }}>Producción</div>
-          <div style={{ fontSize: 13, color: '#888' }}>Todos los pedidos y todos los campos, editable por cualquiera</div>
+          <div style={{ fontSize: 13, color: '#888' }}>Pedidos sin entregar (los entregados se ven al buscar o con "Ver entregados"), editable por cualquiera</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} style={{ ...inp, maxWidth: 160 }}>
             <option value="">Todos los estados</option>
             {FILTROS_ESTADO.map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
+          <label style={{ fontSize: 12, color: '#666', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+            <input type="checkbox" checked={verEntregados} onChange={(e) => setVerEntregados(e.target.checked)} /> Ver entregados
+          </label>
           <input placeholder="Buscar por OT, cliente, diseño o tela..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...inp, maxWidth: 280 }} />
         </div>
       </div>
