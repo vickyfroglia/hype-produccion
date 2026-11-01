@@ -1,7 +1,7 @@
 'use client';
 import { Fragment, useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
-import { supabase, fetchAll, stockPorCliente, stockTH, StockDisponible } from '../lib/supabaseClient';
+import { supabase, fetchAll, fetchOrdenesAbiertas, fetchOrdenesParaTotales, buscarOrdenesEntregadas, stockPorCliente, stockTH, StockDisponible, STOCK_CONECTADO, egresosDb } from '../lib/supabaseClient';
 import Login from './login';
 import {
   OrdenDirecta,
@@ -36,6 +36,7 @@ import {
 // que necesita, sin ordenar, hasta 10.000 filas (de sobra para un libro de
 // stock).
 async function fetchStockTabla(tabla: 'ingresos' | 'egresos'): Promise<any[]> {
+  if (!STOCK_CONECTADO) return [];
   const { data, error } = await supabase.from(tabla).select('id_hype, cliente, mts').range(0, 9999);
   if (error) {
     console.error(`No se pudo cargar ${tabla} para el chequeo de tela del Dashboard`, error);
@@ -91,6 +92,8 @@ const selSm: React.CSSProperties = { padding: '4px 6px', borderRadius: 6, border
 export default function Home() {
   const [pagina, setPagina] = useState('dashboard');
   const [ordenes, setOrdenes] = useState<OrdenDirecta[]>([]);
+  // Columnas minimas de TODOS los pedidos, solo para los totales del Dashboard.
+  const [ordenesTotales, setOrdenesTotales] = useState<OrdenDirecta[]>([]);
   const [eventos, setEventos] = useState<EventoDirecta[]>([]);
   const [eventosMuestras, setEventosMuestras] = useState<EventoMuestra[]>([]);
   const [eventosReporte, setEventosReporte] = useState<EventoRollo[]>([]);
@@ -127,8 +130,9 @@ export default function Home() {
   // hacía que el scroll volviera arriba de todo cada vez que se tocaba algo.
   async function cargarTodo(mostrarLoading = false) {
     if (mostrarLoading) setLoading(true);
-    const [ords, evts, evtsMuestras, evtsReporte, muestrasData, rollos, ingresos, egresos, cotizaciones] = await Promise.all([
-      fetchAll('ordenes_directa', 'created_at'),
+    const [ords, ordsTotales, evts, evtsMuestras, evtsReporte, muestrasData, rollos, ingresos, egresos, cotizaciones] = await Promise.all([
+      fetchOrdenesAbiertas(),
+      fetchOrdenesParaTotales(),
       fetchAll('ordenes_directa_eventos', 'created_at'),
       fetchAll('muestras_eventos', 'created_at'),
       fetchAll('reporte_rollos_eventos', 'created_at'),
@@ -139,6 +143,7 @@ export default function Home() {
       fetchAll('cotizaciones_ot', 'created_at'),
     ]);
     setOrdenes(ords);
+    setOrdenesTotales(ordsTotales);
     setEventos(evts);
     setEventosMuestras(evtsMuestras);
     setEventosReporte(evtsReporte);
@@ -230,13 +235,13 @@ export default function Home() {
         {loading && <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando...</div>}
         {!loading && (
           <>
-            {pagina === 'dashboard' && <Dashboard ordenes={ordenes} muestras={muestras} rollosReporte={rollosReporte} ingresosStock={ingresosStock} egresosStock={egresosStock} />}
+            {pagina === 'dashboard' && <Dashboard ordenes={ordenes} ordenesTotales={ordenesTotales} muestras={muestras} rollosReporte={rollosReporte} ingresosStock={ingresosStock} egresosStock={egresosStock} />}
             {pagina === 'general' && <VistaGeneral ordenes={ordenes} onCambio={cargarTodo} rol={rol} />}
             {pagina === 'muestras' && <VistaMuestras rol={rol} nombreUsuario={nombreUsuario} />}
             {pagina === 'reporte' && <PanelReporteDiario ordenes={ordenes} rol={rol} />}
             {pagina === 'diseno' && <PanelDiseno ordenes={ordenes} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
             {pagina === 'administracion' && <PanelAdministracion ordenes={ordenes} cotizacionesOt={cotizacionesOt} nombreUsuario={nombreUsuario} onCambio={cargarTodo} />}
-            {pagina === 'historial' && <Historial eventos={eventos} eventosMuestras={eventosMuestras} eventosReporte={eventosReporte} ordenes={ordenes} />}
+            {pagina === 'historial' && <Historial eventos={eventos} eventosMuestras={eventosMuestras} eventosReporte={eventosReporte} ordenes={ordenesTotales} />}
           </>
         )}
       </div>
@@ -297,7 +302,7 @@ function motivoBloqueo(o: OrdenDirecta, stock: MapasStock): string | null {
     return `No se pudo imprimir: ${o.motivo_no_impreso || 'sin motivo especificado'}`;
   }
   const faltanImprimir = Number(o.mts_pedidos || 0) - Number(o.mts_impresos || 0);
-  if (faltanImprimir > 0 && o.cod_tela) {
+  if (STOCK_CONECTADO && faltanImprimir > 0 && o.cod_tela) {
     const idHype = String(o.cod_tela).trim();
     const disponible = idHype.toUpperCase().startsWith('TH')
       ? stock.porIdTH.get(idHype) ?? 0
@@ -412,12 +417,14 @@ function mtsTerminacionMensualPorOperario(rollosReporte: RolloReporte[]): Agrega
 
 function Dashboard({
   ordenes,
+  ordenesTotales,
   muestras,
   rollosReporte,
   ingresosStock,
   egresosStock,
 }: {
   ordenes: OrdenDirecta[];
+  ordenesTotales: OrdenDirecta[];
   muestras: Muestra[];
   rollosReporte: RolloReporte[];
   ingresosStock: any[];
@@ -430,8 +437,8 @@ function Dashboard({
   const muestrasNoHechas = muestras.filter((m) => m.imp_operario === 'NO');
   const anioActual = new Date().toISOString().slice(0, 4);
   const mesActual = new Date().toISOString().slice(0, 7);
-  const ordenesAnio = ordenes.filter((o) => o.fecha && o.fecha.slice(0, 4) === anioActual);
-  const ordenesMes = ordenes.filter((o) => o.fecha && o.fecha.slice(0, 7) === mesActual);
+  const ordenesAnio = ordenesTotales.filter((o) => o.fecha && o.fecha.slice(0, 4) === anioActual);
+  const ordenesMes = ordenesTotales.filter((o) => o.fecha && o.fecha.slice(0, 7) === mesActual);
   const mtsImpAnio = ordenesAnio.reduce((s, o) => s + Number(o.mts_impresos || 0), 0);
   const mtsPedAnio = ordenesAnio.reduce((s, o) => s + Number(o.mts_pedidos || 0), 0);
   const mtsImpMes = ordenesMes.reduce((s, o) => s + Number(o.mts_impresos || 0), 0);
@@ -464,7 +471,7 @@ function Dashboard({
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 20 }}>
         {EQUIPOS.map((eq) => {
-          const { impresos, pendientes } = totalesPorEquipo(ordenes, eq);
+          const { impresos, pendientes } = totalesPorEquipo(ordenesTotales, eq);
           return (
             <div key={eq} style={{ ...card, background: fondoEquipo(eq), color: '#000' }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#000', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
@@ -815,7 +822,7 @@ function SolicitudesPendientes({ nombreUsuario, onCambio }: { nombreUsuario: str
         orden_id: fila.id,
       }));
     if (egresosTH.length > 0) {
-      const { error: errorEgresoTH } = await supabase.from('egresos').insert(egresosTH);
+      const { error: errorEgresoTH } = await egresosDb().insert(egresosTH);
       if (errorEgresoTH) {
         console.error('No se pudo reservar el stock TH automáticamente:', errorEgresoTH);
       }
@@ -987,8 +994,21 @@ function BuscarPedido({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
   const [busqueda, setBusqueda] = useState('');
 
   const termino = busqueda.trim().toLowerCase();
+  // Los pedidos ya entregados no estan en `ordenes` (no se descargan al
+  // abrir la app): se buscan en la base cuando se escribe algo.
+  const [entregadosExtra, setEntregadosExtra] = useState<OrdenDirecta[]>([]);
+  useEffect(() => {
+    if (!termino) { setEntregadosExtra([]); return; }
+    let cancelado = false;
+    const t = setTimeout(async () => {
+      const r = await buscarOrdenesEntregadas(busqueda);
+      if (!cancelado) setEntregadosExtra(r as OrdenDirecta[]);
+    }, 300);
+    return () => { cancelado = true; clearTimeout(t); };
+  }, [busqueda, ordenes]);
+  const idsAbiertos = new Set(ordenes.map((o) => o.id));
   const resultados = termino
-    ? ordenes.filter((o) =>
+    ? [...ordenes, ...entregadosExtra.filter((o) => !idsAbiertos.has(o.id))].filter((o) =>
         [o.nro_ot, o.cliente, o.diseno, o.tela || ''].some((campo) => (campo || '').toLowerCase().includes(termino))
       )
     : [];
@@ -1016,7 +1036,7 @@ function BuscarPedido({ ordenes, onCambio }: { ordenes: OrdenDirecta[]; onCambio
   async function anular(o: OrdenDirecta) {
     if (Number(o.mts_impresos || 0) > 0) return; // ya se imprimió algo: no se puede anular ni modificar acá
     if (!confirm(`¿Anular el pedido ${o.nro_ot} — ${o.cliente} — ${o.diseno}?\n\nEsto también libera el stock reservado para este pedido (si lo hay). No se puede deshacer.`)) return;
-    const { error: errorEgresos } = await supabase.from('egresos').delete().eq('orden_id', o.id);
+    const { error: errorEgresos } = await egresosDb().delete().eq('orden_id', o.id);
     if (errorEgresos) console.error('No se pudo liberar el stock reservado de este pedido:', errorEgresos);
     const { error } = await supabase.from('ordenes_directa').delete().eq('id', o.id);
     if (error) { alert('Error al anular: ' + error.message); return; }
@@ -1305,7 +1325,7 @@ function FormAltaDiseno({ ordenes, nombreUsuario, onGuardado }: { ordenes: Orden
         orden_id: fila.id,
       }));
     if (egresosTH.length > 0) {
-      const { error: errorEgresoTH } = await supabase.from('egresos').insert(egresosTH);
+      const { error: errorEgresoTH } = await egresosDb().insert(egresosTH);
       if (errorEgresoTH) {
         console.error('No se pudo reservar el stock TH automáticamente:', errorEgresoTH);
         alert('El pedido se guardó, pero no se pudo reservar el stock TH automáticamente (revisar conexión con Stock).');
@@ -2396,7 +2416,22 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
   // esta pantalla para mantenerla liviana. Siguen existiendo: aparecen al
   // buscar por OT/cliente/diseño/tela, o tildando "Ver entregados".
   const [verEntregados, setVerEntregados] = useState(false);
-  const prioridad = calcularPrioridad(ordenes);
+  // Pedidos entregados traidos de la base solo cuando se busca (o se tilda
+  // "Ver entregados"): no se descargan al abrir la app. Se vuelven a pedir
+  // cada vez que cambia la lista (por ejemplo despues de editar una fila).
+  const [entregadosExtra, setEntregadosExtra] = useState<OrdenDirecta[]>([]);
+  useEffect(() => {
+    if (!search.trim() && !verEntregados) { setEntregadosExtra([]); return; }
+    let cancelado = false;
+    const t = setTimeout(async () => {
+      const r = await buscarOrdenesEntregadas(search);
+      if (!cancelado) setEntregadosExtra(r as OrdenDirecta[]);
+    }, 300);
+    return () => { cancelado = true; clearTimeout(t); };
+  }, [search, verEntregados, ordenes]);
+  const idsAbiertos = new Set(ordenes.map((o) => o.id));
+  const todas = entregadosExtra.length ? [...ordenes, ...entregadosExtra.filter((o) => !idsAbiertos.has(o.id))] : ordenes;
+  const prioridad = calcularPrioridad(todas);
   const esAdmin = rol.trim() === 'admin';
   // Campos que son "producir" propiamente dicho: no se pueden tocar si
   // Prod dice NO (falta anticipo, aprobación o tela preparada), salvo admin.
@@ -2478,7 +2513,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
   // no arrastre una reserva "fantasma" de un pedido que ya no existe.
   async function anularPedido(o: OrdenDirecta) {
     if (!confirm(`¿Anular el pedido ${o.nro_ot} — ${o.cliente} — ${o.diseno}?\n\nEsto también libera el stock reservado para este pedido (si lo hay). No se puede deshacer.`)) return;
-    const { error: errorEgresos } = await supabase.from('egresos').delete().eq('orden_id', o.id);
+    const { error: errorEgresos } = await egresosDb().delete().eq('orden_id', o.id);
     if (errorEgresos) console.error('No se pudo liberar el stock reservado de este pedido:', errorEgresos);
     const { error } = await supabase.from('ordenes_directa').delete().eq('id', o.id);
     if (error) { alert('Error al anular: ' + error.message); return; }
@@ -2542,7 +2577,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
     // realmente impreso.
     const esTelaTH = (o.cod_tela || '').toUpperCase().startsWith('TH');
     if (o.cod_tela && delta > 0 && !esTelaTH) {
-      const { error: errorEgreso } = await supabase.from('egresos').insert([
+      const { error: errorEgreso } = await egresosDb().insert([
         {
           fecha: new Date().toISOString().split('T')[0],
           cliente: o.cliente,
@@ -2570,7 +2605,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
       return;
     }
     if (nuevoValor) {
-      const { error: errorStock } = await supabase.from('egresos').update({ remito: nuevoValor }).eq('orden_id', o.id);
+      const { error: errorStock } = await egresosDb().update({ remito: nuevoValor }).eq('orden_id', o.id);
       if (errorStock) console.error('No se pudo actualizar el remito en Stock:', errorStock);
     }
     onCambio();
@@ -2586,7 +2621,7 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
       return;
     }
     if (nuevoValor) {
-      const { error: errorStock } = await supabase.from('egresos').update({ entrego: nuevoValor }).eq('orden_id', o.id);
+      const { error: errorStock } = await egresosDb().update({ entrego: nuevoValor }).eq('orden_id', o.id);
       if (errorStock) console.error('No se pudo actualizar quién entregó en Stock:', errorStock);
     }
     onCambio();
@@ -2600,13 +2635,13 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
       return;
     }
     if (nuevoValor) {
-      const { error: errorStock } = await supabase.from('egresos').update({ recibio: nuevoValor }).eq('orden_id', o.id);
+      const { error: errorStock } = await egresosDb().update({ recibio: nuevoValor }).eq('orden_id', o.id);
       if (errorStock) console.error('No se pudo actualizar quién recibió en Stock:', errorStock);
     }
     onCambio();
   }
 
-  const filtradas = ordenes
+  const filtradas = todas
     .filter((o) => {
       if (filtroEstado && o.aprob !== filtroEstado) return false;
       if (!search) return verEntregados || !(o.entrego || '').trim();
@@ -3131,7 +3166,7 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
     if (error) { alert('Error: ' + error.message); return; }
     const delta = mtsNuevos - Number(m.mts_impresos || 0);
     if (m.cod_tela && m.cliente && m.tela && delta > 0) {
-      const { error: errorEgreso } = await supabase.from('egresos').insert([
+      const { error: errorEgreso } = await egresosDb().insert([
         {
           fecha: new Date().toISOString().split('T')[0],
           cliente: m.cliente,
@@ -3210,7 +3245,7 @@ function VistaMuestras({ rol, nombreUsuario }: { rol: string; nombreUsuario: str
         const mejor = coincidencias.sort((a, b) => b.disponible - a.disponible)[0];
         await supabase.from('muestras').update({ tela: descripcionTela(mejor), cod_tela: mejor.id_hype, ubicacion: mejor.ubicacion }).eq('id', data.id);
         if (mtsImpresos > 0) {
-          const { error: errorEgreso } = await supabase.from('egresos').insert([
+          const { error: errorEgreso } = await egresosDb().insert([
             {
               fecha: new Date().toISOString().split('T')[0],
               cliente: nuevo.cliente,
