@@ -2664,6 +2664,20 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
   // que están realmente visibles en la ventana (+ un margen), sin
   // cambiar el scroll continuo, la búsqueda ni el orden.
   const vgTableContainerRef = useRef<HTMLTableSectionElement>(null);
+  const vgTableWrapRef = useRef<HTMLDivElement>(null);
+  const vgTopScrollRef = useRef<HTMLDivElement>(null);
+  // Ancho real de la tabla, para que la barra de arriba tenga el mismo recorrido.
+  const [vgAnchoTabla, setVgAnchoTabla] = useState(2600);
+  useEffect(() => {
+    const el = vgTableWrapRef.current;
+    if (!el) return;
+    const medir = () => setVgAnchoTabla(el.scrollWidth);
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => ro.disconnect();
+  }, []);
   const vgOffsetRef = useRef(0);
   useLayoutEffect(() => {
     const el = vgTableContainerRef.current;
@@ -2731,8 +2745,34 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
           outline-offset: -2px;
         }
       `}</style>
+      {/* Barra de scroll horizontal ARRIBA, siempre visible (pegada debajo del
+          menu) y sincronizada con la tabla: con muchos pedidos la barra de
+          abajo queda lejisimos y no se podia ir hacia la derecha. */}
+      <div
+        ref={vgTopScrollRef}
+        onScroll={() => { if (vgTableWrapRef.current && vgTopScrollRef.current) vgTableWrapRef.current.scrollLeft = vgTopScrollRef.current.scrollLeft; }}
+        style={{ position: 'sticky', top: 60, zIndex: 15, overflowX: 'auto', overflowY: 'hidden', height: 16, background: '#f5f5f7', marginBottom: 4 }}
+      >
+        <div style={{ width: vgAnchoTabla, height: 1 }} />
+      </div>
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
+        <div
+          ref={vgTableWrapRef}
+          tabIndex={0}
+          onScroll={() => { if (vgTableWrapRef.current && vgTopScrollRef.current) vgTopScrollRef.current.scrollLeft = vgTableWrapRef.current.scrollLeft; }}
+          onKeyDown={(e) => {
+            // Con el foco en la tabla (no dentro de una celda), las flechas
+            // izquierda/derecha y Home/End mueven la tabla de lado.
+            if (e.target !== e.currentTarget) return;
+            const el = vgTableWrapRef.current;
+            if (!el) return;
+            if (e.key === 'ArrowRight') { el.scrollLeft += 160; e.preventDefault(); }
+            else if (e.key === 'ArrowLeft') { el.scrollLeft -= 160; e.preventDefault(); }
+            else if (e.key === 'End') { el.scrollLeft = el.scrollWidth; e.preventDefault(); }
+            else if (e.key === 'Home') { el.scrollLeft = 0; e.preventDefault(); }
+          }}
+          style={{ overflowX: 'auto', outline: 'none' }}
+        >
           <table className="vg-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
