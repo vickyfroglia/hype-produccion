@@ -2834,6 +2834,30 @@ function VistaGeneral({ ordenes, onCambio, rol }: { ordenes: OrdenDirecta[]; onC
           tabIndex={0}
           onScroll={() => { if (vgTableWrapRef.current && vgTopScrollRef.current) vgTopScrollRef.current.scrollLeft = vgTableWrapRef.current.scrollLeft; }}
           onKeyDown={(e) => {
+            // Enter (como en Excel): confirma la celda y pasa a la de ABAJO,
+            // en la misma columna. Shift+Enter sube. Se saltea lo deshabilitado.
+            const t = e.target as HTMLElement;
+            if (e.key === 'Enter' && (t instanceof HTMLInputElement || t instanceof HTMLSelectElement) && !(t instanceof HTMLInputElement && ['button', 'submit'].includes(t.type))) {
+              const td = t.closest('td');
+              const tr = td?.parentElement;
+              if (td && tr) {
+                const col = Array.from(tr.children).indexOf(td);
+                let fila = (e.shiftKey ? tr.previousElementSibling : tr.nextElementSibling) as HTMLElement | null;
+                while (fila) {
+                  if (!fila.hasAttribute('aria-hidden')) {
+                    const destino = fila.children[col]?.querySelector('input:not([type="hidden"]):not([type="date"]):not([disabled]), select:not([disabled])') as HTMLElement | null;
+                    if (destino) {
+                      e.preventDefault();
+                      destino.focus();
+                      if (destino instanceof HTMLInputElement && destino.type !== 'checkbox') destino.select();
+                      return;
+                    }
+                  }
+                  fila = (e.shiftKey ? fila.previousElementSibling : fila.nextElementSibling) as HTMLElement | null;
+                }
+              }
+              return;
+            }
             // Con el foco en la tabla (no dentro de una celda), las flechas
             // izquierda/derecha y Home/End mueven la tabla de lado.
             if (e.target !== e.currentTarget) return;
