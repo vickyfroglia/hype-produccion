@@ -244,14 +244,31 @@ export function pctAvance(o: OrdenDirecta): number {
 export function calcularPrioridad(ordenes: OrdenDirecta[]): Map<number, number> {
   const porOt = new Map<string, OrdenDirecta[]>();
   ordenes.forEach((o) => {
-    const arr = porOt.get(o.nro_ot) || [];
+    // Los pedidos "REPO" no tienen un numero de OT real que los agrupe:
+    // cada uno es un trabajo distinto, asi que se ordenan por separado.
+    const clave = o.nro_ot === 'REPO' ? `REPO#${o.id}` : o.nro_ot;
+    const arr = porOt.get(clave) || [];
     arr.push(o);
-    porOt.set(o.nro_ot, arr);
+    porOt.set(clave, arr);
   });
+  // Orden de la planilla: por FECHA DE PEDIDO (lo mas viejo arriba, lo ultimo
+  // abajo) y, dentro de la misma fecha, por NUMERO DE OT.
+  const fechaGrupo = (filas: OrdenDirecta[]) => filas.reduce((min, f) => ((f.fecha || '') < min ? (f.fecha || '') : min), filas[0].fecha || '');
   const grupos = Array.from(porOt.values()).sort((a, b) => {
-    const oa = a[0].orden_manual ?? Math.min(...a.map((f) => f.id));
-    const ob = b[0].orden_manual ?? Math.min(...b.map((f) => f.id));
-    return oa - ob;
+    const fa = fechaGrupo(a);
+    const fb = fechaGrupo(b);
+    if (fa !== fb) return fa < fb ? -1 : 1;
+    // Misma fecha: por numero de OT (de menor a mayor). Los REPO, que no
+    // tienen numero, van despues de los numerados de ese dia.
+    const na = a[0].nro_ot;
+    const nb = b[0].nro_ot;
+    const numA = /^\d+$/.test(na) ? Number(na) : null;
+    const numB = /^\d+$/.test(nb) ? Number(nb) : null;
+    if (numA !== null && numB !== null && numA !== numB) return numA - numB;
+    if (numA !== null && numB === null) return -1;
+    if (numA === null && numB !== null) return 1;
+    if (na !== nb) return na < nb ? -1 : 1;
+    return Math.min(...a.map((f) => f.id)) - Math.min(...b.map((f) => f.id));
   });
   const mapa = new Map<number, number>();
   let n = 1;
